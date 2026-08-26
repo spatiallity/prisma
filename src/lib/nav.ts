@@ -59,9 +59,9 @@ export const NAV: NavGroup[] = [
     icon: LayoutDashboard,
     items: [
       { label: 'Overview', href: '/dashboard', icon: Gauge, module: 'dashboard', ready: true, phase: 1 },
-      { label: 'Bottleneck', href: '/dashboard/bottleneck', icon: AlertTriangle, module: 'dashboard', phase: 8 },
-      { label: "Today's Schedule", href: '/dashboard/today', icon: Sun, module: 'dashboard', phase: 8 },
-      { label: 'Recent Activity', href: '/dashboard/activity', icon: Activity, module: 'audit_log', phase: 8 },
+      { label: 'Bottleneck', href: '/dashboard/bottleneck', icon: AlertTriangle, module: 'dashboard', ready: true, phase: 8 },
+      { label: "Today's Schedule", href: '/dashboard/today', icon: Sun, module: 'dashboard', ready: true, phase: 8 },
+      { label: 'Recent Activity', href: '/dashboard/activity', icon: Activity, module: 'audit_log', ready: true, phase: 8 },
     ],
   },
   {
@@ -130,10 +130,10 @@ export const NAV: NavGroup[] = [
     label: 'Reports',
     icon: FileText,
     items: [
-      { label: 'Project Report', href: '/reports/project', icon: FileText, module: 'report', phase: 8 },
-      { label: 'SPK Report', href: '/reports/spk', icon: FileText, module: 'report', phase: 8 },
-      { label: 'Progress Report', href: '/reports/progress', icon: Percent, module: 'report', phase: 8 },
-      { label: 'Financial Report', href: '/reports/financial', icon: Wallet, module: 'report', phase: 8 },
+      { label: 'Project Report', href: '/reports/project', icon: FileText, module: 'report', ready: true, phase: 8 },
+      { label: 'SPK Report', href: '/reports/spk', icon: FileText, module: 'report', ready: true, phase: 8 },
+      { label: 'Progress Report', href: '/reports/progress', icon: Percent, module: 'report', ready: true, phase: 8 },
+      { label: 'Financial Report', href: '/reports/financial', icon: Wallet, module: 'report', ready: true, phase: 8 },
     ],
   },
   {
@@ -143,7 +143,7 @@ export const NAV: NavGroup[] = [
       { label: 'User', href: '/admin/users', icon: UserCog, module: 'user_management', ready: true, phase: 1 },
       { label: 'Role & Permission', href: '/admin/roles', icon: ShieldCheck, module: 'user_management', ready: true, phase: 1 },
       { label: 'Master Vendor', href: '/admin/vendors', icon: Contact, module: 'master_data', ready: true, phase: 2 },
-      { label: 'Master Personnel', href: '/admin/personnel', icon: Users, module: 'master_data', phase: 2 },
+      { label: 'Master Personnel', href: '/admin/personnel', icon: Users, module: 'master_data', ready: true, phase: 2 },
       { label: 'Cash Ledger Category', href: '/admin/cash-categories', icon: Coins, module: 'master_data', ready: true, phase: 7 },
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
       { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', ready: true, phase: 6 },

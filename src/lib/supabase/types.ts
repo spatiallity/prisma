@@ -21,6 +21,7 @@ export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
 export type ProgressSource = 'manual' | 'daily_progress'
+export type NotificationSeverity = 'info' | 'warning' | 'critical'
 export type FinancialDocStatus =
   | 'Draft'
   | 'Submitted'
@@ -537,6 +538,16 @@ export type VendorPaymentTermRow = Timestamps & {
   created_by: string | null
 }
 
+/** migrations/20260825001100 — tunable thresholds (Section 9). */
+export type AppSettingRow = {
+  key: string
+  value: string
+  value_type: 'number' | 'text' | 'boolean'
+  description: string | null
+  updated_by: string | null
+  updated_at: string
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -595,6 +606,28 @@ export type TodayScheduleView = {
   target_value: number | null
   unit: string | null
   update_status: DailyUpdateStatus
+}
+
+/** migrations/20260825001100 — Section 8.1, the six headline counts. */
+export type DashboardKpiView = {
+  total_spk: number
+  spk_on_going: number
+  spk_selesai: number
+  spk_routing: number
+  spk_pad: number
+  spk_invoice: number
+  spk_payment: number
+}
+
+/** migrations/20260825001100 — Section 9, every bottleneck condition. */
+export type BottleneckView = {
+  area: string
+  reason: string
+  spk_id: string | null
+  spk_number: string | null
+  severity: NotificationSeverity
+  /** The number that triggered it — days late, rupiah short, and so on. */
+  metric: number | null
 }
 
 /** migrations/20260825001100 — Section 25.6.1, running petty-cash balance. */
@@ -819,6 +852,10 @@ export type Database = {
         | 'notes'
         | 'submitted_by'
       >
+      app_settings: Table<
+        AppSettingRow,
+        'updated_at' | 'value_type' | 'description' | 'updated_by'
+      >
       contracts: Table<
         ContractRow,
         | 'id' | 'created_at' | 'updated_at' | 'status' | 'amendment_no'
@@ -958,6 +995,8 @@ export type Database = {
       v_spk_activity_progress: { Row: SpkActivityProgressView; Relationships: [] }
       v_productivity: { Row: ProductivityView; Relationships: [] }
       v_routing_lead_time: { Row: RoutingLeadTimeView; Relationships: [] }
+      v_dashboard_kpi: { Row: DashboardKpiView; Relationships: [] }
+      v_bottleneck: { Row: BottleneckView; Relationships: [] }
       v_cash_ledger: { Row: CashLedgerView; Relationships: [] }
       v_cash_balance: { Row: CashBalanceView; Relationships: [] }
       v_spk_financial: { Row: SpkFinancialView; Relationships: [] }
@@ -985,6 +1024,7 @@ export type Database = {
       personnel_cost_type: PersonnelCostType
       vendor_payment_status: VendorPaymentStatus
       vendor_payment_term_type: VendorPaymentTermType
+      notification_severity: NotificationSeverity
     }
     CompositeTypes: Record<string, never>
   }
