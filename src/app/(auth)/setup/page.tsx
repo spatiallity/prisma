@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { BrandLogo } from '@/components/brand-logo'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { isSupabaseConfigured } from '@/lib/supabase/env'
@@ -30,7 +31,8 @@ const STEPS = [
 
 export default function SetupPage() {
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-5 p-4">
+      <BrandLogo height={40} priority />
       <Card className="w-full max-w-md">
       <CardContent className="grid gap-5 p-7">
         <div>

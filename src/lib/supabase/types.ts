@@ -21,6 +21,11 @@ export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
 export type ProgressSource = 'manual' | 'daily_progress'
+export type DailyUpdateStatus =
+  | 'Updated Today'
+  | 'Belum Update'
+  | 'Terlambat Update'
+  | 'Completed'
 
 export const MEASUREMENTS: MeasurementType[] = ['percentage', 'area', 'quantity', 'stage']
 export const STAGE_STATUSES: StageStatus[] = ['Belum Mulai', 'Dalam Pengerjaan', 'Selesai']
@@ -226,6 +231,38 @@ export type ActivityProgressRow = Timestamps & {
   recorded_by: string | null
 }
 
+export type DailyPlanRow = Timestamps & {
+  id: string
+  spk_id: string
+  spk_activity_id: string | null
+  plan_date: string
+  vendor_id: string | null
+  team_id: string | null
+  target_value: number | null
+  unit: string | null
+  notes: string | null
+  status: RecordStatus
+  created_by: string | null
+}
+
+export type DailyProgressRow = Timestamps & {
+  id: string
+  daily_plan_id: string | null
+  spk_id: string
+  spk_activity_id: string | null
+  progress_date: string
+  vendor_id: string | null
+  team_id: string | null
+  /** Section 18 — the increment achieved that day, not a cumulative figure. */
+  actual_value: number
+  unit: string | null
+  notes: string | null
+  update_status: DailyUpdateStatus
+  status: RecordStatus
+  submitted_by: string | null
+  submitted_at: string
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -241,6 +278,49 @@ export type SpkProgressView = {
   total_weight: number
   activity_count: number
   activity_completed: number
+}
+
+/** migrations/20260825001100 — Section 20, productivity per team. */
+export type ProductivityView = {
+  spk_id: string
+  vendor_id: string | null
+  team_id: string | null
+  spk_activity_id: string | null
+  activity_name: string | null
+  unit: string | null
+  working_days: number
+  total_actual: number
+  per_day: number | null
+}
+
+/** migrations/20260825001100 — Section 18, plan versus actual per day. */
+export type PlanVsActualView = {
+  daily_plan_id: string
+  spk_id: string
+  plan_date: string
+  vendor_id: string | null
+  team_id: string | null
+  spk_activity_id: string | null
+  target_value: number | null
+  actual_value: number
+  achievement_percent: number
+}
+
+/** migrations/20260825001100 — Section 10, Today's Schedule. */
+export type TodayScheduleView = {
+  daily_plan_id: string
+  spk_id: string
+  spk_number: string
+  site_code: string | null
+  vendor_id: string | null
+  vendor_name: string | null
+  team_id: string | null
+  team_name: string | null
+  spk_activity_id: string | null
+  activity_name: string | null
+  target_value: number | null
+  unit: string | null
+  update_status: DailyUpdateStatus
 }
 
 /** migrations/20260825001100 — Activity Contribution (Section 15). */
@@ -352,6 +432,37 @@ export type Database = {
         | 'target_value'
         | 'notes'
       >
+      daily_plans: Table<
+        DailyPlanRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'spk_activity_id'
+        | 'vendor_id'
+        | 'team_id'
+        | 'target_value'
+        | 'unit'
+        | 'notes'
+        | 'created_by'
+      >
+      daily_progress: Table<
+        DailyProgressRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'update_status'
+        | 'submitted_at'
+        | 'daily_plan_id'
+        | 'spk_activity_id'
+        | 'vendor_id'
+        | 'team_id'
+        | 'actual_value'
+        | 'unit'
+        | 'notes'
+        | 'submitted_by'
+      >
       activity_progress: Table<
         ActivityProgressRow,
         | 'id'
@@ -368,6 +479,9 @@ export type Database = {
     Views: {
       v_spk_progress: { Row: SpkProgressView; Relationships: [] }
       v_spk_activity_progress: { Row: SpkActivityProgressView; Relationships: [] }
+      v_productivity: { Row: ProductivityView; Relationships: [] }
+      v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }
+      v_today_schedule: { Row: TodayScheduleView; Relationships: [] }
     }
     Functions: Record<string, never>
     Enums: {
@@ -379,6 +493,7 @@ export type Database = {
       audit_action: AuditAction
       measurement_type: MeasurementType
       stage_status: StageStatus
+      daily_update_status: DailyUpdateStatus
     }
     CompositeTypes: Record<string, never>
   }

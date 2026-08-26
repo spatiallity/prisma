@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { FolderKanban, Map, Percent, Wallet } from 'lucide-react'
 import { BRAND, BRAND_LETTERS } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand-logo'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = { title: 'Masuk' }
@@ -64,9 +65,11 @@ export default async function LoginPage({
             <div className="mb-3 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               {BRAND.owner}
             </div>
-            <h1 className="text-6xl leading-none font-black tracking-tight text-white">
-              {BRAND.name}
-            </h1>
+            <h1 className="sr-only">{BRAND.name}</h1>
+            {/* The mark sits on a dark gradient, so it gets a light plate. */}
+            <div className="inline-flex rounded-2xl bg-white/95 px-5 py-3 shadow-lg shadow-black/20">
+              <BrandLogo height={56} priority />
+            </div>
 
             {/* The acronym, spelled out. */}
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
@@ -128,9 +131,7 @@ export default async function LoginPage({
         <div className="w-full max-w-md">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-col items-center text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-white">
-                P
-              </div>
+              <BrandLogo height={44} className="mb-4" priority />
               <h2 className="mb-0.5 text-xl font-black text-slate-900">
                 Selamat Datang
               </h2>

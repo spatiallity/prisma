@@ -78,10 +78,10 @@ export const NAV: NavGroup[] = [
     label: 'Schedule',
     icon: CalendarDays,
     items: [
-      { label: 'Calendar', href: '/schedule', icon: CalendarDays, module: 'schedule', phase: 4 },
-      { label: 'Daily Plan', href: '/schedule/daily-plan', icon: ListChecks, module: 'daily_plan', phase: 4 },
-      { label: 'Daily Progress', href: '/schedule/daily-progress', icon: CalendarCheck, module: 'daily_progress', phase: 4 },
-      { label: 'Team Schedule', href: '/schedule/team', icon: Users, module: 'schedule', phase: 4 },
+      { label: 'Calendar', href: '/schedule', icon: CalendarDays, module: 'schedule', ready: true, phase: 4 },
+      { label: 'Daily Plan', href: '/schedule/daily-plan', icon: ListChecks, module: 'daily_plan', ready: true, phase: 4 },
+      { label: 'Daily Progress', href: '/schedule/daily-progress', icon: CalendarCheck, module: 'daily_progress', ready: true, phase: 4 },
+      { label: 'Team Schedule', href: '/schedule/team', icon: Users, module: 'schedule', ready: true, phase: 4 },
     ],
   },
   {
@@ -91,7 +91,7 @@ export const NAV: NavGroup[] = [
       { label: 'Daftar Vendor', href: '/vendor', icon: Contact, module: 'vendor', ready: true, phase: 2 },
       { label: 'Team', href: '/vendor/team', icon: Users, module: 'vendor', ready: true, phase: 2 },
       { label: 'Assignment', href: '/vendor/assignment', icon: Map, module: 'vendor', ready: true, phase: 2 },
-      { label: 'Productivity', href: '/vendor/productivity', icon: Percent, module: 'vendor', phase: 4 },
+      { label: 'Productivity', href: '/vendor/productivity', icon: Percent, module: 'vendor', ready: true, phase: 4 },
     ],
   },
   {

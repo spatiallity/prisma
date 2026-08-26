@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { NAV } from '@/lib/nav'
 import { BRAND } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand-logo'
 import { can, type PermissionMap } from '@/lib/auth/permissions'
 import { NavLink } from './nav-link'
 import { SidebarToggle } from './shell'
@@ -28,11 +29,10 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
         <Link
           href="/dashboard"
           className="min-w-0 group-data-[collapsed=true]/sb:hidden"
+          aria-label={`${BRAND.name} — Dashboard`}
         >
-          <div className="text-xl leading-none font-black tracking-tight text-slate-900">
-            {BRAND.name}
-          </div>
-          <div className="mt-1 text-[9px] leading-tight font-bold text-slate-500">
+          <BrandLogo height={34} priority />
+          <div className="mt-1.5 text-[9px] leading-tight font-bold text-slate-500">
             {BRAND.tagline}
           </div>
         </Link>

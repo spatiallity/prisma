@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { initials } from '@/lib/utils'
 import type { SessionUser } from '@/lib/auth/session'
+import { BrandLogo } from '@/components/brand-logo'
 import { MobileNavToggle } from './shell'
 import { Breadcrumbs } from './breadcrumbs'
 
@@ -12,6 +13,9 @@ export function Topbar({ user }: { user: SessionUser }) {
       <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <MobileNavToggle />
+          <span className="md:hidden">
+            <BrandLogo height={26} />
+          </span>
           <div className="hidden md:block">
             <Breadcrumbs />
           </div>
