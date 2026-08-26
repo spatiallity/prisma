@@ -108,9 +108,9 @@ export const NAV: NavGroup[] = [
     label: 'Routing',
     icon: FileStack,
     items: [
-      { label: 'Routing Monitor', href: '/routing', icon: FileStack, module: 'routing', phase: 6 },
-      { label: 'Pending Approval', href: '/routing/pending', icon: FileSignature, module: 'routing', phase: 6 },
-      { label: 'Routing History', href: '/routing/history', icon: History, module: 'routing', phase: 6 },
+      { label: 'Routing Monitor', href: '/routing', icon: FileStack, module: 'routing', ready: true, phase: 6 },
+      { label: 'Pending Approval', href: '/routing/pending', icon: FileSignature, module: 'routing', ready: true, phase: 6 },
+      { label: 'Routing History', href: '/routing/history', icon: History, module: 'routing', ready: true, phase: 6 },
     ],
   },
   {
@@ -146,7 +146,7 @@ export const NAV: NavGroup[] = [
       { label: 'Master Personnel', href: '/admin/personnel', icon: Users, module: 'master_data', phase: 2 },
       { label: 'Cash Ledger Category', href: '/admin/cash-categories', icon: Coins, module: 'master_data', phase: 7 },
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
-      { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', phase: 6 },
+      { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', ready: true, phase: 6 },
       { label: 'Audit Log', href: '/admin/audit-log', icon: ScrollText, module: 'audit_log', ready: true, phase: 1 },
     ],
   },

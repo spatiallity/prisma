@@ -14,6 +14,7 @@ import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea, formatPercent } from '@/lib/spk'
 import { ProgressTab } from './progress-tab'
 import { DesignTab } from './design-tab'
+import { RoutingTab } from './routing-tab'
 
 export const metadata: Metadata = { title: 'Detail SPK' }
 
@@ -23,7 +24,7 @@ const TABS = [
   { key: 'progress', label: 'Progress', phase: 3, ready: true },
   { key: 'map', label: 'Map', phase: 3, ready: false },
   { key: 'design', label: 'Design', phase: 5, ready: true },
-  { key: 'routing', label: 'Routing', phase: 6, ready: false },
+  { key: 'routing', label: 'Routing', phase: 6, ready: true },
   { key: 'financial', label: 'Financial', phase: 7, ready: false },
 ]
 
@@ -215,6 +216,8 @@ export default async function SpkDetailPage({
       )}
 
       {activeTab === 'design' && <DesignTab spkId={spk.id} />}
+
+      {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
 
       {activeTab === 'overview' && (
       <div className="grid gap-5 lg:grid-cols-3">

@@ -21,6 +21,20 @@ export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
 export type ProgressSource = 'manual' | 'daily_progress'
+export type RoutingStatus =
+  | 'Pending'
+  | 'In Progress'
+  | 'Completed'
+  | 'Returned'
+  | 'Rejected'
+
+export const ROUTING_STATUSES: RoutingStatus[] = [
+  'Pending',
+  'In Progress',
+  'Completed',
+  'Returned',
+  'Rejected',
+]
 export type DesignStage =
   | 'Desain Awal'
   | 'Review'
@@ -307,6 +321,50 @@ export type DesignRevisionRow = Timestamps & {
   created_by: string | null
 }
 
+export type RoutingTemplateStepRow = Timestamps & {
+  id: string
+  template_id: string
+  name: string
+  sequence: number
+  default_pic_role: string | null
+  /** Section 24 — days above which the stage counts as a bottleneck. */
+  sla_days: number | null
+  requires_approval: boolean
+  notes: string | null
+}
+
+export type SpkRoutingRow = Timestamps & {
+  id: string
+  spk_id: string
+  template_id: string | null
+  document_type: string
+  document_number: string | null
+  /** Rolled up from routing_history by the trigger in migration 0007. */
+  status: RoutingStatus
+  started_at: string | null
+  completed_at: string | null
+  notes: string | null
+  created_by: string | null
+}
+
+export type RoutingHistoryRow = Timestamps & {
+  id: string
+  spk_routing_id: string
+  template_step_id: string | null
+  step_name: string
+  sequence: number
+  pic_id: string | null
+  pic_name: string | null
+  status: RoutingStatus
+  started_at: string | null
+  completed_at: string | null
+  /** Generated column (migration 0007) — read-only. */
+  duration_days: number | null
+  sla_days: number | null
+  note: string | null
+  created_by: string | null
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -365,6 +423,32 @@ export type TodayScheduleView = {
   target_value: number | null
   unit: string | null
   update_status: DailyUpdateStatus
+}
+
+/** migrations/20260825001100 — Section 24, lead time per routing stage. */
+export type RoutingLeadTimeView = {
+  routing_history_id: string
+  spk_id: string
+  spk_routing_id: string
+  document_type: string
+  step_name: string
+  sequence: number
+  status: RoutingStatus
+  started_at: string | null
+  completed_at: string | null
+  duration_days: number | null
+  sla_days: number | null
+  /** Counts up while the stage is still open. */
+  elapsed_days: number | null
+  is_overdue: boolean
+}
+
+/** migrations/20260825001100 — Section 24, average per stage across documents. */
+export type RoutingStageAverageView = {
+  step_name: string
+  completed_count: number
+  avg_duration_days: number | null
+  max_duration_days: number | null
 }
 
 /** migrations/20260825001100 — Activity Contribution (Section 15). */
@@ -507,6 +591,45 @@ export type Database = {
         | 'notes'
         | 'submitted_by'
       >
+      spk_routing: Table<
+        SpkRoutingRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'template_id'
+        | 'document_number'
+        | 'started_at'
+        | 'completed_at'
+        | 'notes'
+        | 'created_by'
+      >
+      routing_history: Table<
+        RoutingHistoryRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'duration_days'
+        | 'template_step_id'
+        | 'pic_id'
+        | 'pic_name'
+        | 'started_at'
+        | 'completed_at'
+        | 'sla_days'
+        | 'note'
+        | 'created_by'
+      >
+      routing_template_steps: Table<
+        RoutingTemplateStepRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'default_pic_role'
+        | 'sla_days'
+        | 'requires_approval'
+        | 'notes'
+      >
       designs: Table<
         DesignRow,
         | 'id'
@@ -551,6 +674,8 @@ export type Database = {
       v_spk_progress: { Row: SpkProgressView; Relationships: [] }
       v_spk_activity_progress: { Row: SpkActivityProgressView; Relationships: [] }
       v_productivity: { Row: ProductivityView; Relationships: [] }
+      v_routing_lead_time: { Row: RoutingLeadTimeView; Relationships: [] }
+      v_routing_stage_average: { Row: RoutingStageAverageView; Relationships: [] }
       v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }
       v_today_schedule: { Row: TodayScheduleView; Relationships: [] }
     }
@@ -566,6 +691,7 @@ export type Database = {
       stage_status: StageStatus
       daily_update_status: DailyUpdateStatus
       design_stage: DesignStage
+      routing_status: RoutingStatus
     }
     CompositeTypes: Record<string, never>
   }
