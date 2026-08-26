@@ -21,6 +21,33 @@ export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
 export type ProgressSource = 'manual' | 'daily_progress'
+export type FinancialDocStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'Approved'
+  | 'Rejected'
+  | 'Cancelled'
+export type PersonnelCostType = 'Gaji' | 'MCU' | 'Honor & Operasional'
+export type VendorPaymentStatus = 'Belum Dibayar' | 'Sebagian' | 'Lunas'
+export type VendorPaymentTermType = 'DP' | 'Progress' | 'Final'
+
+export const FINANCIAL_DOC_STATUSES: FinancialDocStatus[] = [
+  'Draft',
+  'Submitted',
+  'Approved',
+  'Rejected',
+  'Cancelled',
+]
+export const PERSONNEL_COST_TYPES: PersonnelCostType[] = [
+  'Gaji',
+  'MCU',
+  'Honor & Operasional',
+]
+export const VENDOR_PAYMENT_TERM_TYPES: VendorPaymentTermType[] = [
+  'DP',
+  'Progress',
+  'Final',
+]
 export type RoutingStatus =
   | 'Pending'
   | 'In Progress'
@@ -365,6 +392,151 @@ export type RoutingHistoryRow = Timestamps & {
   created_by: string | null
 }
 
+// --- Revenue side (Section 25.1-25.5) ---------------------------------------
+
+export type ContractRow = Timestamps & {
+  id: string
+  spk_id: string
+  contract_number: string
+  contract_value: number
+  contract_date: string | null
+  amendment_no: number
+  parent_contract_id: string | null
+  status: FinancialDocStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type OpnameRow = Timestamps & {
+  id: string
+  spk_id: string
+  opname_number: string | null
+  opname_value: number
+  opname_date: string | null
+  period_start: string | null
+  period_end: string | null
+  status: FinancialDocStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type PadRow = Timestamps & {
+  id: string
+  spk_id: string
+  opname_id: string | null
+  pad_number: string | null
+  pad_value: number
+  pad_date: string | null
+  status: FinancialDocStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type InvoiceRow = Timestamps & {
+  id: string
+  spk_id: string
+  pad_id: string | null
+  invoice_number: string | null
+  invoice_value: number
+  invoice_date: string | null
+  due_date: string | null
+  status: FinancialDocStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type PaymentRow = Timestamps & {
+  id: string
+  spk_id: string
+  invoice_id: string | null
+  payment_value: number
+  payment_date: string | null
+  reference: string | null
+  status: FinancialDocStatus
+  notes: string | null
+  created_by: string | null
+}
+
+// --- Cost side (Section 25.6) -----------------------------------------------
+
+export type CashLedgerCategoryRow = Timestamps & {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  sort_order: number
+  status: RecordStatus
+}
+
+export type CashLedgerRow = Timestamps & {
+  id: string
+  entry_date: string
+  pic_user_id: string | null
+  pic_name: string | null
+  category_id: string | null
+  description: string | null
+  amount_out: number
+  amount_in: number
+  /** NULL = project overhead (Section 26.3), outside per-SPK margin. */
+  spk_id: string | null
+  reference: string | null
+  status: RecordStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type PersonnelRow = Timestamps & {
+  id: string
+  code: string | null
+  full_name: string
+  position: string | null
+  user_id: string | null
+  join_date: string | null
+  status: RecordStatus
+  notes: string | null
+}
+
+export type PersonnelCostRow = Timestamps & {
+  id: string
+  personnel_id: string
+  cost_type: PersonnelCostType
+  period: string
+  amount: number
+  spk_id: string | null
+  description: string | null
+  status: RecordStatus
+  created_by: string | null
+}
+
+export type VendorPaymentRow = Timestamps & {
+  id: string
+  spk_id: string
+  vendor_id: string
+  contract_value: number
+  agreed_percentage: number
+  /** Generated column (migration 0009) — read-only. */
+  vendor_payable: number
+  /** Rolled up from vendor_payment_terms by trigger when terms exist. */
+  amount_paid: number
+  status: VendorPaymentStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type VendorPaymentTermRow = Timestamps & {
+  id: string
+  vendor_payment_id: string
+  term_type: VendorPaymentTermType
+  sequence: number
+  amount: number
+  due_date: string | null
+  paid_date: string | null
+  reference: string | null
+  status: RecordStatus
+  notes: string | null
+  created_by: string | null
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -423,6 +595,62 @@ export type TodayScheduleView = {
   target_value: number | null
   unit: string | null
   update_status: DailyUpdateStatus
+}
+
+/** migrations/20260825001100 — Section 25.6.1, running petty-cash balance. */
+export type CashLedgerView = CashLedgerRow & { balance: number }
+
+export type CashBalanceView = {
+  balance: number
+  total_in: number
+  total_out: number
+  last_entry_date: string | null
+}
+
+/** migrations/20260825001100 — Section 26.1, revenue reconciliation per SPK. */
+export type SpkFinancialView = {
+  spk_id: string
+  spk_number: string
+  spk_contract_value: number | null
+  contract_total: number
+  opname_total: number
+  pad_total: number
+  invoice_total: number
+  payment_total: number
+  contract_vs_opname: number
+  opname_vs_invoice: number
+  outstanding_payment: number
+}
+
+/** migrations/20260825001100 — Section 26.2, cost per SPK. */
+export type SpkCostView = {
+  spk_id: string
+  vendor_payable: number
+  vendor_paid: number
+  personnel_cost: number
+  operational_cash: number
+  total_cost: number
+}
+
+/** migrations/20260825001100 — Section 26.2, Margin = Invoice - Total Cost. */
+export type SpkMarginView = {
+  spk_id: string
+  spk_number: string
+  invoice_total: number
+  vendor_payable: number
+  personnel_cost: number
+  operational_cash: number
+  total_cost: number
+  margin: number
+  margin_percent: number | null
+}
+
+/** migrations/20260825001100 — Section 26.3, untagged overhead per month. */
+export type ProjectOverheadView = {
+  period_month: string
+  operational_cash: number
+  personnel_cost: number
+  overhead_total: number
 }
 
 /** migrations/20260825001100 — Section 24, lead time per routing stage. */
@@ -591,6 +819,61 @@ export type Database = {
         | 'notes'
         | 'submitted_by'
       >
+      contracts: Table<
+        ContractRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'amendment_no'
+        | 'contract_date' | 'parent_contract_id' | 'notes' | 'created_by'
+      >
+      opnames: Table<
+        OpnameRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'opname_number'
+        | 'opname_date' | 'period_start' | 'period_end' | 'notes' | 'created_by'
+      >
+      pad: Table<
+        PadRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'opname_id'
+        | 'pad_number' | 'pad_date' | 'notes' | 'created_by'
+      >
+      invoices: Table<
+        InvoiceRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'pad_id'
+        | 'invoice_number' | 'invoice_date' | 'due_date' | 'notes' | 'created_by'
+      >
+      payments: Table<
+        PaymentRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'invoice_id'
+        | 'payment_date' | 'reference' | 'notes' | 'created_by'
+      >
+      cash_ledger_categories: Table<
+        CashLedgerCategoryRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'description' | 'sort_order'
+      >
+      cash_ledger: Table<
+        CashLedgerRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'pic_user_id' | 'pic_name'
+        | 'category_id' | 'description' | 'amount_out' | 'amount_in' | 'spk_id'
+        | 'reference' | 'notes' | 'created_by'
+      >
+      personnel: Table<
+        PersonnelRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'code' | 'position'
+        | 'user_id' | 'join_date' | 'notes'
+      >
+      personnel_costs: Table<
+        PersonnelCostRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'spk_id'
+        | 'description' | 'created_by'
+      >
+      vendor_payments: Table<
+        VendorPaymentRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'vendor_payable'
+        | 'amount_paid' | 'notes' | 'created_by'
+      >
+      vendor_payment_terms: Table<
+        VendorPaymentTermRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'sequence' | 'due_date'
+        | 'paid_date' | 'reference' | 'notes' | 'created_by'
+      >
       spk_routing: Table<
         SpkRoutingRow,
         | 'id'
@@ -675,6 +958,12 @@ export type Database = {
       v_spk_activity_progress: { Row: SpkActivityProgressView; Relationships: [] }
       v_productivity: { Row: ProductivityView; Relationships: [] }
       v_routing_lead_time: { Row: RoutingLeadTimeView; Relationships: [] }
+      v_cash_ledger: { Row: CashLedgerView; Relationships: [] }
+      v_cash_balance: { Row: CashBalanceView; Relationships: [] }
+      v_spk_financial: { Row: SpkFinancialView; Relationships: [] }
+      v_spk_cost: { Row: SpkCostView; Relationships: [] }
+      v_spk_margin: { Row: SpkMarginView; Relationships: [] }
+      v_project_overhead_monthly: { Row: ProjectOverheadView; Relationships: [] }
       v_routing_stage_average: { Row: RoutingStageAverageView; Relationships: [] }
       v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }
       v_today_schedule: { Row: TodayScheduleView; Relationships: [] }
@@ -692,6 +981,10 @@ export type Database = {
       daily_update_status: DailyUpdateStatus
       design_stage: DesignStage
       routing_status: RoutingStatus
+      financial_doc_status: FinancialDocStatus
+      personnel_cost_type: PersonnelCostType
+      vendor_payment_status: VendorPaymentStatus
+      vendor_payment_term_type: VendorPaymentTermType
     }
     CompositeTypes: Record<string, never>
   }

@@ -15,6 +15,7 @@ import { SPK_STATUS_TONE, daysLeft, formatArea, formatPercent } from '@/lib/spk'
 import { ProgressTab } from './progress-tab'
 import { DesignTab } from './design-tab'
 import { RoutingTab } from './routing-tab'
+import { FinancialTab } from './financial-tab'
 
 export const metadata: Metadata = { title: 'Detail SPK' }
 
@@ -25,7 +26,7 @@ const TABS = [
   { key: 'map', label: 'Map', phase: 3, ready: false },
   { key: 'design', label: 'Design', phase: 5, ready: true },
   { key: 'routing', label: 'Routing', phase: 6, ready: true },
-  { key: 'financial', label: 'Financial', phase: 7, ready: false },
+  { key: 'financial', label: 'Financial', phase: 7, ready: true },
 ]
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
@@ -218,6 +219,10 @@ export default async function SpkDetailPage({
       {activeTab === 'design' && <DesignTab spkId={spk.id} />}
 
       {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
+
+      {activeTab === 'financial' && (
+        <FinancialTab spkId={spk.id} permissions={user.permissions} />
+      )}
 
       {activeTab === 'overview' && (
       <div className="grid gap-5 lg:grid-cols-3">
