@@ -21,6 +21,22 @@ export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
 export type ProgressSource = 'manual' | 'daily_progress'
+export type DesignStage =
+  | 'Desain Awal'
+  | 'Review'
+  | 'Pemaparan'
+  | 'Revisi'
+  | 'Finalisasi'
+  | 'Approved'
+
+export const DESIGN_STAGES: DesignStage[] = [
+  'Desain Awal',
+  'Review',
+  'Pemaparan',
+  'Revisi',
+  'Finalisasi',
+  'Approved',
+]
 export type DailyUpdateStatus =
   | 'Updated Today'
   | 'Belum Update'
@@ -263,6 +279,34 @@ export type DailyProgressRow = Timestamps & {
   submitted_at: string
 }
 
+export type DesignRow = Timestamps & {
+  id: string
+  spk_id: string
+  title: string | null
+  /** Maintained by the trigger in migration 0006 from the newest revision. */
+  current_stage: DesignStage
+  pic_id: string | null
+  target_date: string | null
+  approved_at: string | null
+  approved_by: string | null
+  status: RecordStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type DesignRevisionRow = Timestamps & {
+  id: string
+  design_id: string
+  revision_no: number
+  stage: DesignStage
+  pic_id: string | null
+  started_at: string | null
+  completed_at: string | null
+  notes: string | null
+  status: RecordStatus
+  created_by: string | null
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -463,6 +507,33 @@ export type Database = {
         | 'notes'
         | 'submitted_by'
       >
+      designs: Table<
+        DesignRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'current_stage'
+        | 'title'
+        | 'pic_id'
+        | 'target_date'
+        | 'approved_at'
+        | 'approved_by'
+        | 'notes'
+        | 'created_by'
+      >
+      design_revisions: Table<
+        DesignRevisionRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'pic_id'
+        | 'started_at'
+        | 'completed_at'
+        | 'notes'
+        | 'created_by'
+      >
       activity_progress: Table<
         ActivityProgressRow,
         | 'id'
@@ -494,6 +565,7 @@ export type Database = {
       measurement_type: MeasurementType
       stage_status: StageStatus
       daily_update_status: DailyUpdateStatus
+      design_stage: DesignStage
     }
     CompositeTypes: Record<string, never>
   }

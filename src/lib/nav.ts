@@ -98,10 +98,10 @@ export const NAV: NavGroup[] = [
     label: 'Design',
     icon: PencilRuler,
     items: [
-      { label: 'Design Queue', href: '/design', icon: PencilRuler, module: 'design', phase: 5 },
-      { label: 'Review', href: '/design/review', icon: FileCheck2, module: 'design', phase: 5 },
-      { label: 'Revision', href: '/design/revision', icon: History, module: 'design', phase: 5 },
-      { label: 'Final Design', href: '/design/final', icon: ShieldCheck, module: 'design', phase: 5 },
+      { label: 'Design Queue', href: '/design', icon: PencilRuler, module: 'design', ready: true, phase: 5 },
+      { label: 'Review', href: '/design/review', icon: FileCheck2, module: 'design', ready: true, phase: 5 },
+      { label: 'Revision', href: '/design/revision', icon: History, module: 'design', ready: true, phase: 5 },
+      { label: 'Final Design', href: '/design/final', icon: ShieldCheck, module: 'design', ready: true, phase: 5 },
     ],
   },
   {
