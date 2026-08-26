@@ -1,12 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(rtk *)",
-      "Bash(pnpm --version)",
-      "PowerShell(pnpm *)",
-      "PowerShell(corepack *)",
-      "PowerShell(npm config *)",
-      "PowerShell(npm install *)"
-    ]
+    "defaultMode": "bypassPermissions"
   }
 }

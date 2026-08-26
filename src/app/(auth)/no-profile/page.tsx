@@ -7,7 +7,8 @@ export const metadata: Metadata = { title: 'Profil belum terdaftar' }
 
 export default function NoProfilePage() {
   return (
-    <Card>
+    <div className="flex min-h-dvh items-center justify-center p-4">
+      <Card className="w-full max-w-md">
       <CardContent className="grid gap-4 p-7">
         <h1 className="text-lg font-semibold">Profil belum terdaftar</h1>
         <Alert tone="warning">
@@ -20,6 +21,7 @@ export default function NoProfilePage() {
         </p>
         <SignOutButton className="w-full" />
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   )
 }

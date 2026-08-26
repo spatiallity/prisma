@@ -68,10 +68,10 @@ export const NAV: NavGroup[] = [
     label: 'SPK',
     icon: FolderKanban,
     items: [
-      { label: 'Semua SPK', href: '/spk', icon: FolderKanban, module: 'spk', phase: 2 },
-      { label: 'SPK On Going', href: '/spk?status=ongoing', icon: Workflow, module: 'spk', phase: 2 },
-      { label: 'SPK Selesai', href: '/spk?status=selesai', icon: CheckCircle2, module: 'spk', phase: 2 },
-      { label: 'Buat SPK Baru', href: '/spk/new', icon: FilePlus2, module: 'spk', action: 'create', phase: 2 },
+      { label: 'Semua SPK', href: '/spk', icon: FolderKanban, module: 'spk', ready: true, phase: 2 },
+      { label: 'SPK On Going', href: '/spk?status=ongoing', icon: Workflow, module: 'spk', ready: true, phase: 2 },
+      { label: 'SPK Selesai', href: '/spk?status=selesai', icon: CheckCircle2, module: 'spk', ready: true, phase: 2 },
+      { label: 'Buat SPK Baru', href: '/spk/new', icon: FilePlus2, module: 'spk', action: 'create', ready: true, phase: 2 },
     ],
   },
   {
@@ -88,9 +88,9 @@ export const NAV: NavGroup[] = [
     label: 'Vendor Jasa Survey',
     icon: Users,
     items: [
-      { label: 'Daftar Vendor', href: '/vendor', icon: Contact, module: 'vendor', phase: 2 },
-      { label: 'Team', href: '/vendor/team', icon: Users, module: 'vendor', phase: 2 },
-      { label: 'Assignment', href: '/vendor/assignment', icon: Map, module: 'vendor', phase: 2 },
+      { label: 'Daftar Vendor', href: '/vendor', icon: Contact, module: 'vendor', ready: true, phase: 2 },
+      { label: 'Team', href: '/vendor/team', icon: Users, module: 'vendor', ready: true, phase: 2 },
+      { label: 'Assignment', href: '/vendor/assignment', icon: Map, module: 'vendor', ready: true, phase: 2 },
       { label: 'Productivity', href: '/vendor/productivity', icon: Percent, module: 'vendor', phase: 4 },
     ],
   },
@@ -142,7 +142,7 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'User', href: '/admin/users', icon: UserCog, module: 'user_management', ready: true, phase: 1 },
       { label: 'Role & Permission', href: '/admin/roles', icon: ShieldCheck, module: 'user_management', ready: true, phase: 1 },
-      { label: 'Master Vendor', href: '/admin/vendors', icon: Contact, module: 'master_data', phase: 2 },
+      { label: 'Master Vendor', href: '/admin/vendors', icon: Contact, module: 'master_data', ready: true, phase: 2 },
       { label: 'Master Personnel', href: '/admin/personnel', icon: Users, module: 'master_data', phase: 2 },
       { label: 'Cash Ledger Category', href: '/admin/cash-categories', icon: Coins, module: 'master_data', phase: 7 },
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', phase: 3 },

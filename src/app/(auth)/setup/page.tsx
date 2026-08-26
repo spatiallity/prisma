@@ -30,7 +30,8 @@ const STEPS = [
 
 export default function SetupPage() {
   return (
-    <Card>
+    <div className="flex min-h-dvh items-center justify-center p-4">
+      <Card className="w-full max-w-md">
       <CardContent className="grid gap-5 p-7">
         <div>
           <h1 className="text-lg font-semibold">Setup belum selesai</h1>
@@ -69,6 +70,7 @@ export default function SetupPage() {
           Detail lengkap ada di <code className="font-mono">supabase/README.md</code>.
         </p>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   )
 }

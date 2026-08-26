@@ -1,6 +1,6 @@
-// Hand-written subset covering the Phase 1 (Foundation) tables only.
+// Hand-written subset covering the tables Phase 1 and Phase 2 actually touch.
 //
-// Regenerate the full file once the migrations are applied to a project:
+// Regenerate the full file once Phase 3 needs the progress engine:
 //   pnpm dlx supabase gen types typescript --project-id <ref> > src/lib/supabase/types.ts
 // The shape below matches what the generator emits, so the swap is drop-in.
 
@@ -17,6 +17,8 @@ export type Json =
 export type RecordStatus = 'Active' | 'Inactive' | 'Archived'
 export type PermissionScope = 'all' | 'own' | 'limited'
 export type AppAction = 'view' | 'create' | 'edit'
+export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
+export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
 
 export type AppModule =
   | 'dashboard'
@@ -40,9 +42,15 @@ export type AppModule =
   | 'user_management'
   | 'audit_log'
 
-export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
-
 export type SpkStatus = 'Draft' | 'On Going' | 'Selesai' | 'Archived' | 'Cancelled'
+
+export const SPK_STATUSES: SpkStatus[] = [
+  'Draft',
+  'On Going',
+  'Selesai',
+  'Archived',
+  'Cancelled',
+]
 
 // --- Row shapes -------------------------------------------------------------
 
@@ -98,6 +106,67 @@ export type VendorRow = Timestamps & {
   created_by: string | null
 }
 
+export type VendorTeamRow = Timestamps & {
+  id: string
+  vendor_id: string
+  name: string
+  notes: string | null
+  status: RecordStatus
+}
+
+export type VendorMemberRow = Timestamps & {
+  id: string
+  team_id: string
+  full_name: string
+  position: string | null
+  phone: string | null
+  user_id: string | null
+  status: RecordStatus
+}
+
+export type SpkRow = Timestamps & {
+  id: string
+  spk_number: string
+  site_code: string | null
+  work_name: string
+  work_type: string | null
+  location: string | null
+  kabupaten: string | null
+  provinsi: string | null
+  area_ha: number | null
+  contract_value: number | null
+  start_date: string | null
+  end_date: string | null
+  vendor_id: string | null
+  project_manager_id: string | null
+  activity_template_id: string | null
+  routing_template_id: string | null
+  status: SpkStatus
+  notes: string | null
+  created_by: string | null
+  updated_by: string | null
+}
+
+export type SpkAssignmentRow = Timestamps & {
+  id: string
+  spk_id: string
+  vendor_id: string
+  team_id: string | null
+  assigned_from: string | null
+  assigned_to: string | null
+  status: RecordStatus
+  notes: string | null
+  created_by: string | null
+}
+
+export type TemplateRow = Timestamps & {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  status: RecordStatus
+}
+
 export type AuditLogRow = {
   id: number
   table_name: string
@@ -111,53 +180,97 @@ export type AuditLogRow = {
   after_data: Json | null
 }
 
+// --- View shapes ------------------------------------------------------------
+
+/** migrations/20260825001100 — Overall Progress, computed (Section 15). */
+export type SpkProgressView = {
+  spk_id: string
+  spk_number: string
+  site_code: string | null
+  work_name: string
+  status: SpkStatus
+  start_date: string | null
+  end_date: string | null
+  overall_progress: number
+  total_weight: number
+  activity_count: number
+  activity_completed: number
+}
+
+type Table<Row, Generated extends keyof Row = never> = {
+  Row: Row
+  Insert: Omit<Row, Generated> & Partial<Pick<Row, Generated & keyof Row>>
+  Update: Partial<Row>
+  Relationships: []
+}
+
 export type Database = {
   public: {
     Tables: {
-      roles: {
-        Row: RoleRow
-        Insert: Omit<RoleRow, 'id' | 'created_at' | 'updated_at' | 'status'> &
-          Partial<Pick<RoleRow, 'id' | 'status'>>
-        Update: Partial<RoleRow>
-        Relationships: []
-      }
-      permissions: {
-        Row: PermissionRow
-        Insert: Omit<PermissionRow, 'id' | 'created_at' | 'description'> &
-          Partial<Pick<PermissionRow, 'id' | 'description'>>
-        Update: Partial<PermissionRow>
-        Relationships: []
-      }
-      role_permissions: {
-        Row: RolePermissionRow
-        Insert: Omit<RolePermissionRow, 'created_at' | 'scope'> &
-          Partial<Pick<RolePermissionRow, 'scope'>>
-        Update: Partial<RolePermissionRow>
-        Relationships: []
-      }
-      users: {
-        Row: UserRow
-        Insert: Omit<UserRow, 'created_at' | 'updated_at' | 'status' | 'last_login_at'> &
-          Partial<Pick<UserRow, 'status' | 'last_login_at'>>
-        Update: Partial<UserRow>
-        Relationships: []
-      }
-      audit_logs: {
-        Row: AuditLogRow
-        Insert: Omit<AuditLogRow, 'id' | 'changed_at'> &
-          Partial<Pick<AuditLogRow, 'changed_at'>>
-        Update: Partial<AuditLogRow>
-        Relationships: []
-      }
-      vendors: {
-        Row: VendorRow
-        Insert: Omit<VendorRow, 'id' | 'created_at' | 'updated_at' | 'status'> &
-          Partial<Pick<VendorRow, 'id' | 'status'>>
-        Update: Partial<VendorRow>
-        Relationships: []
-      }
+      roles: Table<RoleRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'description'>
+      permissions: Table<PermissionRow, 'id' | 'created_at' | 'description'>
+      role_permissions: Table<RolePermissionRow, 'created_at' | 'scope'>
+      users: Table<UserRow, 'created_at' | 'updated_at' | 'status' | 'last_login_at' | 'vendor_id' | 'phone'>
+      vendors: Table<
+        VendorRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'contact_person'
+        | 'phone'
+        | 'email'
+        | 'address'
+        | 'notes'
+        | 'created_by'
+      >
+      vendor_teams: Table<VendorTeamRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'notes'>
+      vendor_members: Table<
+        VendorMemberRow,
+        'id' | 'created_at' | 'updated_at' | 'status' | 'position' | 'phone' | 'user_id'
+      >
+      spks: Table<
+        SpkRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'site_code'
+        | 'work_type'
+        | 'location'
+        | 'kabupaten'
+        | 'provinsi'
+        | 'area_ha'
+        | 'contract_value'
+        | 'start_date'
+        | 'end_date'
+        | 'vendor_id'
+        | 'project_manager_id'
+        | 'activity_template_id'
+        | 'routing_template_id'
+        | 'notes'
+        | 'created_by'
+        | 'updated_by'
+      >
+      spk_assignments: Table<
+        SpkAssignmentRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'status'
+        | 'team_id'
+        | 'assigned_from'
+        | 'assigned_to'
+        | 'notes'
+        | 'created_by'
+      >
+      activity_templates: Table<TemplateRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'description'>
+      routing_templates: Table<TemplateRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'description'>
+      audit_logs: Table<AuditLogRow, 'id' | 'changed_at'>
     }
-    Views: Record<string, never>
+    Views: {
+      v_spk_progress: { Row: SpkProgressView; Relationships: [] }
+    }
     Functions: Record<string, never>
     Enums: {
       record_status: RecordStatus
@@ -166,6 +279,7 @@ export type Database = {
       app_action: AppAction
       spk_status: SpkStatus
       audit_action: AuditAction
+      measurement_type: MeasurementType
     }
     CompositeTypes: Record<string, never>
   }

@@ -7,7 +7,8 @@ export const metadata: Metadata = { title: 'Akun nonaktif' }
 
 export default function InactivePage() {
   return (
-    <Card>
+    <div className="flex min-h-dvh items-center justify-center p-4">
+      <Card className="w-full max-w-md">
       <CardContent className="grid gap-4 p-7">
         <h1 className="text-lg font-semibold">Akun nonaktif</h1>
         <Alert tone="warning">
@@ -19,6 +20,7 @@ export default function InactivePage() {
         </p>
         <SignOutButton className="w-full" />
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   )
 }
