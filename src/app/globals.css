@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* --------------------------------------------------------------------------
+   Palette lifted from spatiallity/tenderhub-lsi (frontend/tailwind.config.js
+   + src/index.css) so both SUCOFINDO apps read as one product.
+   Light only — the reference has no dark theme.
+   -------------------------------------------------------------------------- */
+:root {
+  --background: #f1f5f9;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --foreground: #1e293b;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #3b82f6;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --primary-foreground: #ffffff;
+
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #2563eb;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475569;
+  --sidebar-muted: #94a3b8;
+  --sidebar-section: #334155;
+  --sidebar-border: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-section: var(--sidebar-section);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin scrollbar, same as the reference app. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tabular figures wherever numbers are compared column-wise. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
