@@ -1,4 +1,4 @@
-# Database Schema V1 — Web Monitoring SPK
+# Database Schema V1 — PRISMA
 
 Deliverable 1 of `requirement-v1.1-prisma.md` (Section 45). Every table, enum, derived
 view and RLS policy traces to a section of that document; section numbers are quoted in

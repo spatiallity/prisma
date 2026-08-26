@@ -145,7 +145,7 @@ export const NAV: NavGroup[] = [
       { label: 'Master Vendor', href: '/admin/vendors', icon: Contact, module: 'master_data', ready: true, phase: 2 },
       { label: 'Master Personnel', href: '/admin/personnel', icon: Users, module: 'master_data', phase: 2 },
       { label: 'Cash Ledger Category', href: '/admin/cash-categories', icon: Coins, module: 'master_data', phase: 7 },
-      { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', phase: 3 },
+      { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
       { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', phase: 6 },
       { label: 'Audit Log', href: '/admin/audit-log', icon: ScrollText, module: 'audit_log', ready: true, phase: 1 },
     ],

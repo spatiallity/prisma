@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { FolderKanban, Map, Percent, Wallet } from 'lucide-react'
+import { BRAND, BRAND_LETTERS } from '@/lib/brand'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = { title: 'Masuk' }
@@ -59,20 +60,36 @@ export default async function LoginPage({
         />
 
         <div className="relative z-10 flex h-full flex-col p-12">
-          <div className="mb-10">
+          <div className="mb-8">
             <div className="mb-3 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-              PT Sucofindo (Persero)
+              {BRAND.owner}
             </div>
-            <h1 className="mb-4 text-4xl leading-tight font-black text-white">
-              Sistem Kontrol
-              <br />
-              <span style={{ color: '#13B2AA' }}>Monitoring SPK</span>
-              <br />
-              Survei Topografi Pertamina EP Zona 4
+            <h1 className="text-6xl leading-none font-black tracking-tight text-white">
+              {BRAND.name}
             </h1>
-            <p className="max-w-sm text-base leading-relaxed text-slate-300">
-              Satu tempat untuk memantau pekerjaan lapangan, desain, routing dokumen,
-              dan kondisi financial setiap SPK.
+
+            {/* The acronym, spelled out. */}
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+              {BRAND_LETTERS.map(({ letter, word }) => (
+                <div key={letter} className="flex items-baseline gap-1.5">
+                  <span
+                    className="text-lg font-black"
+                    style={{ color: '#13B2AA' }}
+                    aria-hidden
+                  >
+                    {letter}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-300">
+                    {word}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-300">
+              Sistem kontrol project {BRAND.project} — {BRAND.client}. Satu tempat
+              untuk pekerjaan lapangan, desain, routing dokumen, dan kondisi
+              financial setiap SPK.
             </p>
           </div>
 
@@ -100,8 +117,7 @@ export default async function LoginPage({
 
           <div className="mt-6 border-t border-white/10 pt-4">
             <p className="text-[11px] text-slate-500">
-              © 2026 PT SUCOFINDO (Persero) · Project Survei Topografi Lokasi Bor
-              dan Fasilitas Produksi
+              © {BRAND.year} {BRAND.owner} · {BRAND.project}
             </p>
           </div>
         </div>
@@ -112,14 +128,14 @@ export default async function LoginPage({
         <div className="w-full max-w-md">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-col items-center text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-lg font-black text-white">
-                SPK
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-white">
+                P
               </div>
               <h2 className="mb-0.5 text-xl font-black text-slate-900">
                 Selamat Datang
               </h2>
               <p className="text-xs text-slate-500">
-                Masuk dengan akun Anda untuk melanjutkan.
+                Masuk ke {BRAND.name} untuk melanjutkan.
               </p>
             </div>
 

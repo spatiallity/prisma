@@ -12,17 +12,18 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea, formatPercent } from '@/lib/spk'
+import { ProgressTab } from './progress-tab'
 
 export const metadata: Metadata = { title: 'Detail SPK' }
 
-/** Section 12 — the tabs of Detail SPK. Only Overview is built in Phase 2. */
+/** Section 12 — the tabs of Detail SPK. `ready` tracks what actually exists. */
 const TABS = [
-  { key: 'overview', label: 'Overview', phase: 2 },
-  { key: 'progress', label: 'Progress', phase: 3 },
-  { key: 'map', label: 'Map', phase: 3 },
-  { key: 'design', label: 'Design', phase: 5 },
-  { key: 'routing', label: 'Routing', phase: 6 },
-  { key: 'financial', label: 'Financial', phase: 7 },
+  { key: 'overview', label: 'Overview', phase: 2, ready: true },
+  { key: 'progress', label: 'Progress', phase: 3, ready: true },
+  { key: 'map', label: 'Map', phase: 3, ready: false },
+  { key: 'design', label: 'Design', phase: 5, ready: false },
+  { key: 'routing', label: 'Routing', phase: 6, ready: false },
+  { key: 'financial', label: 'Financial', phase: 7, ready: false },
 ]
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
@@ -177,7 +178,7 @@ export default async function SpkDetailPage({
       {/* Tabs */}
       <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
         {TABS.map((t) => {
-          const built = t.phase <= 2
+          const built = t.ready
           const active = t.key === activeTab
           const className = cn(
             'rounded-lg px-3.5 py-1.5 text-xs font-extrabold transition-shadow',
@@ -204,6 +205,15 @@ export default async function SpkDetailPage({
         })}
       </div>
 
+      {activeTab === 'progress' && (
+        <ProgressTab
+          spkId={spk.id}
+          activityTemplateId={spk.activity_template_id}
+          mayEdit={can(user.permissions, 'progress', 'edit')}
+        />
+      )}
+
+      {activeTab === 'overview' && (
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -340,7 +350,7 @@ export default async function SpkDetailPage({
                             : 'Sistem'}
                         </Td>
                         <Td className="text-xs">
-                          <span className="font-mono">{entry.table_name}</span>{' '}
+                          <span className="code">{entry.table_name}</span>{' '}
                           <span className="text-muted-foreground">{entry.action}</span>
                         </Td>
                       </Tr>
@@ -354,6 +364,7 @@ export default async function SpkDetailPage({
           </Card>
         </div>
       </div>
+      )}
     </>
   )
 }

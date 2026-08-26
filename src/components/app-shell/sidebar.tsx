@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { NAV } from '@/lib/nav'
+import { BRAND } from '@/lib/brand'
 import { can, type PermissionMap } from '@/lib/auth/permissions'
 import { NavLink } from './nav-link'
 import { SidebarToggle } from './shell'
@@ -28,11 +29,11 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
           href="/dashboard"
           className="min-w-0 group-data-[collapsed=true]/sb:hidden"
         >
-          <div className="text-lg leading-tight font-extrabold text-slate-900">
-            Monitoring<span className="text-primary">SPK</span>
+          <div className="text-xl leading-none font-black tracking-tight text-slate-900">
+            {BRAND.name}
           </div>
-          <div className="mt-0.5 text-[9px] leading-tight font-extrabold tracking-wide text-slate-500 uppercase">
-            Survei Topografi · Pertamina EP Zona 4
+          <div className="mt-1 text-[9px] leading-tight font-bold text-slate-500">
+            {BRAND.tagline}
           </div>
         </Link>
         <SidebarToggle />
@@ -70,9 +71,9 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
       <div className="mt-auto border-t border-slate-100 pt-3 group-data-[collapsed=true]/sb:hidden">
         <div
           className="text-[8px] leading-tight font-medium text-slate-400"
-          title="Project Survei Topografi Lokasi Bor dan Fasilitas Produksi — Pertamina EP Zona 4 Prabumulih"
+          title={`${BRAND.project} — ${BRAND.client}`}
         >
-          PT SUCOFINDO (PERSERO) © 2026
+          {BRAND.owner} © {BRAND.year}
         </div>
       </div>
     </div>

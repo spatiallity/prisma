@@ -80,7 +80,7 @@ export default async function AuditLogPage() {
                   <Td>
                     <Badge tone={ACTION_TONE[entry.action]}>{entry.action}</Badge>
                   </Td>
-                  <Td className="font-mono text-xs">{entry.table_name}</Td>
+                  <Td className="code text-xs">{entry.table_name}</Td>
                   <Td className="max-w-md text-muted-foreground">
                     {entry.changed_fields?.length
                       ? entry.changed_fields.join(', ')

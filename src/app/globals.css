@@ -59,7 +59,6 @@
   --color-sidebar-border: var(--sidebar-border);
 
   --font-sans: var(--font-jakarta);
-  --font-mono: var(--font-geist-mono);
 }
 
 body {
@@ -91,4 +90,15 @@ body {
 /* Tabular figures wherever numbers are compared column-wise. */
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* Inline identifiers and paths. Jakarta Sans throughout — no second family. */
+.code {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.05em 0.35em;
+  white-space: nowrap;
 }

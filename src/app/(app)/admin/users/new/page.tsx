@@ -46,7 +46,7 @@ export default async function NewUserPage() {
             />
           ) : (
             <Alert tone="warning" title="Role belum ada">
-              Jalankan <code className="font-mono">supabase/seed/seed.sql</code>{' '}
+              Jalankan <code className="code">supabase/seed/seed.sql</code>{' '}
               terlebih dahulu agar tujuh role Section 5 tersedia.
             </Alert>
           )}

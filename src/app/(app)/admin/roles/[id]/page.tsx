@@ -50,13 +50,13 @@ export default async function RolePermissionPage({
       <PageHeader
         title={role.name}
         description={role.description ?? undefined}
-        actions={<Badge className="font-mono">{role.code}</Badge>}
+        actions={<Badge className="code">{role.code}</Badge>}
       />
 
       {role.code === 'administration' && mayEdit && (
         <Alert tone="warning" className="mb-4" title="Hati-hati">
           Role ini yang memegang User Management. Mencabut{' '}
-          <code className="font-mono">user_management: edit</code> dari role
+          <code className="code">user_management: edit</code> dari role
           terakhir yang memilikinya membuat halaman ini tidak dapat diakses siapa
           pun, dan harus diperbaiki lewat SQL editor Supabase.
         </Alert>

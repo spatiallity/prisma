@@ -1,7 +1,10 @@
-# Web Monitoring SPK
+# PRISMA
 
-Project control system for PT SUCOFINDO (Persero) — Survei Topografi Lokasi Bor
+**P**roject **R**eporting, **I**ntegration, **S**tatus Monitoring & **A**nalytics —
+the project control system for PT SUCOFINDO (Persero), Survei Topografi Lokasi Bor
 dan Fasilitas Produksi, Pertamina EP Zona 4 Prabumulih.
+
+The product name lives in `src/lib/brand.ts`; nothing hardcodes it.
 
 Requirement of record: [`requirement-v1.1-prisma.md`](./requirement-v1.1-prisma.md).
 Every module in the code cites the section it implements.
@@ -24,8 +27,8 @@ remaining steps. Database setup lives in [`supabase/README.md`](./supabase/READM
 
 ## What exists today
 
-**Phase 1 — Foundation** (Section 37): authentication, role, permission, RLS,
-user management.
+**Phase 1 Foundation**, **Phase 2 Core SPK**, and **Phase 3 Progress Engine** of
+Section 37.
 
 | Route | Purpose |
 |---|---|
@@ -35,6 +38,11 @@ user management.
 | `/admin/users` | User list, create (Auth account + profile), edit, deactivate, reset password |
 | `/admin/roles` | Roles, and the Section 6 permission matrix per role |
 | `/admin/audit-log` | Last 50 recorded changes (Section 33) |
+| `/spk` | Searchable SPK list with status filters |
+| `/spk/[id]` | Detail SPK — Overview and Progress tabs (Section 12) |
+| `/spk/[id]/progress/[activityId]` | Progress history per activity (Section 16) |
+| `/vendor`, `/vendor/[id]`, `/vendor/team`, `/vendor/assignment` | Vendor master, teams, members, assignment |
+| `/admin/activity-templates` | Progress Template master (Section 17) |
 | `/no-profile`, `/inactive`, `/forbidden` | The three ways access can be refused |
 
 The sidebar renders the complete Section 7 menu. Items the signed-in role has no

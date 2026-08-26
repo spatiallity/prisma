@@ -62,7 +62,7 @@ export default async function RolesPage() {
               <Tr key={role.id}>
                 <Td className="font-bold text-slate-900">
                   {role.name}
-                  <Badge className="ml-2 font-mono">{role.code}</Badge>
+                  <Badge className="ml-2 code">{role.code}</Badge>
                 </Td>
                 <Td className="max-w-md text-muted-foreground">{role.description ?? '—'}</Td>
                 <Td className="tnum text-right">{grantCount.get(role.id) ?? 0}</Td>

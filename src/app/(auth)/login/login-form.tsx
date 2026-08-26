@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { BRAND } from '@/lib/brand'
 import { login, type LoginState } from './actions'
 
 const initialState: LoginState = { error: null }
@@ -29,7 +30,7 @@ function SubmitButton() {
           Masuk…
         </>
       ) : (
-        'Masuk ke Monitoring SPK'
+        `Masuk ke ${BRAND.name}`
       )}
     </button>
   )

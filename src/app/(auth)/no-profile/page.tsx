@@ -13,7 +13,7 @@ export default function NoProfilePage() {
         <h1 className="text-lg font-semibold">Profil belum terdaftar</h1>
         <Alert tone="warning">
           Akun login Anda valid, tetapi belum memiliki profil di tabel{' '}
-          <code className="font-mono">users</code>, sehingga role dan permission
+          <code className="code">users</code>, sehingga role dan permission
           belum dapat ditentukan.
         </Alert>
         <p className="text-sm text-muted-foreground">

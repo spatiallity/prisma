@@ -19,6 +19,11 @@ export type PermissionScope = 'all' | 'own' | 'limited'
 export type AppAction = 'view' | 'create' | 'edit'
 export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE'
 export type MeasurementType = 'percentage' | 'area' | 'quantity' | 'stage'
+export type StageStatus = 'Belum Mulai' | 'Dalam Pengerjaan' | 'Selesai'
+export type ProgressSource = 'manual' | 'daily_progress'
+
+export const MEASUREMENTS: MeasurementType[] = ['percentage', 'area', 'quantity', 'stage']
+export const STAGE_STATUSES: StageStatus[] = ['Belum Mulai', 'Dalam Pengerjaan', 'Selesai']
 
 export type AppModule =
   | 'dashboard'
@@ -180,6 +185,47 @@ export type AuditLogRow = {
   after_data: Json | null
 }
 
+export type ActivityTemplateItemRow = Timestamps & {
+  id: string
+  template_id: string
+  name: string
+  weight: number
+  measurement: MeasurementType
+  unit: string | null
+  sequence: number
+  target_from_spk_area: boolean
+  default_target: number | null
+  notes: string | null
+}
+
+export type SpkActivityRow = Timestamps & {
+  id: string
+  spk_id: string
+  template_item_id: string | null
+  name: string
+  weight: number
+  measurement: MeasurementType
+  unit: string | null
+  sequence: number
+  target_value: number | null
+  current_value: number
+  current_stage: StageStatus
+  /** Generated column (migration 0005) — read-only. */
+  progress_percent: number
+  notes: string | null
+}
+
+export type ActivityProgressRow = Timestamps & {
+  id: string
+  spk_activity_id: string
+  progress_date: string
+  actual_value: number | null
+  stage: StageStatus | null
+  notes: string | null
+  source: ProgressSource
+  recorded_by: string | null
+}
+
 // --- View shapes ------------------------------------------------------------
 
 /** migrations/20260825001100 — Overall Progress, computed (Section 15). */
@@ -195,6 +241,22 @@ export type SpkProgressView = {
   total_weight: number
   activity_count: number
   activity_completed: number
+}
+
+/** migrations/20260825001100 — Activity Contribution (Section 15). */
+export type SpkActivityProgressView = {
+  spk_activity_id: string
+  spk_id: string
+  name: string
+  sequence: number
+  measurement: MeasurementType
+  unit: string | null
+  weight: number
+  target_value: number | null
+  current_value: number
+  current_stage: StageStatus
+  progress_percent: number
+  contribution_percent: number
 }
 
 type Table<Row, Generated extends keyof Row = never> = {
@@ -267,9 +329,45 @@ export type Database = {
       activity_templates: Table<TemplateRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'description'>
       routing_templates: Table<TemplateRow, 'id' | 'created_at' | 'updated_at' | 'status' | 'description'>
       audit_logs: Table<AuditLogRow, 'id' | 'changed_at'>
+      activity_template_items: Table<
+        ActivityTemplateItemRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'unit'
+        | 'target_from_spk_area'
+        | 'default_target'
+        | 'notes'
+      >
+      spk_activities: Table<
+        SpkActivityRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'progress_percent'
+        | 'current_value'
+        | 'current_stage'
+        | 'template_item_id'
+        | 'unit'
+        | 'target_value'
+        | 'notes'
+      >
+      activity_progress: Table<
+        ActivityProgressRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'progress_date'
+        | 'actual_value'
+        | 'stage'
+        | 'notes'
+        | 'source'
+        | 'recorded_by'
+      >
     }
     Views: {
       v_spk_progress: { Row: SpkProgressView; Relationships: [] }
+      v_spk_activity_progress: { Row: SpkActivityProgressView; Relationships: [] }
     }
     Functions: Record<string, never>
     Enums: {
@@ -280,6 +378,7 @@ export type Database = {
       spk_status: SpkStatus
       audit_action: AuditAction
       measurement_type: MeasurementType
+      stage_status: StageStatus
     }
     CompositeTypes: Record<string, never>
   }

@@ -91,7 +91,7 @@ export default async function VendorListPage() {
                     >
                       {vendor.name}
                     </Link>
-                    <div className="font-mono text-xs text-slate-500">{vendor.code}</div>
+                    <div className="code text-xs text-slate-500">{vendor.code}</div>
                   </Td>
                   <Td className="text-muted-foreground">{vendor.contact_person ?? '—'}</Td>
                   <Td className="tnum text-muted-foreground">{vendor.phone ?? '—'}</Td>

@@ -46,9 +46,9 @@ export default function SetupPage() {
           </Alert>
         ) : (
           <Alert tone="warning" title="Environment kosong">
-            <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> atau{' '}
-            <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{' '}
-            belum diisi di <code className="font-mono">.env.local</code>.
+            <code className="code">NEXT_PUBLIC_SUPABASE_URL</code> atau{' '}
+            <code className="code">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{' '}
+            belum diisi di <code className="code">.env.local</code>.
           </Alert>
         )}
 
@@ -67,7 +67,7 @@ export default function SetupPage() {
         </ol>
 
         <p className="text-xs text-muted-foreground">
-          Detail lengkap ada di <code className="font-mono">supabase/README.md</code>.
+          Detail lengkap ada di <code className="code">supabase/README.md</code>.
         </p>
       </CardContent>
       </Card>
