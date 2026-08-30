@@ -64,6 +64,31 @@ export async function createVendor(
   redirect(`/vendor/${data.id}`)
 }
 
+/** Hard delete — migration 0017. Fails with a clear error if teams/assignments still reference this vendor. */
+export async function deleteVendor(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'Vendor tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('vendors').delete().eq('id', id)
+  if (error) {
+    return {
+      error:
+        error.code === '23503'
+          ? 'Vendor ini masih punya team/assignment terkait — hapus dulu.'
+          : error.message,
+    }
+  }
+
+  revalidatePath('/vendor')
+  return { error: null }
+}
+
 export async function updateVendor(
   _prev: VendorFormState,
   formData: FormData,
@@ -139,6 +164,32 @@ export async function setTeamStatus(
   return { error: null, success: `Team di-set ${status}.` }
 }
 
+/** Hard delete — migration 0017. */
+export async function deleteTeam(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  const vendorId = text(formData, 'vendor_id')
+  if (!id) return { error: 'Team tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('vendor_teams').delete().eq('id', id)
+  if (error) {
+    return {
+      error:
+        error.code === '23503'
+          ? 'Team ini masih punya anggota/assignment terkait — hapus dulu.'
+          : error.message,
+    }
+  }
+
+  revalidatePath(`/vendor/${vendorId}`)
+  return { error: null }
+}
+
 export async function createMember(
   _prev: VendorFormState,
   formData: FormData,
@@ -181,6 +232,25 @@ export async function setMemberStatus(
 
   revalidatePath(`/vendor/${vendorId}`)
   return { error: null, success: `Anggota di-set ${status}.` }
+}
+
+/** Hard delete — migration 0017. */
+export async function deleteMember(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  const vendorId = text(formData, 'vendor_id')
+  if (!id) return { error: 'Anggota tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('vendor_members').delete().eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/vendor/${vendorId}`)
+  return { error: null }
 }
 
 // --- Assignment (Section 19 — drives vendor RLS scope) ----------------------
@@ -238,4 +308,24 @@ export async function setAssignmentStatus(
   revalidatePath('/vendor/assignment')
   if (spkId) revalidatePath(`/spk/${spkId}`)
   return { error: null, success: `Assignment di-set ${status}.` }
+}
+
+/** Hard delete — migration 0017. */
+export async function deleteAssignment(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  const spkId = text(formData, 'spk_id')
+  if (!id) return { error: 'Assignment tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('spk_assignments').delete().eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/vendor/assignment')
+  if (spkId) revalidatePath(`/spk/${spkId}`)
+  return { error: null }
 }

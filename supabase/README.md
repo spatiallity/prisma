@@ -16,13 +16,16 @@ the SQL comments.
 | `migrations/20260825000600_files_and_design.sql` | `files`, `spk_spatial_layers`, `designs`, `design_revisions` (Section 21, 22, 27, 32) |
 | `migrations/20260825000700_routing.sql` | `spk_routing`, `routing_history` with computed lead time (Section 23, 24) |
 | `migrations/20260825000800_financial_revenue.sql` | `contracts`, `opnames`, `pad`, `invoices`, `payments` (Section 25.1–25.5) |
-| `migrations/20260825000900_spending.sql` | `cash_ledger`, `personnel_costs`, `vendor_payments`, `vendor_payment_terms` (Section 25.6) |
+| `migrations/20260825000900_spending.sql` | ~~`cash_ledger`, `personnel_costs`, `vendor_payments`, `vendor_payment_terms`~~ — retired by migration 0016, kept for history |
 | `migrations/20260825001000_audit_and_notifications.sql` | Generic audit trigger + `notifications` (Section 33, 34) |
 | `migrations/20260825001100_derived_views.sql` | Every computed figure: balance, progress, productivity, lead time, margin, overhead, KPI, bottleneck |
 | `migrations/20260825001200_rls_policies.sql` | RLS on every table, Section 6 matrix enforced in the database |
 | `migrations/20260825001300_role_permission_revoke.sql` | DELETE on `role_permissions` so the Section 6 matrix can be narrowed, not only widened |
 | `migrations/20260826000100_harden_function_grants.sql` | Revokes RPC access to trigger-only functions, pins search_path (advisor 0011/0028/0029) |
-| `seed/seed.sql` | Roles, permissions, the Section 6 matrix, cash categories, Template A/B, Pertamina routing, thresholds |
+| `migrations/20260827000100_anchor_daily_cumulative.sql` | Daily progress cumulative anchor fix |
+| `migrations/20260830000100_finance_rab_module.sql` | Drops the unused margin-per-SPK cost model (0009); adds `chart_of_accounts` + `finance_transactions` — project-wide RAB monitoring (Anggaran vs Realisasi) sourced from the Monitoring Project Topografi Excel: UMK, SPPD, PPBJ Barang, PPBJ Jasa, Gaji PTT Project, MCU |
+| `seed/seed.sql` | Roles, permissions, the Section 6 matrix, Chart of Accounts, Template A/B, Pertamina routing, thresholds |
+| `seed/finance_transactions_import.sql` | One-time historical import of the 986 cleaned transactions from the source workbook (not idempotent — inserts once, guarded) |
 
 ## Applying
 
@@ -63,8 +66,9 @@ now revoked from `public` and `anon` on every trigger-only function.
 **Nothing derived is ever stored as user input (Section 4.3).**
 `cash_ledger` has no `balance` column — a stored running balance goes wrong the moment
 someone back-dates a row, which is exactly the Excel failure Section 42 describes.
-`v_cash_ledger` computes it with a window function instead. Same reasoning for overall
-SPK progress (`v_spk_progress`), margin (`v_spk_margin`) and every dashboard KPI.
+Same reasoning for overall SPK progress (`v_spk_progress`), RAB realisasi
+(`v_finance_akun_summary` — sums `finance_transactions`, migration 0016) and every
+dashboard KPI.
 `vendor_payments.vendor_payable` and `routing_history.duration_days` *are* stored, as
 generated columns — they depend only on their own row.
 

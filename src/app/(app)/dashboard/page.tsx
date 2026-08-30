@@ -11,7 +11,8 @@ import { cn, formatDate, formatRupiah } from '@/lib/utils'
 import { daysLeft, formatPercent } from '@/lib/spk'
 import { UPDATE_STATUS_TONE } from '@/lib/schedule'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
-import { marginTone, formatPercentSigned } from '@/lib/financial'
+import { filterLeafAccounts } from '@/lib/financial'
+import { RabDonutChart, SpkStatusChart } from './dashboard-charts'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -24,10 +25,9 @@ export default async function DashboardPage() {
   const user = await requireUser()
   const supabase = await createClient()
 
-  const seeFinancial = can(user.permissions, 'margin', 'view')
-  const seeSpending = can(user.permissions, 'spending', 'view')
+  const seeFinance = can(user.permissions, 'spending', 'view')
 
-  const [{ data: kpi }, { data: bottlenecks }, { data: today }, { data: progress }] =
+  const [{ data: kpi }, { data: bottlenecks }, { data: today }, { data: progress }, { data: akunSummary }, { data: spkStatuses }] =
     await Promise.all([
       supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
       supabase.from('v_bottleneck').select('*'),
@@ -40,31 +40,35 @@ export default async function DashboardPage() {
         .eq('status', 'On Going')
         .order('overall_progress', { ascending: false })
         .limit(6),
+      seeFinance
+        ? supabase.from('v_finance_akun_summary').select('*')
+        : Promise.resolve({ data: [] }),
+      supabase.from('spks').select('status'),
     ])
 
-  const [{ data: margins }, { data: balance }] = await Promise.all([
-    seeFinancial
-      ? supabase.from('v_spk_margin').select('*')
-      : Promise.resolve({ data: [] }),
-    seeSpending
-      ? supabase.from('v_cash_balance').select('*').maybeSingle()
-      : Promise.resolve({ data: null }),
-  ])
+  const statusCounts = new Map<string, number>()
+  for (const row of spkStatuses ?? []) {
+    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1)
+  }
+  const spkStatusChartData = ['Draft', 'On Going', 'Selesai', 'Archived', 'Cancelled'].map(
+    (status) => ({ status, count: statusCounts.get(status) ?? 0 }),
+  )
+
+  const rabLeaf = filterLeafAccounts(akunSummary ?? [])
+  const rabTotals = rabLeaf.reduce(
+    (acc, a) => ({
+      anggaran: acc.anggaran + Number(a.anggaran_rp ?? 0),
+      realisasi: acc.realisasi + Number(a.realisasi_total),
+    }),
+    { anggaran: 0, realisasi: 0 },
+  )
+  const rabPercent =
+    rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
 
   const ranked = [...(bottlenecks ?? [])].sort(
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   )
   const critical = ranked.filter((b) => b.severity === 'critical').length
-
-  const invoiced = (margins ?? []).filter((m) => Number(m.invoice_total) > 0)
-  const totals = invoiced.reduce(
-    (acc, m) => ({
-      invoice: acc.invoice + Number(m.invoice_total),
-      margin: acc.margin + Number(m.margin),
-    }),
-    { invoice: 0, margin: 0 },
-  )
-  const marginPercent = totals.invoice > 0 ? (totals.margin / totals.invoice) * 100 : null
 
   const updatedToday = (today ?? []).filter(
     (row) => row.update_status === 'Updated Today',
@@ -250,6 +254,18 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid content-start gap-5">
+          {(kpi?.total_spk ?? 0) > 0 && (
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <div>
+                  <CardTitle>Sebaran status SPK</CardTitle>
+                  <CardDescription>{kpi?.total_spk ?? 0} SPK aktif (di luar Cancelled)</CardDescription>
+                </div>
+              </CardHeader>
+              <SpkStatusChart data={spkStatusChartData} />
+            </Card>
+          )}
+
           <Card className="overflow-hidden">
             <CardHeader>
               <div>
@@ -304,71 +320,42 @@ export default async function DashboardPage() {
             )}
           </Card>
 
-          {seeSpending && balance && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Kas kecil mess</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={cn(
-                    'tnum text-2xl font-black',
-                    Number(balance.balance) < 5_000_000 ? 'text-danger' : 'text-slate-900',
-                  )}
-                >
-                  {formatRupiah(balance.balance)}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Entri terakhir {formatDate(balance.last_entry_date)}
-                </div>
-                <Link
-                  href="/financial/spending"
-                  className="mt-3 inline-block text-xs font-bold text-primary hover:underline"
-                >
-                  Buka spending
-                </Link>
-              </CardContent>
-            </Card>
-          )}
-
-          {seeFinancial && (
+          {seeFinance && (
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Margin project</CardTitle>
-                  <CardDescription>{invoiced.length} SPK sudah di-invoice</CardDescription>
+                  <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
+                  <CardDescription>{rabLeaf.length} kode akun</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Invoice</span>
-                  <span className="tnum font-bold text-slate-900">
-                    {formatRupiah(totals.invoice)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Margin</span>
-                  <span
-                    className={cn(
-                      'tnum font-bold',
-                      totals.margin < 0 ? 'text-danger' : 'text-success',
-                    )}
+              <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
+                <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
+                <div className="grid gap-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Anggaran</span>
+                    <span className="tnum font-bold text-slate-900">
+                      {formatRupiah(rabTotals.anggaran)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Realisasi</span>
+                    <span className="tnum font-bold text-slate-900">
+                      {formatRupiah(rabTotals.realisasi)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Terpakai</span>
+                    <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                      {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                    </Badge>
+                  </div>
+                  <Link
+                    href="/financial/rab"
+                    className="mt-1 text-xs font-bold text-primary hover:underline"
                   >
-                    {formatRupiah(totals.margin)}
-                  </span>
+                    Rincian per kode akun
+                  </Link>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Persentase</span>
-                  <Badge tone={marginTone(marginPercent)}>
-                    {formatPercentSigned(marginPercent)}
-                  </Badge>
-                </div>
-                <Link
-                  href="/financial/margin"
-                  className="mt-1 text-xs font-bold text-primary hover:underline"
-                >
-                  Rincian per SPK
-                </Link>
               </CardContent>
             </Card>
           )}

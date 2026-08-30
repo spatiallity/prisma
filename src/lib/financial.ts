@@ -1,4 +1,4 @@
-import type { FinancialDocStatus, VendorPaymentStatus } from '@/lib/supabase/types'
+import type { FinanceCategory, FinancialDocStatus } from '@/lib/supabase/types'
 
 /** Section 25 — the five revenue documents, in the order they are produced. */
 export type RevenueKind = 'contract' | 'opname' | 'pad' | 'invoice' | 'payment'
@@ -91,29 +91,7 @@ export const DOC_STATUS_TONE: Record<
   Cancelled: 'neutral',
 }
 
-export const VENDOR_PAYMENT_TONE: Record<
-  VendorPaymentStatus,
-  'neutral' | 'success' | 'warning' | 'danger'
-> = {
-  'Belum Dibayar': 'danger',
-  Sebagian: 'warning',
-  Lunas: 'success',
-}
-
-/**
- * Section 26.2 — a thin margin is not automatically a problem while the SPK is
- * still being invoiced, so the tone stays advisory rather than alarming.
- */
-export function marginTone(
-  percent: number | null,
-): 'neutral' | 'success' | 'warning' | 'danger' {
-  if (percent === null) return 'neutral'
-  if (percent < 0) return 'danger'
-  if (percent < 10) return 'warning'
-  return 'success'
-}
-
-/** −12,4% — margin percentages carry a sign and one decimal. */
+/** −12,4% — signed percentages carry a sign and one decimal. */
 export function formatPercentSigned(value: number | null | undefined) {
   if (value === null || value === undefined) return '—'
   const formatted = new Intl.NumberFormat('id-ID', {
@@ -121,4 +99,39 @@ export function formatPercentSigned(value: number | null | undefined) {
     signDisplay: 'exceptZero',
   }).format(value)
   return `${formatted}%`
+}
+
+// --- RAB monitoring (migration 20260830000100) -------------------------------
+
+/** Section 7 menu wording — the six Excel tabs, each a finance_transactions kategori. */
+export const FINANCE_CATEGORY_META: Record<
+  FinanceCategory,
+  { label: string; fixedAkun: string | null }
+> = {
+  umk: { label: 'UMK', fixedAkun: null },
+  sppd: { label: 'SPPD', fixedAkun: '3.1.2' },
+  ppbj_barang: { label: 'PPBJ Barang', fixedAkun: null },
+  ppbj_jasa: { label: 'PPBJ Jasa', fixedAkun: null },
+  gaji_ptt: { label: 'Gaji PTT Project', fixedAkun: null },
+  mcu: { label: 'MCU', fixedAkun: '1.6.1' },
+}
+
+/**
+ * A row in chart_of_accounts is a leaf — a real, transactable account — when
+ * no other row's kode_akun nests under it. Group rows ('1.2.', '1.2.1', ...)
+ * carry the same anggaran_rp as their children, so including them in a sum
+ * double-counts the budget.
+ */
+export function filterLeafAccounts<T extends { kode_akun: string }>(rows: T[]): T[] {
+  const codes = rows.map((r) => r.kode_akun)
+  return rows.filter(
+    (r) => !codes.some((k) => k !== r.kode_akun && k.startsWith(r.kode_akun)),
+  )
+}
+
+/** '2025-08-01' -> 'Agustus 2025'. */
+export function formatMonthLabel(bulan: string) {
+  const d = new Date(`${bulan}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return bulan
+  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d)
 }

@@ -4,12 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import { REVENUE_META, type RevenueKind } from '@/lib/financial'
-import type {
-  FinancialDocStatus,
-  PersonnelCostType,
-  RecordStatus,
-  VendorPaymentTermType,
-} from '@/lib/supabase/types'
+import type { FinancialDocStatus } from '@/lib/supabase/types'
 
 export type FinancialState = { error: string | null; success?: string }
 
@@ -144,7 +139,6 @@ export async function saveRevenueDoc(
   }
 
   revalidatePath(`/financial/${meta.slug}`)
-  revalidatePath('/financial/margin')
   revalidatePath(`/spk/${spkId}`)
   return { error: null, success: `${meta.label} tersimpan.` }
 }
@@ -180,221 +174,47 @@ export async function setRevenueDocStatus(
   if (error) return { error: error.message }
 
   revalidatePath(`/financial/${meta.slug}`)
-  revalidatePath('/financial/margin')
   return { error: null, success: `Status diubah menjadi ${status}.` }
 }
 
-// --- Cash ledger (Section 25.6.1) -------------------------------------------
-
-/**
- * The running balance is not stored — v_cash_ledger computes it with a window
- * function (Section 4.3), so a back-dated correction cannot leave the ledger
- * out of balance the way the manual spreadsheet did.
- */
-export async function saveCashEntry(
+/** Hard delete — migration 0017. Blocked by FK if a later document in the chain still points at this row. */
+export async function deleteRevenueDoc(
   _prev: FinancialState,
   formData: FormData,
 ): Promise<FinancialState> {
-  const user = await requirePermission('spending', 'edit')
+  const kind = text(formData, 'kind') as RevenueKind
+  const meta = REVENUE_META[kind]
+  if (!meta) return { error: 'Jenis dokumen tidak dikenali.' }
 
-  const entryDate = text(formData, 'entry_date')
-  const direction = text(formData, 'direction')
-  const amount = money(formData, 'amount')
+  await requirePermission(meta.module, 'edit')
 
-  if (!entryDate) return { error: 'Tanggal wajib diisi.' }
-  if (amount === null || amount <= 0) return { error: 'Jumlah harus lebih dari nol.' }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from('cash_ledger').insert({
-    entry_date: entryDate,
-    category_id: nullable(formData, 'category_id'),
-    description: nullable(formData, 'description'),
-    // The direction check constraint refuses a row with both sides filled.
-    amount_out: direction === 'out' ? amount : 0,
-    amount_in: direction === 'in' ? amount : 0,
-    spk_id: nullable(formData, 'spk_id'),
-    pic_name: nullable(formData, 'pic_name'),
-    reference: nullable(formData, 'reference'),
-    created_by: user.id,
-  })
-
-  if (error) return { error: error.message }
-
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  return { error: null, success: 'Entri kas tersimpan.' }
-}
-
-// --- Personnel cost (Section 25.6.2) ----------------------------------------
-
-export async function savePersonnelCost(
-  _prev: FinancialState,
-  formData: FormData,
-): Promise<FinancialState> {
-  const user = await requirePermission('spending', 'edit')
-
-  const personnelId = text(formData, 'personnel_id')
-  const period = text(formData, 'period')
-  const amount = money(formData, 'amount')
-
-  if (!personnelId || !period) return { error: 'Personel dan periode wajib diisi.' }
-  if (amount === null || amount < 0) return { error: 'Jumlah tidak boleh negatif.' }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from('personnel_costs').insert({
-    personnel_id: personnelId,
-    cost_type: text(formData, 'cost_type') as PersonnelCostType,
-    period,
-    amount,
-    // Left NULL the cost is team overhead, not charged to any SPK margin.
-    spk_id: nullable(formData, 'spk_id'),
-    description: nullable(formData, 'description'),
-    created_by: user.id,
-  })
-
-  if (error) return { error: error.message }
-
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  return { error: null, success: 'Biaya personel tersimpan.' }
-}
-
-// --- Vendor payment (Section 25.6.3) ----------------------------------------
-
-export async function saveVendorPayment(
-  _prev: FinancialState,
-  formData: FormData,
-): Promise<FinancialState> {
-  const user = await requirePermission('spending', 'edit')
-
+  const id = text(formData, 'id')
   const spkId = text(formData, 'spk_id')
-  const vendorId = text(formData, 'vendor_id')
-  const contractValue = money(formData, 'contract_value')
-  const percentage = money(formData, 'agreed_percentage')
+  if (!id) return { error: 'Data tidak lengkap.' }
 
-  if (!spkId || !vendorId) return { error: 'SPK dan vendor wajib dipilih.' }
-  if (contractValue === null || contractValue < 0) {
-    return { error: 'Nilai kontrak tidak boleh negatif.' }
-  }
-  if (percentage === null || percentage < 0 || percentage > 100) {
-    return { error: 'Persentase borongan harus antara 0 dan 100.' }
-  }
+  const table =
+    kind === 'contract'
+      ? 'contracts'
+      : kind === 'opname'
+        ? 'opnames'
+        : kind === 'pad'
+          ? 'pad'
+          : kind === 'invoice'
+            ? 'invoices'
+            : 'payments'
 
   const supabase = await createClient()
-  // vendor_payable is a generated column — the database multiplies, not the app.
-  const { error } = await supabase.from('vendor_payments').insert({
-    spk_id: spkId,
-    vendor_id: vendorId,
-    contract_value: contractValue,
-    agreed_percentage: percentage,
-    notes: nullable(formData, 'notes'),
-    created_by: user.id,
-  })
-
+  const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) {
     return {
       error:
-        error.code === '23505'
-          ? 'Vendor ini sudah punya perjanjian borongan pada SPK tersebut.'
+        error.code === '23503'
+          ? `${meta.label} ini masih ditautkan dokumen lain — hapus itu dulu.`
           : error.message,
     }
   }
 
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  revalidatePath(`/spk/${spkId}`)
-  return { error: null, success: 'Perjanjian borongan tersimpan.' }
-}
-
-/**
- * Instalments roll up into vendor_payments.amount_paid through the trigger in
- * migration 0009, which also derives the Belum Dibayar / Sebagian / Lunas
- * status. Nothing here writes either.
- */
-export async function saveVendorPaymentTerm(
-  _prev: FinancialState,
-  formData: FormData,
-): Promise<FinancialState> {
-  const user = await requirePermission('spending', 'edit')
-
-  const parentId = text(formData, 'vendor_payment_id')
-  const amount = money(formData, 'amount')
-  if (!parentId) return { error: 'Perjanjian borongan tidak dikenali.' }
-  if (amount === null || amount < 0) return { error: 'Jumlah tidak boleh negatif.' }
-
-  const sequenceRaw = text(formData, 'sequence')
-  const sequence = sequenceRaw ? Number(sequenceRaw) : 1
-
-  const supabase = await createClient()
-  const { error } = await supabase.from('vendor_payment_terms').insert({
-    vendor_payment_id: parentId,
-    term_type: text(formData, 'term_type') as VendorPaymentTermType,
-    sequence: Number.isInteger(sequence) && sequence > 0 ? sequence : 1,
-    amount,
-    due_date: nullable(formData, 'due_date'),
-    paid_date: nullable(formData, 'paid_date'),
-    reference: nullable(formData, 'reference'),
-    created_by: user.id,
-  })
-
-  if (error) {
-    return {
-      error:
-        error.code === '23505'
-          ? 'Termin dengan jenis dan urutan itu sudah ada.'
-          : error.message,
-    }
-  }
-
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  return { error: null, success: 'Termin tersimpan.' }
-}
-
-/** Marking a term paid is what moves the parent to Sebagian or Lunas. */
-export async function setTermPaid(
-  _prev: FinancialState,
-  formData: FormData,
-): Promise<FinancialState> {
-  await requirePermission('spending', 'edit')
-
-  const id = text(formData, 'id')
-  const paidDate = nullable(formData, 'paid_date')
-  if (!id) return { error: 'Termin tidak dikenali.' }
-
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('vendor_payment_terms')
-    .update({ paid_date: paidDate })
-    .eq('id', id)
-
-  if (error) return { error: error.message }
-
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  return {
-    error: null,
-    success: paidDate ? 'Termin ditandai lunas.' : 'Tanda lunas dibatalkan.',
-  }
-}
-
-export async function setSpendingStatus(
-  _prev: FinancialState,
-  formData: FormData,
-): Promise<FinancialState> {
-  await requirePermission('spending', 'edit')
-
-  const id = text(formData, 'id')
-  const kind = text(formData, 'kind')
-  const status = text(formData, 'status') as RecordStatus
-  if (!id || !status) return { error: 'Data tidak lengkap.' }
-
-  const supabase = await createClient()
-  const table = kind === 'cash' ? 'cash_ledger' : 'personnel_costs'
-  const { error } = await supabase.from(table).update({ status }).eq('id', id)
-  if (error) return { error: error.message }
-
-  revalidatePath('/financial/spending')
-  revalidatePath('/financial/margin')
-  return { error: null, success: `Entri di-set ${status}.` }
+  revalidatePath(`/financial/${meta.slug}`)
+  if (spkId) revalidatePath(`/spk/${spkId}`)
+  return { error: null }
 }

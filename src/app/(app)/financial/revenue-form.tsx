@@ -1,14 +1,20 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { FINANCIAL_DOC_STATUSES } from '@/lib/supabase/types'
 import { REVENUE_META, type RevenueKind } from '@/lib/financial'
-import { saveRevenueDoc, setRevenueDocStatus, type FinancialState } from './actions'
+import {
+  deleteRevenueDoc,
+  saveRevenueDoc,
+  setRevenueDocStatus,
+  type FinancialState,
+} from './actions'
 
 const initialState: FinancialState = { error: null }
 
@@ -38,14 +44,24 @@ export function RevenueForm({
   kind,
   spks,
   parents,
+  onSaved,
 }: {
   kind: RevenueKind
   spks: Choice[]
   /** PAD picks an opname, invoice picks a PAD, payment picks an invoice. */
   parents: Choice[]
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(saveRevenueDoc, initialState)
   const meta = REVENUE_META[kind]
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      onSaved?.()
+    }
+  }, [state.success, onSaved])
 
   if (spks.length === 0) {
     return <Alert tone="warning">Belum ada SPK untuk dicatat dokumennya.</Alert>
@@ -185,5 +201,22 @@ export function RevenueStatusToggle({
       <StatusSubmit label={next === 'Cancelled' ? 'Batalkan' : 'Aktifkan'} />
       {state.error && <span className="ml-2 text-xs text-danger">{state.error}</span>}
     </form>
+  )
+}
+
+export function RevenueDeleteButton({
+  kind,
+  id,
+  spkId,
+}: {
+  kind: RevenueKind
+  id: string
+  spkId: string
+}) {
+  return (
+    <DeleteButton
+      action={deleteRevenueDoc}
+      hiddenFields={{ kind, id, spk_id: spkId }}
+    />
   )
 }

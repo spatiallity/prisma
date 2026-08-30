@@ -3,22 +3,14 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
-import { Table, Td, Th, Tr } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { linkButtonClass } from '@/components/ui/button'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { formatDate, formatRupiah } from '@/lib/utils'
-import {
-  SPK_STATUS_TONE,
-  daysLeft,
-  formatArea,
-  formatPercent,
-  statusFromFilterKey,
-} from '@/lib/spk'
+import { statusFromFilterKey } from '@/lib/spk'
 import { SpkFilters } from './spk-filters'
+import { SpkTable } from './spk-table'
 
 export const metadata: Metadata = { title: 'SPK' }
 
@@ -35,6 +27,7 @@ export default async function SpkListPage({
   const user = await requirePermission('spk', 'view')
   const { q, status } = await searchParams
   const mayCreate = can(user.permissions, 'spk', 'create')
+  const mayEdit = can(user.permissions, 'spk', 'edit')
 
   const supabase = await createClient()
 
@@ -56,8 +49,8 @@ export default async function SpkListPage({
     supabase.from('v_spk_progress').select('spk_id, overall_progress'),
   ])
 
-  const vendorName = new Map((vendors ?? []).map((v) => [v.id, v.name]))
-  const progressBySpk = new Map(
+  const vendorName = Object.fromEntries((vendors ?? []).map((v) => [v.id, v.name]))
+  const progressBySpk = Object.fromEntries(
     (progress ?? []).map((p) => [p.spk_id, p.overall_progress]),
   )
 
@@ -90,83 +83,12 @@ export default async function SpkListPage({
 
       <Card className="overflow-hidden">
         {spks && spks.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>SPK</Th>
-                <Th>Pekerjaan</Th>
-                <Th>Lokasi</Th>
-                <Th className="text-right">Luas</Th>
-                <Th className="text-right">Nilai kontrak</Th>
-                <Th>Vendor</Th>
-                <Th>Periode</Th>
-                <Th className="text-right">Progress</Th>
-                <Th>Status</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {spks.map((spk) => {
-                const remaining = daysLeft(spk.end_date)
-                const overdue =
-                  remaining !== null && remaining < 0 && spk.status === 'On Going'
-
-                return (
-                  <Tr key={spk.id}>
-                    <Td>
-                      <Link
-                        href={`/spk/${spk.id}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {spk.spk_number}
-                      </Link>
-                      {spk.site_code && (
-                        <div className="text-xs font-semibold text-slate-500">
-                          {spk.site_code}
-                        </div>
-                      )}
-                    </Td>
-                    <Td className="max-w-xs">
-                      <span className="line-clamp-2 font-bold text-slate-900">
-                        {spk.work_name}
-                      </span>
-                      {spk.work_type && (
-                        <div className="text-xs text-muted-foreground">
-                          {spk.work_type}
-                        </div>
-                      )}
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {spk.location ?? '—'}
-                      {spk.kabupaten && (
-                        <div className="text-xs">{spk.kabupaten}</div>
-                      )}
-                    </Td>
-                    <Td className="tnum text-right">{formatArea(spk.area_ha)}</Td>
-                    <Td className="tnum text-right">
-                      {formatRupiah(spk.contract_value)}
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {spk.vendor_id ? (vendorName.get(spk.vendor_id) ?? '—') : '—'}
-                    </Td>
-                    <Td className="tnum whitespace-nowrap text-muted-foreground">
-                      {formatDate(spk.start_date)} – {formatDate(spk.end_date)}
-                      {overdue && (
-                        <div className="text-xs font-bold text-danger">
-                          Lewat {Math.abs(remaining)} hari
-                        </div>
-                      )}
-                    </Td>
-                    <Td className="tnum text-right font-bold">
-                      {formatPercent(progressBySpk.get(spk.id) ?? 0)}
-                    </Td>
-                    <Td>
-                      <Badge tone={SPK_STATUS_TONE[spk.status]}>{spk.status}</Badge>
-                    </Td>
-                  </Tr>
-                )
-              })}
-            </tbody>
-          </Table>
+          <SpkTable
+            spks={spks}
+            vendorName={vendorName}
+            progressBySpk={progressBySpk}
+            mayEdit={mayEdit}
+          />
         ) : (
           <EmptyState
             title={term || wanted ? 'Tidak ada SPK yang cocok' : 'Belum ada SPK'}

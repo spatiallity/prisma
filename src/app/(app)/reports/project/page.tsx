@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatRupiah } from '@/lib/utils'
 import { formatPercent } from '@/lib/spk'
-import { formatPercentSigned, marginTone } from '@/lib/financial'
+import { filterLeafAccounts } from '@/lib/financial'
 import { SEVERITY_RANK } from '@/lib/dashboard'
 
 export const metadata: Metadata = { title: 'Project Report' }
@@ -21,16 +21,16 @@ export const metadata: Metadata = { title: 'Project Report' }
  */
 export default async function ProjectReportPage() {
   const user = await requirePermission('report', 'view')
-  const seeFinancial = can(user.permissions, 'margin', 'view')
+  const seeFinancial = can(user.permissions, 'spending', 'view')
 
   const supabase = await createClient()
-  const [{ data: kpi }, { data: progress }, { data: bottlenecks }, { data: margins }] =
+  const [{ data: kpi }, { data: progress }, { data: bottlenecks }, { data: akunSummary }] =
     await Promise.all([
       supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
       supabase.from('v_spk_progress').select('*'),
       supabase.from('v_bottleneck').select('*'),
       seeFinancial
-        ? supabase.from('v_spk_margin').select('*')
+        ? supabase.from('v_finance_akun_summary').select('*')
         : Promise.resolve({ data: [] }),
     ])
 
@@ -46,16 +46,16 @@ export default async function ProjectReportPage() {
   }
   const critical = (bottlenecks ?? []).filter((b) => b.severity === 'critical').length
 
-  const invoiced = (margins ?? []).filter((m) => Number(m.invoice_total) > 0)
-  const totals = invoiced.reduce(
-    (acc, m) => ({
-      invoice: acc.invoice + Number(m.invoice_total),
-      cost: acc.cost + Number(m.total_cost),
-      margin: acc.margin + Number(m.margin),
+  const leafAkun = filterLeafAccounts(akunSummary ?? [])
+  const rabTotals = leafAkun.reduce(
+    (acc, a) => ({
+      anggaran: acc.anggaran + Number(a.anggaran_rp ?? 0),
+      realisasi: acc.realisasi + Number(a.realisasi_total),
     }),
-    { invoice: 0, cost: 0, margin: 0 },
+    { anggaran: 0, realisasi: 0 },
   )
-  const marginPercent = totals.invoice > 0 ? (totals.margin / totals.invoice) * 100 : null
+  const rabPercent =
+    rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
 
   const worst = [...(bottlenecks ?? [])]
     .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
@@ -147,22 +147,22 @@ export default async function ProjectReportPage() {
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>Financial</CardTitle>
-                  <CardDescription>{invoiced.length} SPK di-invoice</CardDescription>
+                  <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
+                  <CardDescription>{leafAkun.length} kode akun</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-2">
-                <Row label="Invoice" value={formatRupiah(totals.invoice)} />
-                <Row label="Total cost" value={formatRupiah(totals.cost)} />
+                <Row label="Anggaran" value={formatRupiah(rabTotals.anggaran)} />
+                <Row label="Realisasi" value={formatRupiah(rabTotals.realisasi)} />
                 <Row
-                  label="Margin"
-                  value={formatRupiah(totals.margin)}
-                  tone={totals.margin < 0 ? 'danger' : 'success'}
+                  label="Sisa"
+                  value={formatRupiah(rabTotals.anggaran - rabTotals.realisasi)}
+                  tone={rabTotals.anggaran - rabTotals.realisasi < 0 ? 'danger' : 'success'}
                 />
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Persentase</span>
-                  <Badge tone={marginTone(marginPercent)}>
-                    {formatPercentSigned(marginPercent)}
+                  <span className="text-sm text-muted-foreground">Terpakai</span>
+                  <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                    {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
                   </Badge>
                 </div>
               </CardContent>

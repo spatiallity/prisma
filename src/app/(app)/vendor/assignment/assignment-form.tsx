@@ -1,12 +1,14 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { DeleteButton } from '@/components/ui/delete-button'
 import {
   createAssignment,
+  deleteAssignment,
   setAssignmentStatus,
   type VendorFormState,
 } from '../actions'
@@ -30,13 +32,23 @@ export function AssignmentForm({
   spks,
   vendors,
   teams,
+  onSaved,
 }: {
   spks: SpkOption[]
   vendors: VendorOption[]
   teams: TeamOption[]
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(createAssignment, initialState)
   const [vendorId, setVendorId] = useState(vendors[0]?.id ?? '')
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      onSaved?.()
+    }
+  }, [state.success, onSaved])
 
   // A team belongs to exactly one vendor, so the list narrows with the choice.
   const vendorTeams = teams.filter((team) => team.vendorId === vendorId)
@@ -151,4 +163,8 @@ export function AssignmentStatusToggle({
       {state.error && <span className="ml-2 text-xs text-danger">{state.error}</span>}
     </form>
   )
+}
+
+export function AssignmentDeleteButton({ id, spkId }: { id: string; spkId: string }) {
+  return <DeleteButton action={deleteAssignment} hiddenFields={{ id, spk_id: spkId }} />
 }

@@ -144,6 +144,26 @@ export async function setUserStatus(
   return { error: null, success: `Status diubah menjadi ${status}.` }
 }
 
+/** Hard delete — migration 0017. Removes the app profile only; the Supabase
+ *  Auth login itself is managed separately in the dashboard. */
+export async function deleteUserProfile(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const current = await requirePermission('user_management', 'edit')
+
+  const id = str(formData, 'id')
+  if (!id) return { error: 'User tidak dikenali.' }
+  if (id === current.id) return { error: 'Tidak bisa menghapus akun sendiri.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('users').delete().eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/users')
+  return { error: null }
+}
+
 export async function resetPassword(
   _prev: FormState,
   formData: FormData,

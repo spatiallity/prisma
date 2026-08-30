@@ -1,27 +1,13 @@
-import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Table, Td, Th, Tr } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { DOC_STATUS_TONE, REVENUE_META, type RevenueKind } from '@/lib/financial'
-import type { FinancialDocStatus } from '@/lib/supabase/types'
-import { RevenueForm, RevenueStatusToggle, type Choice } from './revenue-form'
-
-/** What every revenue document reduces to once it reaches the table. */
-type DocRow = {
-  id: string
-  spkId: string
-  number: string | null
-  value: number
-  date: string | null
-  status: FinancialDocStatus
-  extra: string | null
-  notes: string | null
-}
+import { REVENUE_META, type RevenueKind } from '@/lib/financial'
+import type { Choice } from './revenue-form'
+import { AddRevenueButton } from './add-revenue-button'
+import { RevenueTable, type DocRow } from './revenue-table'
 
 /**
  * Section 25.1–25.5 — the five revenue documents share one screen. Only the
@@ -158,7 +144,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
     .select('id, spk_number, site_code, work_name, status')
     .order('spk_number')
 
-  const spkById = new Map((spks ?? []).map((s) => [s.id, s]))
+  const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
   const live = rows.filter((r) => r.status !== 'Cancelled')
   const total = live.reduce((sum, r) => sum + r.value, 0)
 
@@ -167,6 +153,17 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
       <PageHeader
         title={meta.label}
         description={`Section ${meta.section} — ${meta.description}`}
+        actions={
+          mayEdit && (
+            <AddRevenueButton
+              kind={kind}
+              spks={(spks ?? [])
+                .filter((s) => s.status !== 'Cancelled')
+                .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
+              parents={parents}
+            />
+          )
+        }
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
@@ -194,51 +191,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
 
       <Card className="mb-5 overflow-hidden">
         {rows.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>SPK</Th>
-                <Th>{meta.numberLabel}</Th>
-                <Th>{meta.dateLabel}</Th>
-                <Th className="text-right">{meta.valueLabel}</Th>
-                <Th>Keterangan</Th>
-                <Th>Status</Th>
-                {mayEdit && <Th className="text-right">Aksi</Th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const spk = spkById.get(row.spkId)
-                return (
-                  <Tr key={row.id}>
-                    <Td>
-                      <Link
-                        href={`/spk/${row.spkId}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {spk?.site_code ?? spk?.spk_number ?? 'SPK'}
-                      </Link>
-                    </Td>
-                    <Td className="font-bold text-slate-900">{row.number ?? '—'}</Td>
-                    <Td className="tnum text-muted-foreground">{formatDate(row.date)}</Td>
-                    <Td className="tnum text-right font-bold">{formatRupiah(row.value)}</Td>
-                    <Td className="text-muted-foreground">
-                      {row.extra ?? '—'}
-                      {row.notes && <div className="text-xs">{row.notes}</div>}
-                    </Td>
-                    <Td>
-                      <Badge tone={DOC_STATUS_TONE[row.status]}>{row.status}</Badge>
-                    </Td>
-                    {mayEdit && (
-                      <Td className="text-right">
-                        <RevenueStatusToggle kind={kind} id={row.id} status={row.status} />
-                      </Td>
-                    )}
-                  </Tr>
-                )
-              })}
-            </tbody>
-          </Table>
+          <RevenueTable kind={kind} rows={rows} spkById={spkById} meta={meta} mayEdit={mayEdit} />
         ) : (
           <EmptyState
             title={`Belum ada ${meta.label}`}
@@ -246,29 +199,6 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
           />
         )}
       </Card>
-
-      {mayEdit && (
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>{meta.label} baru</CardTitle>
-              <CardDescription>
-                Koreksi dilakukan dengan membatalkan lalu mencatat ulang, bukan
-                menimpa (Section 4.4).
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <RevenueForm
-              kind={kind}
-              spks={(spks ?? [])
-                .filter((s) => s.status !== 'Cancelled')
-                .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
-              parents={parents}
-            />
-          </CardContent>
-        </Card>
-      )}
     </>
   )
 }

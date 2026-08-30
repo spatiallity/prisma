@@ -22,7 +22,7 @@ const AREA_LINK: Record<string, string> = {
   operational: '/schedule/daily-progress',
   design: '/design',
   routing: '/routing',
-  financial: '/financial/spending',
+  financial: '/financial/invoice',
 }
 
 /**

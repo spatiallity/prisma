@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
 import {
   createPersonnel,
   setPersonnelStatus,
@@ -30,29 +31,57 @@ function Submit() {
   )
 }
 
-export function PersonnelForm() {
+export function PersonnelForm({ onSaved }: { onSaved?: () => void }) {
   const [state, formAction] = useActionState(createPersonnel, initialState)
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      onSaved?.()
+    }
+  }, [state.success, onSaved])
 
   return (
     <form action={formAction} className="grid gap-3">
       <Feedback state={state} />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Nama lengkap" htmlFor="pn_name" required className="min-w-[220px]">
-          <Input id="pn_name" name="full_name" required />
-        </Field>
-        <Field label="Kode" htmlFor="pn_code" className="w-32">
-          <Input id="pn_code" name="code" placeholder="SVY-01" />
-        </Field>
-        <Field label="Posisi" htmlFor="pn_pos" className="w-44">
-          <Input id="pn_pos" name="position" placeholder="Surveyor" />
-        </Field>
-        <Field label="Tanggal masuk" htmlFor="pn_join" className="w-44">
-          <Input id="pn_join" name="join_date" type="date" />
-        </Field>
+      <Field label="Nama lengkap" htmlFor="pn_name" required>
+        <Input id="pn_name" name="full_name" required />
+      </Field>
+      <Field label="Kode" htmlFor="pn_code">
+        <Input id="pn_code" name="code" placeholder="SVY-01" />
+      </Field>
+      <Field label="Posisi" htmlFor="pn_pos">
+        <Input id="pn_pos" name="position" placeholder="Surveyor" />
+      </Field>
+      <Field label="Tanggal masuk" htmlFor="pn_join">
+        <Input id="pn_join" name="join_date" type="date" />
+      </Field>
+      <div>
         <Submit />
       </div>
     </form>
+  )
+}
+
+/** Top-right "Add Data" trigger + popup form. */
+export function AddPersonnelButton() {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Tambah personel"
+      trigger={
+        <Button type="button">
+          <Plus size={16} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <PersonnelForm onSaved={() => setOpen(false)} />
+    </Modal>
   )
 }
 

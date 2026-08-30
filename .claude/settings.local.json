@@ -1,5 +1,36 @@
 {
   "permissions": {
+    "allow": [
+      "Read(//d/Coding/prisma/**)",
+      "Bash(python -c ' *)",
+      "Bash(where python *)",
+      "Bash(rtk ls *)",
+      "Bash('C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe' -c ' *)",
+      "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" \"C:\\\\Users\\\\ARVIAN~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Coding-prisma--claude-worktrees-pertamina-monitoring-web-f827bc\\\\3f251472-5a93-45ad-a98d-e5fb4beec60b\\\\scratchpad\\\\clean_finance_data.py\")",
+      "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"print\\('placeholder'\\)\")",
+      "Bash(rtk grep *)",
+      "Bash(rtk wc *)",
+      "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"print\\(open\\('src/lib/supabase/types.ts',encoding='utf-8'\\).read\\(\\).count\\(chr\\(10\\)\\)\\)\")",
+      "Bash(rtk read *)",
+      "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import json,sys; print\\(json.load\\(sys.stdin\\).get\\('scripts'\\)\\)\")",
+      "Bash(rtk tsc *)",
+      "Bash(rtk lint *)",
+      "Bash(rtk git *)",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__list_projects",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__list_migrations",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__list_tables",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__apply_migration",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__execute_sql",
+      "Bash(where psql *)",
+      "Bash(where supabase *)",
+      "Bash(rtk find *)",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__get_project_url",
+      "mcp__b1b1dff4-560d-463f-8e9f-87c3c0c410be__get_publishable_keys",
+      "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import json,sys; print\\(json.load\\(sys.stdin\\)['scripts']\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(pnpm add *)",
+      "Bash(rtk gh *)"
+    ],
     "defaultMode": "bypassPermissions"
   }
 }

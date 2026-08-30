@@ -59,8 +59,10 @@ export const MODULE_LABEL: Record<AppModule, string> = {
   pad: 'PAD',
   invoice: 'Invoice',
   payment: 'Payment',
-  spending: 'Spending',
-  margin: 'Margin per SPK',
+  spending: 'Finance (RAB)',
+  /** migration 0016 retired the margin-per-SPK cost model; kept only because
+   *  the app_module enum value still exists in the database. */
+  margin: 'Margin per SPK (nonaktif)',
   report: 'Reports',
   master_data: 'Master Data',
   user_management: 'User Management',

@@ -175,19 +175,75 @@ join permissions p on p.module = m.module::app_module and p.action = m.action::a
 on conflict (role_id, permission_id) do update set scope = excluded.scope;
 
 -- ---------------------------------------------------------------------------
--- Cash ledger categories (Section 28 / 42)
+-- Chart of Accounts (migration 0016) — imported from Monitoring RAB.
+-- Group nodes ('1.2.', '1.2.1', ...) included alongside leaves so anggaran
+-- rolls up at every level; only leaves are ever used as a transaction's
+-- kode_akun.
 -- ---------------------------------------------------------------------------
-insert into cash_ledger_categories (code, name, sort_order) values
-  ('BBM',       'BBM',                     10),
-  ('ATK',       'ATK',                     20),
-  ('KONSUMSI',  'Konsumsi',                30),
-  ('UTILITAS',  'Utilitas Mess',           40),
-  ('KEBERSIHAN','Kebersihan & Keamanan',   50),
-  ('MATERAI',   'Materai/Administrasi',    60),
-  ('TRANSPORT', 'Transportasi (Tol/Grab)', 70),
-  ('HSE',       'HSE Reward',              80),
-  ('LAIN',      'Lain-lain',               90)
-on conflict (code) do update set name = excluded.name, sort_order = excluded.sort_order;
+insert into chart_of_accounts (kode_akun, kode_gl, level, kategori_roman, kategori_roman_label, uraian, anggaran_rp) values
+  ('1.1.', NULL, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Beban Gaji, THR & Cuti, Insentif', 35200000),
+  ('1.1.14', 4021, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Project Manager', 35200000.0),
+  ('1.2.', NULL, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Asuransi & Jaminan', 14745600),
+  ('1.2.1', NULL, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Asuransi BPJS Ketenagakerjaan', 8985600),
+  ('1.2.1.1', 4051, 4, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Jaminan Kecelakaan Kerja', 345600.0),
+  ('1.2.1.2', 4052, 4, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Jaminan Hari Tua', 8208000.0),
+  ('1.2.1.3', 4053, 4, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Jaminan Kematian', 432000.0),
+  ('1.2.2', NULL, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Asuransi BPJS Kesehatan', 5760000),
+  ('1.2.2.1', 4061, 4, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Asuransi Kesehatan', 5760000.0),
+  ('1.5', NULL, 2, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Beban Tunjangan PPH Pasal 21', 60873840),
+  ('1.5.1', 4091, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Tunjangan PPH Pasal 21', 60873840.0),
+  ('1.6', NULL, 2, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Beban Pegawai Lainnya', 140000000),
+  ('1.6.1', 4102, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'General Check Up', 140000000.0),
+  ('1.7', NULL, 2, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Beban Pegawai Proyek', 2176110136),
+  ('1.7.1', 4151, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Upah Pegawai Proyek', 1805400000.0),
+  ('1.7.3', 4153, 3, 'I', 'Beban Personil / Tenaga Kerja Langsung', 'Tunjangan Pegawai Proyek', 370710136.0),
+  ('3.1', NULL, 2, 'III', 'Beban Perjalanan Dinas', 'Beban Perjalanan Dinas', 50000000),
+  ('3.1.2', 4302, 3, 'III', 'Beban Perjalanan Dinas', 'Biaya SPPD Dalam Negeri', 50000000.0),
+  ('4.1.', NULL, 3, 'IV', 'Beban Operasional', 'Biaya Bahan Operasi', 571178000),
+  ('4.1.1', 4411, 3, 'IV', 'Beban Operasional', 'Biaya Bahan', 381350000.0),
+  ('4.1.2', NULL, 3, 'IV', 'Beban Operasional', 'Beban Alat dan Pakaian Keselamatan Kerja', 56500000),
+  ('4.1.3', NULL, 3, 'IV', 'Beban Operasional', 'Beban Perlengkapan Kerja Proyek', 133328000),
+  ('4.2', NULL, 2, 'IV', 'Beban Operasional', 'Biaya Kerjasama', 4195800000),
+  ('4.2.3', 4421, 3, 'IV', 'Beban Operasional', 'Beban Kerjasama/Kemitraan', 4195800000.0),
+  ('4.3.', NULL, 3, 'IV', 'Beban Operasional', 'Biaya Penunjang', 1285860000),
+  ('4.3.2', 4432, 3, 'IV', 'Beban Operasional', 'Beban Pas Pelabuhan/Bandara/Porter/Handling', 679860000.0),
+  ('4.3.5', 4433, 3, 'IV', 'Beban Operasional', 'Uang Makan', 567000000.0),
+  ('4.3.6', NULL, 3, 'IV', 'Beban Operasional', 'Beban Laporan Hasil Pekerjaan', 39000000),
+  ('4.4', NULL, 2, 'IV', 'Beban Operasional', 'Biaya Penjualan', 184000000),
+  ('4.4.1', NULL, 3, 'IV', 'Beban Operasional', 'Beban Representasi', 184000000),
+  ('4.4.1.1', 4441, 4, 'IV', 'Beban Operasional', '- Beban Jamuan', 24000000.0),
+  ('4.4.1.2', 4441, 4, 'IV', 'Beban Operasional', '- Beban Souvenir / Cenderamata', 40000000.0),
+  ('4.4.1.3', 4441, 4, 'IV', 'Beban Operasional', '- Beban Canvassing', 120000000.0),
+  ('4.5', NULL, 2, 'IV', 'Beban Operasional', 'Biaya Operasi Intern', 100000000),
+  ('4.5.1', 4491, 3, 'IV', 'Beban Operasional', 'Biaya Operasi Intern / IWO     ke :', 100000000.0),
+  ('5.1', NULL, 2, 'V', 'Beban Fasilitas', 'Bangunan / Gedung', 288000000),
+  ('5.1.2', 4512, 3, 'V', 'Beban Fasilitas', 'Beban Sewa Bangunan / Ruang', 252000000.0),
+  ('5.1.3', 4515, 3, 'V', 'Beban Fasilitas', 'Beban Pemakaian Listrik', 27000000.0),
+  ('5.1.5', 4515, 3, 'V', 'Beban Fasilitas', 'Beban Pemakaian Gas', 9000000.0),
+  ('5.4', NULL, 2, 'V', 'Beban Fasilitas', 'Biaya Kendaraan', 2025000000),
+  ('5.4.3', 4542, 3, 'V', 'Beban Fasilitas', 'Beban Sewa Kendaraan Operasional', 1620000000.0),
+  ('5.4.5', 4545, 3, 'V', 'Beban Fasilitas', 'Beban BBM, Pelumas dsb', 405000000.0),
+  ('5.5', NULL, 2, 'V', 'Beban Fasilitas', 'Biaya Peralatan Kantor', 68400000),
+  ('5.5.4', 4553, 3, 'V', 'Beban Fasilitas', 'Beban Inventaris Kantor', 68400000.0),
+  ('5.6', NULL, 2, 'V', 'Beban Fasilitas', 'Biaya Peralatan Sistem Informasi', 162000000),
+  ('5.6.3', 4563, 3, 'V', 'Beban Fasilitas', 'Biaya Inventaris Kecil SI', 162000000.0),
+  ('7.1', NULL, 2, 'VII', 'Beban Kantor & Diklat', 'Biaya Alat Tulis Kantor & Cetakan', 90000000),
+  ('7.1.1', NULL, 3, 'VII', 'Beban Kantor & Diklat', 'Beban Alat Tulis (Stationary)', 90000000),
+  ('7.2', NULL, 2, 'VII', 'Beban Kantor & Diklat', 'Biaya Komunikasi', 10440000),
+  ('7.2.4', 4721, 3, 'VII', 'Beban Kantor & Diklat', 'Biaya Komunikasi', 7200000.0),
+  ('7.2.5', 4722, 3, 'VII', 'Beban Kantor & Diklat', 'Biaya Ekspedisi', 3240000.0),
+  ('7.3', NULL, 2, 'VII', 'Beban Kantor & Diklat', 'Biaya Rapat', 103000000),
+  ('7.3.1', 4731, 3, 'VII', 'Beban Kantor & Diklat', 'Beban Sewa Ruangan Rapat', 60000000.0),
+  ('7.3.2', 4731, 3, 'VII', 'Beban Kantor & Diklat', 'Beban Akomodasi Rapat', 14000000.0),
+  ('7.3.3', 4731, 3, 'VII', 'Beban Kantor & Diklat', 'Beban Transportasi Rapat', 28000000.0),
+  ('7.3.4', 4731, 3, 'VII', 'Beban Kantor & Diklat', 'Beban Materi Rapat', 1000000.0)
+on conflict (kode_akun) do update set
+  kode_gl = excluded.kode_gl,
+  level = excluded.level,
+  kategori_roman = excluded.kategori_roman,
+  kategori_roman_label = excluded.kategori_roman_label,
+  uraian = excluded.uraian,
+  anggaran_rp = excluded.anggaran_rp;
 
 -- ---------------------------------------------------------------------------
 -- Progress Template A — SPK dengan Siteplan (Section 13, weights verbatim)

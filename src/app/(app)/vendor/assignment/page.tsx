@@ -1,14 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { StatusBadge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { formatDate } from '@/lib/utils'
-import { AssignmentForm, AssignmentStatusToggle } from './assignment-form'
+import { AssignmentDeleteButton, AssignmentStatusToggle } from './assignment-form'
+import { AddAssignmentButton } from './add-assignment-button'
 
 export const metadata: Metadata = { title: 'Assignment' }
 
@@ -42,20 +43,9 @@ export default async function AssignmentPage() {
       <PageHeader
         title="Assignment"
         description="Menugaskan vendor atau team ke sebuah SPK. Ini yang menentukan SPK mana yang terlihat oleh akun vendor (Section 31)."
-      />
-
-      {mayEdit && (
-        <Card className="mb-5">
-          <CardHeader>
-            <div>
-              <CardTitle>Assignment baru</CardTitle>
-              <CardDescription>
-                Hanya SPK berstatus Draft atau On Going yang bisa ditugaskan.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <AssignmentForm
+        actions={
+          mayEdit && (
+            <AddAssignmentButton
               spks={(spks ?? []).map((s) => ({
                 id: s.id,
                 label: `${s.spk_number} — ${s.work_name}`,
@@ -70,9 +60,9 @@ export default async function AssignmentPage() {
                 label: t.name,
               }))}
             />
-          </CardContent>
-        </Card>
-      )}
+          )
+        }
+      />
 
       <Card className="overflow-hidden">
         {assignments && assignments.length > 0 ? (
@@ -123,11 +113,17 @@ export default async function AssignmentPage() {
                     </Td>
                     {mayEdit && (
                       <Td className="text-right">
-                        <AssignmentStatusToggle
-                          id={assignment.id}
-                          spkId={assignment.spk_id}
-                          status={assignment.status}
-                        />
+                        <div className="flex items-center justify-end gap-3">
+                          <AssignmentStatusToggle
+                            id={assignment.id}
+                            spkId={assignment.spk_id}
+                            status={assignment.status}
+                          />
+                          <AssignmentDeleteButton
+                            id={assignment.id}
+                            spkId={assignment.spk_id}
+                          />
+                        </div>
                       </Td>
                     )}
                   </Tr>

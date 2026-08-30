@@ -12,7 +12,7 @@ import { can } from '@/lib/auth/permissions'
 import { formatDate } from '@/lib/utils'
 import { updateVendor } from '../actions'
 import { VendorForm } from '../vendor-form'
-import { AddMemberForm, AddTeamForm, StatusToggle } from '../team-forms'
+import { AddMemberForm, AddTeamForm, DeleteEntry, StatusToggle } from '../team-forms'
 
 export const metadata: Metadata = { title: 'Detail vendor' }
 
@@ -114,12 +114,15 @@ export default async function VendorDetailPage({
                         </Td>
                         {mayEdit && (
                           <Td className="text-right">
-                            <StatusToggle
-                              kind="team"
-                              id={team.id}
-                              vendorId={vendor.id}
-                              status={team.status}
-                            />
+                            <div className="flex items-center justify-end gap-3">
+                              <StatusToggle
+                                kind="team"
+                                id={team.id}
+                                vendorId={vendor.id}
+                                status={team.status}
+                              />
+                              <DeleteEntry kind="team" id={team.id} vendorId={vendor.id} />
+                            </div>
                           </Td>
                         )}
                       </Tr>
@@ -169,12 +172,15 @@ export default async function VendorDetailPage({
                         </Td>
                         {mayEdit && (
                           <Td className="text-right">
-                            <StatusToggle
-                              kind="member"
-                              id={member.id}
-                              vendorId={vendor.id}
-                              status={member.status}
-                            />
+                            <div className="flex items-center justify-end gap-3">
+                              <StatusToggle
+                                kind="member"
+                                id={member.id}
+                                vendorId={vendor.id}
+                                status={member.status}
+                              />
+                              <DeleteEntry kind="member" id={member.id} vendorId={vendor.id} />
+                            </div>
                           </Td>
                         )}
                       </Tr>

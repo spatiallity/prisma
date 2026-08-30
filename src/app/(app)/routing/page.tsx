@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
@@ -8,10 +7,10 @@ import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn } from '@/lib/utils'
 import type { RoutingLeadTimeView } from '@/lib/supabase/types'
-import { ROUTING_TONE, formatDays } from '@/lib/routing'
+import { formatDays } from '@/lib/routing'
 import { NewRoutingForm } from './forms'
+import { RoutingTable } from './routing-table'
 
 export const metadata: Metadata = { title: 'Routing Monitor' }
 
@@ -46,8 +45,8 @@ export async function RoutingMonitor({
         .order('code'),
     ])
 
-  const spkById = new Map((spks ?? []).map((s) => [s.id, s]))
-  const picByStage = new Map((stages ?? []).map((s) => [s.id, s.pic_name]))
+  const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
+  const picByStage = Object.fromEntries((stages ?? []).map((s) => [s.id, s.pic_name]))
 
   // The stage a document is actually sitting in: the first one not finished.
   const currentByDoc = new Map<string, RoutingLeadTimeView>()
@@ -58,6 +57,7 @@ export async function RoutingMonitor({
     const held = currentByDoc.get(row.spk_routing_id)
     if (!held || row.sequence < held.sequence) currentByDoc.set(row.spk_routing_id, row)
   }
+  const currentByDocPlain = Object.fromEntries(currentByDoc)
 
   const filtered = (documents ?? []).filter((doc) => {
     if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
@@ -108,66 +108,13 @@ export async function RoutingMonitor({
         </CardHeader>
 
         {filtered.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>SPK</Th>
-                <Th>Dokumen</Th>
-                <Th>{mode === 'history' ? 'Tahap terakhir' : 'Posisi sekarang'}</Th>
-                <Th>PIC</Th>
-                <Th className="text-right">Di tahap ini</Th>
-                <Th className="text-right">SLA</Th>
-                <Th>Status</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((doc) => {
-                const spk = spkById.get(doc.spk_id)
-                const current = currentByDoc.get(doc.id)
-                const late = current?.is_overdue ?? false
-
-                return (
-                  <Tr key={doc.id}>
-                    <Td>
-                      <Link
-                        href={`/routing/${doc.id}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {spk?.site_code ?? spk?.spk_number ?? 'SPK'}
-                      </Link>
-                    </Td>
-                    <Td>
-                      <span className="font-bold text-slate-900">{doc.document_type}</span>
-                      {doc.document_number && (
-                        <div className="text-xs text-muted-foreground">
-                          {doc.document_number}
-                        </div>
-                      )}
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {current?.step_name ?? (doc.status === 'Completed' ? 'Selesai' : '—')}
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {current
-                        ? (picByStage.get(current.routing_history_id) ?? '—')
-                        : '—'}
-                    </Td>
-                    <Td className={cn('tnum text-right', late && 'font-bold text-danger')}>
-                      {formatDays(current?.elapsed_days ?? null)}
-                    </Td>
-                    <Td className="tnum text-right text-muted-foreground">
-                      {formatDays(current?.sla_days ?? null)}
-                    </Td>
-                    <Td>
-                      <Badge tone={late ? 'danger' : ROUTING_TONE[doc.status]}>
-                        {late ? 'Lewat SLA' : doc.status}
-                      </Badge>
-                    </Td>
-                  </Tr>
-                )
-              })}
-            </tbody>
-          </Table>
+          <RoutingTable
+            docs={filtered}
+            spkById={spkById}
+            currentByDoc={currentByDocPlain}
+            picByStage={picByStage}
+            mode={mode}
+          />
         ) : (
           <EmptyState
             title={

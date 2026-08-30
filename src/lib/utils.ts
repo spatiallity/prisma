@@ -16,6 +16,17 @@ export function formatRupiah(value: number | string | null | undefined) {
   }).format(n)
 }
 
+/** Rp 11,56 M — for headline stat cards, where the exact figure lives in a smaller line underneath. */
+export function formatRupiahCompact(value: number | string | null | undefined) {
+  const n = typeof value === 'string' ? Number(value) : value
+  if (n === null || n === undefined || Number.isNaN(n)) return '—'
+  return `Rp ${new Intl.NumberFormat('id-ID', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: 1,
+  }).format(n)}`
+}
+
 /** 20 Agu 2026 */
 export function formatDate(value: string | Date | null | undefined) {
   if (!value) return '—'

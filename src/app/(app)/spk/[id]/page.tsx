@@ -220,9 +220,7 @@ export default async function SpkDetailPage({
 
       {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
 
-      {activeTab === 'financial' && (
-        <FinancialTab spkId={spk.id} permissions={user.permissions} />
-      )}
+      {activeTab === 'financial' && <FinancialTab spkId={spk.id} />}
 
       {activeTab === 'overview' && (
       <div className="grid gap-5 lg:grid-cols-3">

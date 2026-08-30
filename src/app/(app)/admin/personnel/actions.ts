@@ -43,7 +43,6 @@ export async function createPersonnel(
   }
 
   revalidatePath('/admin/personnel')
-  revalidatePath('/financial/spending')
   return { error: null, success: `${fullName} ditambahkan.` }
 }
 
@@ -64,6 +63,32 @@ export async function setPersonnelStatus(
   if (error) return { error: error.message }
 
   revalidatePath('/admin/personnel')
-  revalidatePath('/financial/spending')
   return { error: null, success: `Personel di-set ${status}.` }
+}
+
+export type DeleteState = { error: string | null }
+
+/** Hard delete — migration 0017. Fails with a clear error if a finance_transactions row still points at this person. */
+export async function deletePersonnel(
+  _prev: DeleteState,
+  formData: FormData,
+): Promise<DeleteState> {
+  await requirePermission('master_data', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'Personel tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('personnel').delete().eq('id', id)
+  if (error) {
+    return {
+      error:
+        error.code === '23503'
+          ? 'Personel ini masih punya transaksi finance terkait — lepaskan dulu.'
+          : error.message,
+    }
+  }
+
+  revalidatePath('/admin/personnel')
+  return { error: null }
 }

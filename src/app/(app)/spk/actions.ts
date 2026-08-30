@@ -158,3 +158,26 @@ export async function setSpkStatus(
   revalidatePath(`/spk/${id}`)
   return { error: null, success: `Status SPK diubah menjadi ${status}.` }
 }
+
+/**
+ * Hard delete — migration 0017. Cascades everything owned by this SPK
+ * (activities, progress, schedule, design, routing, revenue documents);
+ * cross-cutting rows (audit log, files, finance_transactions) just lose the
+ * reference instead of being deleted.
+ */
+export async function deleteSpk(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('spks').delete().eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/spk')
+  return { error: null }
+}

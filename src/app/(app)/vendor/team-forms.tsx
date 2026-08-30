@@ -6,9 +6,12 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { DeleteButton } from '@/components/ui/delete-button'
 import {
   createMember,
   createTeam,
+  deleteMember,
+  deleteTeam,
   setMemberStatus,
   setTeamStatus,
   type VendorFormState,
@@ -144,5 +147,20 @@ export function StatusToggle({
       <ToggleSubmit label={next === 'Active' ? 'Aktifkan' : 'Nonaktifkan'} />
       {state.error && <span className="ml-2 text-xs text-danger">{state.error}</span>}
     </form>
+  )
+}
+
+export function DeleteEntry({
+  kind,
+  id,
+  vendorId,
+}: {
+  kind: 'team' | 'member'
+  id: string
+  vendorId: string
+}) {
+  const action = kind === 'team' ? deleteTeam : deleteMember
+  return (
+    <DeleteButton action={action} hiddenFields={{ id, vendor_id: vendorId }} />
   )
 }

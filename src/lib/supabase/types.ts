@@ -28,9 +28,14 @@ export type FinancialDocStatus =
   | 'Approved'
   | 'Rejected'
   | 'Cancelled'
-export type PersonnelCostType = 'Gaji' | 'MCU' | 'Honor & Operasional'
-export type VendorPaymentStatus = 'Belum Dibayar' | 'Sebagian' | 'Lunas'
-export type VendorPaymentTermType = 'DP' | 'Progress' | 'Final'
+/** migrations/20260830000100 — Excel-tab origin of a finance_transactions row. */
+export type FinanceCategory =
+  | 'umk'
+  | 'sppd'
+  | 'ppbj_barang'
+  | 'ppbj_jasa'
+  | 'gaji_ptt'
+  | 'mcu'
 
 export const FINANCIAL_DOC_STATUSES: FinancialDocStatus[] = [
   'Draft',
@@ -39,15 +44,13 @@ export const FINANCIAL_DOC_STATUSES: FinancialDocStatus[] = [
   'Rejected',
   'Cancelled',
 ]
-export const PERSONNEL_COST_TYPES: PersonnelCostType[] = [
-  'Gaji',
-  'MCU',
-  'Honor & Operasional',
-]
-export const VENDOR_PAYMENT_TERM_TYPES: VendorPaymentTermType[] = [
-  'DP',
-  'Progress',
-  'Final',
+export const FINANCE_CATEGORIES: FinanceCategory[] = [
+  'umk',
+  'sppd',
+  'ppbj_barang',
+  'ppbj_jasa',
+  'gaji_ptt',
+  'mcu',
 ]
 export type RoutingStatus =
   | 'Pending'
@@ -458,34 +461,6 @@ export type PaymentRow = Timestamps & {
   created_by: string | null
 }
 
-// --- Cost side (Section 25.6) -----------------------------------------------
-
-export type CashLedgerCategoryRow = Timestamps & {
-  id: string
-  code: string
-  name: string
-  description: string | null
-  sort_order: number
-  status: RecordStatus
-}
-
-export type CashLedgerRow = Timestamps & {
-  id: string
-  entry_date: string
-  pic_user_id: string | null
-  pic_name: string | null
-  category_id: string | null
-  description: string | null
-  amount_out: number
-  amount_in: number
-  /** NULL = project overhead (Section 26.3), outside per-SPK margin. */
-  spk_id: string | null
-  reference: string | null
-  status: RecordStatus
-  notes: string | null
-  created_by: string | null
-}
-
 export type PersonnelRow = Timestamps & {
   id: string
   code: string | null
@@ -497,44 +472,37 @@ export type PersonnelRow = Timestamps & {
   notes: string | null
 }
 
-export type PersonnelCostRow = Timestamps & {
+// --- Finance / RAB monitoring (migration 20260830000100) --------------------
+
+export type ChartOfAccountRow = Timestamps & {
+  kode_akun: string
+  kode_gl: number | null
+  level: number | null
+  kategori_roman: string | null
+  kategori_roman_label: string | null
+  uraian: string
+  anggaran_rp: number | null
+  status: RecordStatus
+}
+
+export type FinanceTransactionRow = Timestamps & {
   id: string
-  personnel_id: string
-  cost_type: PersonnelCostType
-  period: string
-  amount: number
+  kategori: FinanceCategory
+  kode_akun: string
+  tanggal: string | null
+  /** First-of-month bucket, e.g. '2025-08-01' for Agustus 2025. */
+  bulan: string
+  jumlah: number
+  deskripsi: string | null
+  no_bukti: string | null
+  personnel_id: string | null
+  personil_nama: string | null
+  /** 'Upah' | 'Tunjangan' for kategori 'gaji_ptt'; null otherwise. */
+  jenis_detail: string | null
   spk_id: string | null
-  description: string | null
+  meta: Json | null
+  file_id: string | null
   status: RecordStatus
-  created_by: string | null
-}
-
-export type VendorPaymentRow = Timestamps & {
-  id: string
-  spk_id: string
-  vendor_id: string
-  contract_value: number
-  agreed_percentage: number
-  /** Generated column (migration 0009) — read-only. */
-  vendor_payable: number
-  /** Rolled up from vendor_payment_terms by trigger when terms exist. */
-  amount_paid: number
-  status: VendorPaymentStatus
-  notes: string | null
-  created_by: string | null
-}
-
-export type VendorPaymentTermRow = Timestamps & {
-  id: string
-  vendor_payment_id: string
-  term_type: VendorPaymentTermType
-  sequence: number
-  amount: number
-  due_date: string | null
-  paid_date: string | null
-  reference: string | null
-  status: RecordStatus
-  notes: string | null
   created_by: string | null
 }
 
@@ -630,16 +598,6 @@ export type BottleneckView = {
   metric: number | null
 }
 
-/** migrations/20260825001100 — Section 25.6.1, running petty-cash balance. */
-export type CashLedgerView = CashLedgerRow & { balance: number }
-
-export type CashBalanceView = {
-  balance: number
-  total_in: number
-  total_out: number
-  last_entry_date: string | null
-}
-
 /** migrations/20260825001100 — Section 26.1, revenue reconciliation per SPK. */
 export type SpkFinancialView = {
   spk_id: string
@@ -655,35 +613,26 @@ export type SpkFinancialView = {
   outstanding_payment: number
 }
 
-/** migrations/20260825001100 — Section 26.2, cost per SPK. */
-export type SpkCostView = {
-  spk_id: string
-  vendor_payable: number
-  vendor_paid: number
-  personnel_cost: number
-  operational_cash: number
-  total_cost: number
+/** migrations/20260830000100 — RAB monitoring: realisasi per kode_akun per bulan. */
+export type FinanceRealisasiBulananView = {
+  kode_akun: string
+  uraian: string
+  kategori_roman: string | null
+  bulan: string
+  realisasi: number
 }
 
-/** migrations/20260825001100 — Section 26.2, Margin = Invoice - Total Cost. */
-export type SpkMarginView = {
-  spk_id: string
-  spk_number: string
-  invoice_total: number
-  vendor_payable: number
-  personnel_cost: number
-  operational_cash: number
-  total_cost: number
-  margin: number
-  margin_percent: number | null
-}
-
-/** migrations/20260825001100 — Section 26.3, untagged overhead per month. */
-export type ProjectOverheadView = {
-  period_month: string
-  operational_cash: number
-  personnel_cost: number
-  overhead_total: number
+/** migrations/20260830000100 — Anggaran vs Realisasi vs Selisih per kode_akun, all-time. */
+export type FinanceAkunSummaryView = {
+  kode_akun: string
+  kode_gl: number | null
+  uraian: string
+  kategori_roman: string | null
+  kategori_roman_label: string | null
+  level: number | null
+  anggaran_rp: number | null
+  realisasi_total: number
+  selisih: number | null
 }
 
 /** migrations/20260825001100 — Section 24, lead time per routing stage. */
@@ -881,35 +830,21 @@ export type Database = {
         | 'id' | 'created_at' | 'updated_at' | 'status' | 'invoice_id'
         | 'payment_date' | 'reference' | 'notes' | 'created_by'
       >
-      cash_ledger_categories: Table<
-        CashLedgerCategoryRow,
-        | 'id' | 'created_at' | 'updated_at' | 'status' | 'description' | 'sort_order'
-      >
-      cash_ledger: Table<
-        CashLedgerRow,
-        | 'id' | 'created_at' | 'updated_at' | 'status' | 'pic_user_id' | 'pic_name'
-        | 'category_id' | 'description' | 'amount_out' | 'amount_in' | 'spk_id'
-        | 'reference' | 'notes' | 'created_by'
-      >
       personnel: Table<
         PersonnelRow,
         | 'id' | 'created_at' | 'updated_at' | 'status' | 'code' | 'position'
         | 'user_id' | 'join_date' | 'notes'
       >
-      personnel_costs: Table<
-        PersonnelCostRow,
-        | 'id' | 'created_at' | 'updated_at' | 'status' | 'spk_id'
-        | 'description' | 'created_by'
+      chart_of_accounts: Table<
+        ChartOfAccountRow,
+        | 'created_at' | 'updated_at' | 'status' | 'kode_gl' | 'level'
+        | 'kategori_roman' | 'kategori_roman_label' | 'anggaran_rp'
       >
-      vendor_payments: Table<
-        VendorPaymentRow,
-        | 'id' | 'created_at' | 'updated_at' | 'status' | 'vendor_payable'
-        | 'amount_paid' | 'notes' | 'created_by'
-      >
-      vendor_payment_terms: Table<
-        VendorPaymentTermRow,
-        | 'id' | 'created_at' | 'updated_at' | 'status' | 'sequence' | 'due_date'
-        | 'paid_date' | 'reference' | 'notes' | 'created_by'
+      finance_transactions: Table<
+        FinanceTransactionRow,
+        | 'id' | 'created_at' | 'updated_at' | 'status' | 'tanggal' | 'deskripsi'
+        | 'no_bukti' | 'personnel_id' | 'personil_nama' | 'jenis_detail'
+        | 'spk_id' | 'meta' | 'file_id' | 'created_by'
       >
       spk_routing: Table<
         SpkRoutingRow,
@@ -997,12 +932,9 @@ export type Database = {
       v_routing_lead_time: { Row: RoutingLeadTimeView; Relationships: [] }
       v_dashboard_kpi: { Row: DashboardKpiView; Relationships: [] }
       v_bottleneck: { Row: BottleneckView; Relationships: [] }
-      v_cash_ledger: { Row: CashLedgerView; Relationships: [] }
-      v_cash_balance: { Row: CashBalanceView; Relationships: [] }
       v_spk_financial: { Row: SpkFinancialView; Relationships: [] }
-      v_spk_cost: { Row: SpkCostView; Relationships: [] }
-      v_spk_margin: { Row: SpkMarginView; Relationships: [] }
-      v_project_overhead_monthly: { Row: ProjectOverheadView; Relationships: [] }
+      v_finance_realisasi_bulanan: { Row: FinanceRealisasiBulananView; Relationships: [] }
+      v_finance_akun_summary: { Row: FinanceAkunSummaryView; Relationships: [] }
       v_routing_stage_average: { Row: RoutingStageAverageView; Relationships: [] }
       v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }
       v_today_schedule: { Row: TodayScheduleView; Relationships: [] }
@@ -1021,9 +953,7 @@ export type Database = {
       design_stage: DesignStage
       routing_status: RoutingStatus
       financial_doc_status: FinancialDocStatus
-      personnel_cost_type: PersonnelCostType
-      vendor_payment_status: VendorPaymentStatus
-      vendor_payment_term_type: VendorPaymentTermType
+      finance_category: FinanceCategory
       notification_severity: NotificationSeverity
     }
     CompositeTypes: Record<string, never>

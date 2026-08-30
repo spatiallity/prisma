@@ -2,16 +2,15 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Table, Td, Th, Tr } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { DESIGN_STAGES } from '@/lib/supabase/types'
-import { STAGE_FILTERS, STAGE_TONE, daysInStage, stagesFromFilterKey } from '@/lib/design'
+import { STAGE_FILTERS, stagesFromFilterKey } from '@/lib/design'
 import { NewDesignForm } from './forms'
+import { DesignTable } from './design-table'
 
 export const metadata: Metadata = { title: 'Design Queue' }
 
@@ -50,8 +49,8 @@ export default async function DesignQueuePage({
       supabase.from('users').select('id, full_name').eq('status', 'Active').order('full_name'),
     ])
 
-  const spkById = new Map((spks ?? []).map((s) => [s.id, s]))
-  const picName = new Map((pics ?? []).map((p) => [p.id, p.full_name]))
+  const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
+  const picName = Object.fromEntries((pics ?? []).map((p) => [p.id, p.full_name]))
 
   const perStage = new Map(DESIGN_STAGES.map((s) => [s, 0]))
   const taken = new Set<string>()
@@ -114,62 +113,7 @@ export default async function DesignQueuePage({
 
       <Card className="overflow-hidden">
         {designs && designs.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>SPK</Th>
-                <Th>Judul</Th>
-                <Th>Tahap</Th>
-                <Th>PIC</Th>
-                <Th className="text-right">Di tahap ini</Th>
-                <Th>Target</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {designs.map((design) => {
-                const spk = spkById.get(design.spk_id)
-                const held = daysInStage(design.updated_at)
-                const late = held !== null && held > 7 && design.current_stage !== 'Approved'
-
-                return (
-                  <Tr key={design.id}>
-                    <Td>
-                      <Link
-                        href={`/design/${design.id}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {spk?.site_code ?? spk?.spk_number ?? 'SPK'}
-                      </Link>
-                    </Td>
-                    <Td className="max-w-xs">
-                      <span className="line-clamp-1 font-bold text-slate-900">
-                        {design.title ?? spk?.work_name ?? '—'}
-                      </span>
-                    </Td>
-                    <Td>
-                      <Badge tone={STAGE_TONE[design.current_stage]}>
-                        {design.current_stage}
-                      </Badge>
-                    </Td>
-                    <Td className="text-muted-foreground">
-                      {design.pic_id ? (picName.get(design.pic_id) ?? '—') : '—'}
-                    </Td>
-                    <Td
-                      className={cn(
-                        'tnum text-right',
-                        late && 'font-bold text-danger',
-                      )}
-                    >
-                      {held === null ? '—' : `${held} hari`}
-                    </Td>
-                    <Td className="tnum text-muted-foreground">
-                      {formatDate(design.target_date)}
-                    </Td>
-                  </Tr>
-                )
-              })}
-            </tbody>
-          </Table>
+          <DesignTable designs={designs} spkById={spkById} picName={picName} />
         ) : (
           <EmptyState
             title={wanted ? 'Tidak ada desain di tahap ini' : 'Belum ada record desain'}
