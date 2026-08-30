@@ -1,7 +1,18 @@
 'use client'
 
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { formatRupiah } from '@/lib/utils'
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { formatRupiah, formatRupiahCompact } from '@/lib/utils'
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'var(--color-slate-400)',
@@ -100,6 +111,38 @@ export function RabDonutChart({ anggaran, realisasi }: { anggaran: number; reali
         </span>
         <span className="text-[10px] font-bold text-muted-foreground uppercase">terpakai</span>
       </div>
+    </div>
+  )
+}
+
+/** Top 5 spending accounts this month, as horizontal bars — longest label wins the most width. */
+export function TopCategoriesChart({ data }: { data: { label: string; jumlah: number }[] }) {
+  const chartData = [...data].reverse().map((d) => ({
+    ...d,
+    label: d.label.length > 26 ? `${d.label.slice(0, 26)}…` : d.label,
+  }))
+
+  return (
+    <div className="h-52 px-2 pt-1 pb-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+          <XAxis type="number" tickFormatter={(v) => formatRupiahCompact(v)} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+          <YAxis
+            type="category"
+            dataKey="label"
+            width={132}
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            formatter={(value) => [formatRupiah(Number(value)), 'Realisasi']}
+            contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            cursor={{ fill: 'var(--color-slate-50)' }}
+          />
+          <Bar dataKey="jumlah" fill="var(--color-primary)" radius={[0, 4, 4, 0]} barSize={16} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   )
 }

@@ -82,7 +82,7 @@ export default async function RecentActivityPage() {
     <>
       <PageHeader
         title="Recent Activity"
-        description={`Section 33 — ${PAGE_SIZE} perubahan terakhir di seluruh project, beserta siapa yang melakukannya.`}
+        description={`${PAGE_SIZE} perubahan terakhir di seluruh project, beserta siapa yang melakukannya.`}
       />
 
       {error && (

@@ -83,8 +83,7 @@ export default async function ActivityProgressPage({
             <div>
               <CardTitle>Riwayat progress</CardTitle>
               <CardDescription>
-                Entri bertanda <em>daily_progress</em> dihasilkan otomatis dari
-                Daily Progress (Phase 4), bukan diketik di sini.
+                Entri bertanda <em>daily_progress</em> berasal dari Daily Progress.
               </CardDescription>
             </div>
           </CardHeader>

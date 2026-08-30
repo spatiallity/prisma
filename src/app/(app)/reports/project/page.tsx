@@ -90,7 +90,7 @@ export default async function ProjectReportPage() {
             <div>
               <CardTitle>Pipeline SPK</CardTitle>
               <CardDescription>
-                Berapa SPK yang sudah sampai tiap tahap administrasi (Section 8.1).
+                Berapa SPK yang sudah sampai tiap tahap administrasi.
               </CardDescription>
             </div>
           </CardHeader>

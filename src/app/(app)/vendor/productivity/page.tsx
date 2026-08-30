@@ -54,7 +54,7 @@ export default async function ProductivityPage() {
     <>
       <PageHeader
         title="Productivity"
-        description="Hasil per hari kerja, dihitung dari Daily Progress (Section 20)."
+        description="Hasil per hari kerja, dihitung dari Daily Progress."
       />
 
       {byActivity.size > 0 && (

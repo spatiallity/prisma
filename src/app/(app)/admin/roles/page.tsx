@@ -34,7 +34,7 @@ export default async function RolesPage() {
     <>
       <PageHeader
         title="Role & Permission"
-        description="Matrix Section 6 tersimpan sebagai data, bukan kode. Perubahan di sini langsung mengubah RLS."
+        description="Permission tersimpan sebagai data, bukan kode — perubahan di sini langsung berlaku."
       />
 
       {error && (

@@ -42,7 +42,7 @@ export default async function AssignmentPage() {
     <>
       <PageHeader
         title="Assignment"
-        description="Menugaskan vendor atau team ke sebuah SPK. Ini yang menentukan SPK mana yang terlihat oleh akun vendor (Section 31)."
+        description="Menugaskan vendor atau team ke sebuah SPK. Ini yang menentukan SPK mana yang terlihat oleh akun vendor."
         actions={
           mayEdit && (
             <AddAssignmentButton

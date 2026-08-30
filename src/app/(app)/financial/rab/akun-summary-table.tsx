@@ -18,7 +18,7 @@ export type AkunSummaryRow = {
   selisih: number | null
 }
 
-type AkunOption = { kode_akun: string; uraian: string }
+type AkunOption = { kode_akun: string; uraian: string; kategori_roman_label: string | null }
 
 /**
  * Clicking a row drills into every transaction behind that account, under

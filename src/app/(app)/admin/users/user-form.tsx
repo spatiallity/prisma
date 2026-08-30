@@ -115,7 +115,7 @@ export function UserForm({
           label="Vendor Jasa Survey"
           htmlFor="vendor_id"
           required
-          hint="Akun vendor hanya melihat SPK yang di-assign kepadanya (Section 5.7)."
+          hint="Akun vendor hanya melihat SPK yang di-assign kepadanya."
         >
           <Select
             id="vendor_id"
@@ -137,7 +137,7 @@ export function UserForm({
         <Field
           label="Status"
           htmlFor="status"
-          hint="Section 4.4 — akun dinonaktifkan, tidak pernah dihapus."
+          hint="Akun dinonaktifkan, tidak pernah dihapus."
         >
           <Select id="status" name="status" defaultValue={user.status}>
             <option value="Active">Active</option>

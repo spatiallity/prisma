@@ -131,7 +131,7 @@ export function SpkForm({
           <Field
             label="Luas area (Ha)"
             htmlFor="area_ha"
-            hint="Dipakai ulang sebagai target aktivitas berbasis luas (Section 4.2)."
+            hint="Dipakai ulang sebagai target aktivitas berbasis luas."
           >
             <Input
               id="area_ha"
@@ -206,7 +206,7 @@ export function SpkForm({
           <Field
             label="Progress Template"
             htmlFor="activity_template_id"
-            hint="Menentukan daftar aktivitas dan bobotnya (Section 17). Diterapkan pada Phase 3."
+            hint="Menentukan daftar aktivitas dan bobotnya."
           >
             <Select
               id="activity_template_id"

@@ -23,7 +23,7 @@ export function AddRevenueButton({
       open={open}
       onOpenChange={setOpen}
       title={`${meta.label} baru`}
-      description="Koreksi dilakukan dengan membatalkan lalu mencatat ulang, bukan menimpa (Section 4.4)."
+      description="Koreksi dilakukan dengan membatalkan lalu mencatat ulang, bukan menimpa."
       trigger={
         <Button type="button">
           <Plus size={16} aria-hidden />

@@ -57,7 +57,7 @@ export default async function PersonnelPage() {
             <CardTitle>{personnel?.length ?? 0} personel</CardTitle>
             <CardDescription>
               Yang keluar dinonaktifkan, bukan dihapus — biaya yang sudah tercatat
-              harus tetap terbaca (Section 4.4).
+              harus tetap terbaca.
             </CardDescription>
           </div>
         </CardHeader>

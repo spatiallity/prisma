@@ -9,7 +9,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import { DailyProgressForm, ScheduleStatusToggle } from '../forms'
+import { DailyProgressForm, EditDailyProgressButton, ScheduleStatusToggle } from '../forms'
 import { loadScheduleOptions } from '../options'
 
 export const metadata: Metadata = { title: 'Daily Progress' }
@@ -91,7 +91,7 @@ export default async function DailyProgressPage() {
     <>
       <PageHeader
         title="Daily Progress"
-        description="Realisasi harian, diisi setelah personel kembali ke mess (Section 10)."
+        description="Realisasi harian, diisi setelah personel kembali ke mess."
       />
 
       {mayEdit && (
@@ -112,8 +112,8 @@ export default async function DailyProgressPage() {
       )}
 
       <Alert tone="info" className="mb-5">
-        Entri di sini memicu kaskade Section 44: increment harian → kumulatif
-        aktivitas → progress aktivitas → Overall Progress SPK → dashboard.
+        Entri di sini otomatis menaikkan progress aktivitas dan Overall Progress
+        SPK-nya.
       </Alert>
 
       <Card className="overflow-hidden">
@@ -170,11 +170,14 @@ export default async function DailyProgressPage() {
                     </Td>
                     {mayEdit && (
                       <Td className="text-right">
-                        <ScheduleStatusToggle
-                          kind="progress"
-                          id={entry.id}
-                          status={entry.status}
-                        />
+                        <div className="flex items-center justify-end gap-3">
+                          <EditDailyProgressButton entry={entry} options={options} plans={planOptions} />
+                          <ScheduleStatusToggle
+                            kind="progress"
+                            id={entry.id}
+                            status={entry.status}
+                          />
+                        </div>
                       </Td>
                     )}
                   </Tr>

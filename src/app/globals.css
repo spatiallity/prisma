@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /* --------------------------------------------------------------------------
-   Palette lifted from spatiallity/tenderhub-lsi (frontend/tailwind.config.js
-   + src/index.css) so both SUCOFINDO apps read as one product.
-   Light only — the reference has no dark theme.
+   Brand palette — navy → steel-blue → teal, teal-green dominant (matches the
+   login hero's #13B2AA accent), gold/orange as the warm counterpoint used
+   for stat-tile icon badges. Light only — the reference has no dark theme.
    -------------------------------------------------------------------------- */
 :root {
   --background: #f1f5f9;
@@ -13,22 +13,25 @@
   --muted-foreground: #64748b;
   --border: #e2e8f0;
   --input: #cbd5e1;
-  --ring: #3b82f6;
+  --ring: #13b2aa;
 
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: #dbeafe;
+  --primary: #13b2aa;
+  --primary-hover: #0e8f87;
+  --primary-soft: #e0f7f5;
   --primary-foreground: #ffffff;
 
   --success: #16a34a;
-  --warning: #d97706;
+  --warning: #f2b705;
   --danger: #dc2626;
-  --info: #2563eb;
+  --info: #1d4e78;
+
+  --brand-navy: #0b1e3d;
+  --brand-orange: #e85d25;
 
   --sidebar: #ffffff;
   --sidebar-foreground: #475569;
   --sidebar-muted: #94a3b8;
-  --sidebar-section: #334155;
+  --sidebar-section: #0b1e3d;
   --sidebar-border: #e2e8f0;
 }
 
@@ -51,6 +54,9 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-orange: var(--brand-orange);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

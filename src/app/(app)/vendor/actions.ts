@@ -145,6 +145,29 @@ export async function createTeam(
   return { error: null, success: `Team ${name} ditambahkan.` }
 }
 
+export async function updateTeam(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  const vendorId = text(formData, 'vendor_id')
+  const name = text(formData, 'name')
+  if (!id || !name) return { error: 'Nama team wajib diisi.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('vendor_teams')
+    .update({ name, notes: nullable(formData, 'notes') })
+    .eq('id', id)
+
+  if (error) return { error: friendlyError(error.message, error.code) }
+
+  revalidatePath(`/vendor/${vendorId}`)
+  return { error: null, success: `Team ${name} diperbarui.` }
+}
+
 export async function setTeamStatus(
   _prev: VendorFormState,
   formData: FormData,
@@ -213,6 +236,35 @@ export async function createMember(
 
   revalidatePath(`/vendor/${vendorId}`)
   return { error: null, success: `${fullName} ditambahkan.` }
+}
+
+export async function updateMember(
+  _prev: VendorFormState,
+  formData: FormData,
+): Promise<VendorFormState> {
+  await requirePermission('vendor', 'edit')
+
+  const id = text(formData, 'id')
+  const teamId = text(formData, 'team_id')
+  const vendorId = text(formData, 'vendor_id')
+  const fullName = text(formData, 'full_name')
+  if (!id || !teamId || !fullName) return { error: 'Team dan nama anggota wajib diisi.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('vendor_members')
+    .update({
+      team_id: teamId,
+      full_name: fullName,
+      position: nullable(formData, 'position'),
+      phone: nullable(formData, 'phone'),
+    })
+    .eq('id', id)
+
+  if (error) return { error: friendlyError(error.message, error.code) }
+
+  revalidatePath(`/vendor/${vendorId}`)
+  return { error: null, success: `${fullName} diperbarui.` }
 }
 
 export async function setMemberStatus(

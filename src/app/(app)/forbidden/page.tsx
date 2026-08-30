@@ -18,8 +18,7 @@ export default async function ForbiddenPage() {
         <h1 className="text-lg font-semibold">Akses ditolak</h1>
         <p className="text-sm text-muted-foreground">
           Role <strong>{user.role.name}</strong> tidak memiliki permission untuk
-          halaman ini. Pembatasan yang sama berlaku di level database
-          (Section 31), bukan hanya di tampilan.
+          halaman ini.
         </p>
         <Link
           href="/dashboard"

@@ -40,7 +40,7 @@ export default async function ActivityTemplatesPage() {
     <>
       <PageHeader
         title="Activity Template"
-        description="Daftar aktivitas beserta bobot dan jenis pengukurannya, dipakai ulang oleh setiap SPK (Section 17)."
+        description="Daftar aktivitas beserta bobot dan jenis pengukurannya, dipakai ulang oleh setiap SPK."
       />
 
       {error && (

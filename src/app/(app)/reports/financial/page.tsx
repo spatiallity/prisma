@@ -49,7 +49,7 @@ export default async function FinancialReportPage() {
     <>
       <PageHeader
         title="Financial Report"
-        description="Section 26.1 — rantai Contract sampai Payment per SPK dan sisa tagihan."
+        description="Rantai Contract sampai Payment per SPK dan sisa tagihan."
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -69,8 +69,7 @@ export default async function FinancialReportPage() {
           <div>
             <CardTitle>Rekonsiliasi per SPK</CardTitle>
             <CardDescription>
-              Selisih antar kolom inilah yang jadi bahan bottleneck financial
-              (Section 26.1).
+              Selisih antar kolom inilah yang jadi bahan bottleneck financial.
             </CardDescription>
           </div>
         </CardHeader>

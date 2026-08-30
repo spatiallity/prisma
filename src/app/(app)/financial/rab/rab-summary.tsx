@@ -30,7 +30,7 @@ export function RabSummary({
   const barWidth = percent === null ? 0 : Math.min(Math.max(percent, 0), 100)
 
   return (
-    <Card className="mb-5 overflow-hidden">
+    <Card className="mb-5 overflow-hidden rounded-2xl">
       <CardContent className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">

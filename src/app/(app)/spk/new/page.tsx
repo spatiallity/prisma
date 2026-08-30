@@ -28,7 +28,7 @@ export default async function NewSpkPage() {
 
       <PageHeader
         title="Buat SPK Baru"
-        description="Data dasar Section 11. Aktivitas dan progress menyusul pada Phase 3."
+        description="Data dasar SPK. Aktivitas dan progress bisa diisi setelah SPK dibuat."
       />
 
       <SpkForm action={createSpk} submitLabel="Simpan SPK" {...options} />

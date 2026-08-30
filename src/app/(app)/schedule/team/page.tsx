@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
@@ -38,10 +38,6 @@ export default async function TeamSchedulePage() {
         <CardHeader>
           <div>
             <CardTitle>Hari ini</CardTitle>
-            <CardDescription>
-              Status dihitung dari ada tidaknya Daily Progress untuk plan tersebut,
-              bukan diisi manual.
-            </CardDescription>
           </div>
           <Badge tone="primary">{rows?.length ?? 0} pekerjaan</Badge>
         </CardHeader>

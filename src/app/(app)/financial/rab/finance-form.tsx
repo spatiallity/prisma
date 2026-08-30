@@ -8,8 +8,8 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
-import type { FinanceCategory } from '@/lib/supabase/types'
-import { saveFinanceTransaction, type FinanceTxState } from './actions'
+import type { FinanceCategory, FinanceTransactionRow } from '@/lib/supabase/types'
+import { saveFinanceTransaction, updateFinanceTransaction, type FinanceTxState } from './actions'
 
 const initialState: FinanceTxState = { error: null }
 
@@ -19,12 +19,17 @@ export type AkunOption = {
   kategori_roman_label: string | null
 }
 
-function Submit() {
+/** 1.500.000 — matches what the server's money() parser expects back. */
+function formatAmountInput(value: number) {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(value)
+}
+
+function Submit({ editing }: { editing: boolean }) {
   const { pending } = useFormStatus()
   return (
     <Button type="submit" disabled={pending}>
       <Plus size={16} aria-hidden />
-      {pending ? 'Menyimpan…' : 'Simpan transaksi'}
+      {pending ? 'Menyimpan…' : editing ? 'Simpan perubahan' : 'Simpan transaksi'}
     </Button>
   )
 }
@@ -36,9 +41,20 @@ function Feedback({ state }: { state: FinanceTxState }) {
 }
 
 /** Type-to-filter over the Chart of Accounts leaves — ~35 rows, no debounce needed. */
-function AkunCombobox({ options, name }: { options: AkunOption[]; name: string }) {
+function AkunCombobox({
+  options,
+  name,
+  defaultValue,
+}: {
+  options: AkunOption[]
+  name: string
+  /** kode_akun to pre-select when editing an existing transaction. */
+  defaultValue?: string
+}) {
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<AkunOption | null>(null)
+  const [selected, setSelected] = useState<AkunOption | null>(
+    () => options.find((o) => o.kode_akun === defaultValue) ?? null,
+  )
   const [open, setOpen] = useState(false)
 
   const filtered = useMemo(() => {
@@ -104,15 +120,24 @@ function AkunCombobox({ options, name }: { options: AkunOption[]; name: string }
 export function FinanceTransactionForm({
   akunOptions,
   lockedKategori,
+  transaction,
   onSaved,
 }: {
   akunOptions: AkunOption[]
   /** Pre-select and hide the kategori field — used by the per-kategori submenu pages. */
   lockedKategori?: FinanceCategory
+  /** Present → editing this existing row instead of creating a new one. */
+  transaction?: FinanceTransactionRow
   onSaved?: () => void
 }) {
-  const [state, formAction] = useActionState(saveFinanceTransaction, initialState)
-  const [kategori, setKategori] = useState<FinanceCategory>(lockedKategori ?? 'umk')
+  const editing = !!transaction
+  const [state, formAction] = useActionState(
+    editing ? updateFinanceTransaction : saveFinanceTransaction,
+    initialState,
+  )
+  const [kategori, setKategori] = useState<FinanceCategory>(
+    transaction?.kategori ?? lockedKategori ?? 'umk',
+  )
   const meta = FINANCE_CATEGORY_META[kategori]
   const isGaji = kategori === 'gaji_ptt'
   const needsAkun = meta.fixedAkun === null && !isGaji
@@ -128,6 +153,8 @@ export function FinanceTransactionForm({
   return (
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
+
+      {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
       {lockedKategori ? (
         <input type="hidden" name="kategori" value={lockedKategori} />
@@ -156,13 +183,13 @@ export function FinanceTransactionForm({
           required
           hint="Cari berdasarkan kode atau nama akun."
         >
-          <AkunCombobox options={akunOptions} name="kode_akun" />
+          <AkunCombobox options={akunOptions} name="kode_akun" defaultValue={transaction?.kode_akun} />
         </Field>
       )}
 
       {isGaji && (
         <Field label="Jenis" htmlFor="ft_jenis" required>
-          <Select id="ft_jenis" name="jenis_detail" required defaultValue="Upah">
+          <Select id="ft_jenis" name="jenis_detail" required defaultValue={transaction?.jenis_detail ?? 'Upah'}>
             <option value="Upah">Upah — 1.7.1</option>
             <option value="Tunjangan">Tunjangan — 1.7.3</option>
           </Select>
@@ -176,7 +203,13 @@ export function FinanceTransactionForm({
       )}
 
       <Field label="Tanggal" htmlFor="ft_tanggal" required>
-        <Input id="ft_tanggal" name="tanggal" type="date" required />
+        <Input
+          id="ft_tanggal"
+          name="tanggal"
+          type="date"
+          required
+          defaultValue={transaction?.tanggal ?? undefined}
+        />
       </Field>
 
       <Field label="Jumlah (Rp)" htmlFor="ft_jumlah" required>
@@ -186,24 +219,25 @@ export function FinanceTransactionForm({
           inputMode="decimal"
           placeholder="1.500.000"
           required
+          defaultValue={transaction ? formatAmountInput(Number(transaction.jumlah)) : undefined}
         />
       </Field>
 
       <Field label="Deskripsi" htmlFor="ft_deskripsi">
-        <Textarea id="ft_deskripsi" name="deskripsi" rows={2} />
+        <Textarea id="ft_deskripsi" name="deskripsi" rows={2} defaultValue={transaction?.deskripsi ?? undefined} />
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="No. bukti" htmlFor="ft_bukti" hint="Opsional">
-          <Input id="ft_bukti" name="no_bukti" />
+          <Input id="ft_bukti" name="no_bukti" defaultValue={transaction?.no_bukti ?? undefined} />
         </Field>
         <Field label="Nama personel" htmlFor="ft_nama" hint="Opsional">
-          <Input id="ft_nama" name="personil_nama" />
+          <Input id="ft_nama" name="personil_nama" defaultValue={transaction?.personil_nama ?? undefined} />
         </Field>
       </div>
 
       <div>
-        <Submit />
+        <Submit editing={editing} />
       </div>
     </form>
   )
@@ -236,6 +270,38 @@ export function AddTransactionButton({
       <FinanceTransactionForm
         akunOptions={akunOptions}
         lockedKategori={lockedKategori}
+        onSaved={() => setOpen(false)}
+      />
+    </Modal>
+  )
+}
+
+/** Row-level "Edit" trigger — opens the same form pre-filled, via updateFinanceTransaction. */
+export function EditTransactionButton({
+  akunOptions,
+  transaction,
+}: {
+  akunOptions: AkunOption[]
+  transaction: FinanceTransactionRow
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit transaksi"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+        >
+          Edit
+        </button>
+      }
+    >
+      <FinanceTransactionForm
+        akunOptions={akunOptions}
+        transaction={transaction}
         onSaved={() => setOpen(false)}
       />
     </Modal>

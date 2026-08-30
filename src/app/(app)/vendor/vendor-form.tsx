@@ -83,7 +83,7 @@ export function VendorForm({
           <Field
             label="Status"
             htmlFor="status"
-            hint="Section 4.4 — vendor dinonaktifkan, tidak dihapus."
+            hint="Vendor dinonaktifkan, tidak dihapus."
           >
             <Select id="status" name="status" defaultValue={vendor.status}>
               <option value="Active">Active</option>

@@ -82,7 +82,7 @@ export async function RoutingMonitor({
       ? 'Dokumen yang sedang menunggu tindakan pada satu tahap.'
       : mode === 'history'
         ? 'Dokumen yang sudah selesai atau ditolak, beserta lead time totalnya.'
-        : 'Posisi setiap dokumen dan berapa lama tertahan di tahap sekarang (Section 24).'
+        : 'Posisi setiap dokumen dan berapa lama tertahan di tahap sekarang.'
 
   return (
     <>

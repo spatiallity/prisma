@@ -33,8 +33,7 @@ export async function FinancialTab({ spkId }: { spkId: string }) {
           <div>
             <CardTitle>Contract → Payment</CardTitle>
             <CardDescription>
-              Section 26.1 — selisih antar tahap inilah yang jadi bahan bottleneck
-              financial.
+              Selisih antar tahap inilah yang jadi bahan bottleneck financial.
             </CardDescription>
           </div>
           {Number(financial?.outstanding_payment ?? 0) > 0 && (

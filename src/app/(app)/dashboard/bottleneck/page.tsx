@@ -54,7 +54,7 @@ export default async function BottleneckPage() {
     <>
       <PageHeader
         title="Bottleneck Monitoring"
-        description="Kondisi yang membutuhkan perhatian, terdeteksi otomatis dari data — bukan dicatat manual."
+        description="Kondisi yang membutuhkan perhatian."
       />
 
       {error && (
@@ -145,7 +145,7 @@ export default async function BottleneckPage() {
         ) : (
           <EmptyState
             title="Tidak ada bottleneck"
-            description="Semua kondisi Section 9 berada dalam batas yang disetel."
+            description="Semua kondisi berada dalam batas yang disetel."
           />
         )}
       </Card>

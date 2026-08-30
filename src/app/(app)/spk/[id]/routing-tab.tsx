@@ -66,7 +66,7 @@ export async function RoutingTab({ spkId }: { spkId: string }) {
         <div>
           <CardTitle>Dokumen SPK ini</CardTitle>
           <CardDescription>
-            Posisi dan lead time per dokumen (Section 23/24).
+            Posisi dan lead time per dokumen.
           </CardDescription>
         </div>
         <Link href="/routing" className="text-xs font-bold text-primary hover:underline">

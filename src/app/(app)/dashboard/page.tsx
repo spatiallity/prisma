@@ -1,5 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import {
+  FolderKanban,
+  Workflow,
+  FileStack,
+  FileCheck2,
+  Receipt,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -7,12 +16,12 @@ import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatRupiah } from '@/lib/utils'
+import { cn, formatDate, formatRupiah, formatRupiahCompact } from '@/lib/utils'
 import { daysLeft, formatPercent } from '@/lib/spk'
 import { UPDATE_STATUS_TONE } from '@/lib/schedule'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
-import { filterLeafAccounts } from '@/lib/financial'
-import { RabDonutChart, SpkStatusChart } from './dashboard-charts'
+import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
+import { RabDonutChart, SpkStatusChart, TopCategoriesChart } from './dashboard-charts'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -26,25 +35,41 @@ export default async function DashboardPage() {
   const supabase = await createClient()
 
   const seeFinance = can(user.permissions, 'spending', 'view')
+  const now = new Date()
+  const currentBulan = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-  const [{ data: kpi }, { data: bottlenecks }, { data: today }, { data: progress }, { data: akunSummary }, { data: spkStatuses }] =
-    await Promise.all([
-      supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
-      supabase.from('v_bottleneck').select('*'),
-      can(user.permissions, 'schedule', 'view')
-        ? supabase.from('v_today_schedule').select('*')
-        : Promise.resolve({ data: [] }),
-      supabase
-        .from('v_spk_progress')
-        .select('*')
-        .eq('status', 'On Going')
-        .order('overall_progress', { ascending: false })
-        .limit(6),
-      seeFinance
-        ? supabase.from('v_finance_akun_summary').select('*')
-        : Promise.resolve({ data: [] }),
-      supabase.from('spks').select('status'),
-    ])
+  const [
+    { data: kpi },
+    { data: bottlenecks },
+    { data: today },
+    { data: progress },
+    { data: akunSummary },
+    { data: spkStatuses },
+    { data: monthTx },
+  ] = await Promise.all([
+    supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
+    supabase.from('v_bottleneck').select('*'),
+    can(user.permissions, 'schedule', 'view')
+      ? supabase.from('v_today_schedule').select('*')
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from('v_spk_progress')
+      .select('*')
+      .eq('status', 'On Going')
+      .order('overall_progress', { ascending: false })
+      .limit(6),
+    seeFinance
+      ? supabase.from('v_finance_akun_summary').select('*')
+      : Promise.resolve({ data: [] }),
+    supabase.from('spks').select('status'),
+    seeFinance
+      ? supabase
+          .from('finance_transactions')
+          .select('kode_akun, jumlah')
+          .eq('status', 'Active')
+          .eq('bulan', currentBulan)
+      : Promise.resolve({ data: [] }),
+  ])
 
   const statusCounts = new Map<string, number>()
   for (const row of spkStatuses ?? []) {
@@ -65,6 +90,22 @@ export default async function DashboardPage() {
   const rabPercent =
     rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
 
+  // This month's spend, broken down by account — same kode_akun → uraian
+  // lookup the RAB summary above already has, just resummed per bulan.
+  const uraianByAkun = new Map((akunSummary ?? []).map((a) => [a.kode_akun, a.uraian]))
+  const spendByAkun = new Map<string, number>()
+  for (const row of monthTx ?? []) {
+    spendByAkun.set(row.kode_akun, (spendByAkun.get(row.kode_akun) ?? 0) + Number(row.jumlah))
+  }
+  const monthTotal = [...spendByAkun.values()].reduce((sum, v) => sum + v, 0)
+  const topCategories = [...spendByAkun.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([kodeAkun, jumlah]) => ({
+      label: uraianByAkun.get(kodeAkun) ?? kodeAkun,
+      jumlah,
+    }))
+
   const ranked = [...(bottlenecks ?? [])].sort(
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   )
@@ -74,32 +115,56 @@ export default async function DashboardPage() {
     (row) => row.update_status === 'Updated Today',
   ).length
 
-  // Section 8.1 — the six headline counts, all derived.
-  const tiles = [
-    { label: 'Total SPK', value: kpi?.total_spk ?? 0, foot: `${kpi?.spk_selesai ?? 0} selesai`, href: '/spk' },
-    { label: 'On Going', value: kpi?.spk_on_going ?? 0, foot: 'sedang berjalan', href: '/spk?status=ongoing' },
-    { label: 'Masuk Routing', value: kpi?.spk_routing ?? 0, foot: 'punya dokumen dirutekan', href: '/routing' },
-    { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah terbit PAD', href: '/financial/pad' },
-    { label: 'Invoice', value: kpi?.spk_invoice ?? 0, foot: 'sudah ditagihkan', href: '/financial/invoice' },
-    { label: 'Payment', value: kpi?.spk_payment ?? 0, foot: 'sudah dibayar', href: '/financial/payment' },
+  // Section 8.1 — the six headline counts, all derived. Icon-badge accent
+  // rotates through the brand palette so the tile row reads with some
+  // rhythm instead of six identical teal squares.
+  const tiles: {
+    label: string
+    value: number
+    foot: string
+    href: string
+    icon: LucideIcon
+    accent: 'primary' | 'info' | 'navy' | 'gold' | 'orange'
+  }[] = [
+    { label: 'Total SPK', value: kpi?.total_spk ?? 0, foot: `${kpi?.spk_selesai ?? 0} selesai`, href: '/spk', icon: FolderKanban, accent: 'primary' },
+    { label: 'On Going', value: kpi?.spk_on_going ?? 0, foot: 'sedang berjalan', href: '/spk?status=ongoing', icon: Workflow, accent: 'info' },
+    { label: 'Masuk Routing', value: kpi?.spk_routing ?? 0, foot: 'punya dokumen dirutekan', href: '/routing', icon: FileStack, accent: 'navy' },
+    { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah terbit PAD', href: '/financial/pad', icon: FileCheck2, accent: 'gold' },
+    { label: 'Invoice', value: kpi?.spk_invoice ?? 0, foot: 'sudah ditagihkan', href: '/financial/invoice', icon: Receipt, accent: 'orange' },
+    { label: 'Payment', value: kpi?.spk_payment ?? 0, foot: 'sudah dibayar', href: '/financial/payment', icon: Wallet, accent: 'primary' },
   ]
+
+  const ACCENT_CLASS: Record<(typeof tiles)[number]['accent'], string> = {
+    primary: 'bg-primary-soft text-primary',
+    info: 'bg-info/10 text-info',
+    navy: 'bg-brand-navy/15 text-brand-navy',
+    gold: 'bg-warning/15 text-warning',
+    orange: 'bg-brand-orange/10 text-brand-orange',
+  }
 
   return (
     <>
-      <PageHeader
-        title={`Selamat datang, ${user.fullName.split(' ')[0]}`}
-        description={`Masuk sebagai ${user.role.name}. Semua angka di halaman ini dihitung dari database, tidak ada yang diketik.`}
-      />
+      <PageHeader title={`Selamat datang, ${user.fullName.split(' ')[0]}`} />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href}>
-            <Card className="h-full transition-shadow hover:shadow-md">
+            <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
               <CardContent className="p-4">
-                <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                  {tile.label}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                    {tile.label}
+                  </div>
+                  <div
+                    className={cn(
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                      ACCENT_CLASS[tile.accent],
+                    )}
+                  >
+                    <tile.icon size={15} aria-hidden />
+                  </div>
                 </div>
-                <div className="tnum mt-1 text-3xl font-black text-slate-900">
+                <div className="tnum mt-2 text-3xl font-black text-slate-900">
                   {tile.value}
                 </div>
                 <div className="mt-1 text-xs font-semibold text-muted-foreground">
@@ -117,9 +182,7 @@ export default async function DashboardPage() {
             <CardHeader>
               <div>
                 <CardTitle>Progress SPK On Going</CardTitle>
-                <CardDescription>
-                  Overall Progress = Σ (progress aktivitas × bobot), Section 15.
-                </CardDescription>
+                <CardDescription>Overall Progress = Σ (progress aktivitas × bobot)</CardDescription>
               </div>
               <Link href="/spk" className="text-xs font-bold text-primary hover:underline">
                 Semua SPK
@@ -202,9 +265,6 @@ export default async function DashboardPage() {
               <CardHeader>
                 <div>
                   <CardTitle>Hari ini</CardTitle>
-                  <CardDescription>
-                    Status dihitung dari ada tidaknya Daily Progress, bukan diisi.
-                  </CardDescription>
                 </div>
                 <Badge tone={updatedToday === (today ?? []).length ? 'success' : 'warning'}>
                   {updatedToday}/{(today ?? []).length} sudah update
@@ -270,7 +330,6 @@ export default async function DashboardPage() {
             <CardHeader>
               <div>
                 <CardTitle>Bottleneck</CardTitle>
-                <CardDescription>Terdeteksi otomatis, Section 9.</CardDescription>
               </div>
               <Badge tone={critical > 0 ? 'danger' : ranked.length > 0 ? 'warning' : 'success'}>
                 {ranked.length}
@@ -315,52 +374,86 @@ export default async function DashboardPage() {
             ) : (
               <EmptyState
                 title="Tidak ada bottleneck"
-                description="Semua kondisi Section 9 dalam batas wajar."
+                description="Semua kondisi dalam batas wajar."
               />
             )}
           </Card>
-
-          {seeFinance && (
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
-                  <CardDescription>{rabLeaf.length} kode akun</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
-                <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-                <div className="grid gap-2">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Anggaran</span>
-                    <span className="tnum font-bold text-slate-900">
-                      {formatRupiah(rabTotals.anggaran)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Realisasi</span>
-                    <span className="tnum font-bold text-slate-900">
-                      {formatRupiah(rabTotals.realisasi)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Terpakai</span>
-                    <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
-                      {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
-                    </Badge>
-                  </div>
-                  <Link
-                    href="/financial/rab"
-                    className="mt-1 text-xs font-bold text-primary hover:underline"
-                  >
-                    Rincian per kode akun
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
+
+      {seeFinance && (
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          {topCategories.length > 0 && (
+            <Card className="overflow-hidden rounded-2xl">
+              <CardHeader>
+                <div>
+                  <CardTitle>Pengeluaran {formatMonthLabel(currentBulan)}</CardTitle>
+                  <CardDescription>
+                    Total{' '}
+                    <span
+                      className="tnum font-bold text-slate-900"
+                      title={formatRupiah(monthTotal)}
+                    >
+                      {formatRupiahCompact(monthTotal)}
+                    </span>{' '}
+                    · top {topCategories.length} kategori
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <TopCategoriesChart data={topCategories} />
+            </Card>
+          )}
+
+          <Card
+            className={cn(
+              'overflow-hidden rounded-2xl',
+              topCategories.length === 0 && 'lg:col-span-2',
+            )}
+          >
+            <CardHeader>
+              <div>
+                <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
+                <CardDescription>{rabLeaf.length} kode akun</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
+              <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
+              <div className="grid gap-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Anggaran</span>
+                  <span
+                    className="tnum truncate font-bold whitespace-nowrap text-slate-900"
+                    title={formatRupiah(rabTotals.anggaran)}
+                  >
+                    {formatRupiahCompact(rabTotals.anggaran)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Realisasi</span>
+                  <span
+                    className="tnum truncate font-bold whitespace-nowrap text-slate-900"
+                    title={formatRupiah(rabTotals.realisasi)}
+                  >
+                    {formatRupiahCompact(rabTotals.realisasi)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Terpakai</span>
+                  <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                    {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                  </Badge>
+                </div>
+                <Link
+                  href="/financial/rab"
+                  className="mt-1 text-xs font-bold text-primary hover:underline"
+                >
+                  Rincian per kode akun
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </>
   )
 }

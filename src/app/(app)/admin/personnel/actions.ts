@@ -46,6 +46,40 @@ export async function createPersonnel(
   return { error: null, success: `${fullName} ditambahkan.` }
 }
 
+export async function updatePersonnel(
+  _prev: PersonnelState,
+  formData: FormData,
+): Promise<PersonnelState> {
+  await requirePermission('master_data', 'edit')
+
+  const id = text(formData, 'id')
+  const fullName = text(formData, 'full_name')
+  if (!id) return { error: 'Personel tidak dikenali.' }
+  if (!fullName) return { error: 'Nama lengkap wajib diisi.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('personnel')
+    .update({
+      full_name: fullName,
+      code: nullable(formData, 'code'),
+      position: nullable(formData, 'position'),
+      join_date: nullable(formData, 'join_date'),
+      notes: nullable(formData, 'notes'),
+    })
+    .eq('id', id)
+
+  if (error) {
+    return {
+      error:
+        error.code === '23505' ? 'Kode personel sudah dipakai.' : error.message,
+    }
+  }
+
+  revalidatePath('/admin/personnel')
+  return { error: null, success: `${fullName} diperbarui.` }
+}
+
 /** Section 4.4 — someone who leaves is deactivated, never deleted; their
  *  recorded costs must stay readable. */
 export async function setPersonnelStatus(

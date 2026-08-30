@@ -1,12 +1,14 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input, Select } from '@/components/ui/field'
+import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
+import type { Database } from '@/lib/supabase/types'
 import {
   createMember,
   createTeam,
@@ -14,8 +16,13 @@ import {
   deleteTeam,
   setMemberStatus,
   setTeamStatus,
+  updateMember,
+  updateTeam,
   type VendorFormState,
 } from './actions'
+
+type VendorTeamRow = Database['public']['Tables']['vendor_teams']['Row']
+type VendorMemberRow = Database['public']['Tables']['vendor_members']['Row']
 
 const initialState: VendorFormState = { error: null }
 
@@ -107,6 +114,127 @@ export function AddMemberForm({
         <InlineSubmit label="Tambah anggota" />
       </div>
     </form>
+  )
+}
+
+function EditSubmit() {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={pending}>
+      <Plus size={16} aria-hidden />
+      {pending ? 'Menyimpan…' : 'Simpan perubahan'}
+    </Button>
+  )
+}
+
+/** Row-level "Edit" trigger for a team's name — modal, pre-filled. */
+export function EditTeamButton({ team, vendorId }: { team: VendorTeamRow; vendorId: string }) {
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useActionState(updateTeam, initialState)
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      setOpen(false)
+    }
+  }, [state.success])
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit team"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <form action={formAction} className="grid gap-3">
+        <Feedback state={state} />
+        <input type="hidden" name="id" value={team.id} />
+        <input type="hidden" name="vendor_id" value={vendorId} />
+        <Field label="Nama team" htmlFor="et_name" required>
+          <Input id="et_name" name="name" required defaultValue={team.name} />
+        </Field>
+        <div>
+          <EditSubmit />
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/** Row-level "Edit" trigger for a member's details — modal, pre-filled. */
+export function EditMemberButton({
+  member,
+  vendorId,
+  teams,
+}: {
+  member: VendorMemberRow
+  vendorId: string
+  teams: { id: string; name: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useActionState(updateMember, initialState)
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      setOpen(false)
+    }
+  }, [state.success])
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit anggota"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <form action={formAction} className="grid gap-3">
+        <Feedback state={state} />
+        <input type="hidden" name="id" value={member.id} />
+        <input type="hidden" name="vendor_id" value={vendorId} />
+        <Field label="Team" htmlFor="em_team" required>
+          <Select id="em_team" name="team_id" required defaultValue={member.team_id}>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Nama anggota" htmlFor="em_name" required>
+          <Input id="em_name" name="full_name" required defaultValue={member.full_name} />
+        </Field>
+        <Field label="Posisi" htmlFor="em_pos">
+          <Input id="em_pos" name="position" defaultValue={member.position ?? undefined} />
+        </Field>
+        <Field label="Telepon" htmlFor="em_phone">
+          <Input id="em_phone" name="phone" defaultValue={member.phone ?? undefined} />
+        </Field>
+        <div>
+          <EditSubmit />
+        </div>
+      </form>
+    </Modal>
   )
 }
 

@@ -76,6 +76,45 @@ export async function createDailyPlan(
   return { error: null, success: 'Daily Plan tersimpan.' }
 }
 
+export async function updateDailyPlan(
+  _prev: ScheduleState,
+  formData: FormData,
+): Promise<ScheduleState> {
+  await requirePermission('daily_plan', 'edit')
+
+  const id = text(formData, 'id')
+  const spkId = text(formData, 'spk_id')
+  const planDate = text(formData, 'plan_date')
+  if (!id) return { error: 'Plan tidak dikenali.' }
+  if (!spkId || !planDate) return { error: 'SPK dan tanggal wajib diisi.' }
+
+  const activityId = nullable(formData, 'spk_activity_id')
+  const target = numeric(formData, 'target_value')
+  if (target !== null && target < 0) return { error: 'Target tidak boleh negatif.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('daily_plans')
+    .update({
+      spk_id: spkId,
+      spk_activity_id: activityId,
+      plan_date: planDate,
+      vendor_id: nullable(formData, 'vendor_id'),
+      team_id: nullable(formData, 'team_id'),
+      target_value: target,
+      unit: text(formData, 'unit') || (await unitForActivity(activityId)),
+      notes: nullable(formData, 'notes'),
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/schedule')
+  revalidatePath('/schedule/daily-plan')
+  revalidatePath(`/spk/${spkId}`)
+  return { error: null, success: 'Daily Plan diperbarui.' }
+}
+
 /** Section 4.4 — a cancelled plan goes Inactive, it is never deleted. */
 export async function setPlanStatus(
   _prev: ScheduleState,
@@ -161,6 +200,71 @@ export async function createDailyProgress(
   return {
     error: null,
     success: 'Daily Progress tersimpan. Progress SPK diperbarui otomatis.',
+  }
+}
+
+/** Same shape as create — the trigger from migration 0005 handles UPDATE too,
+ *  re-accumulating both the old and new activity/date coordinates. */
+export async function updateDailyProgress(
+  _prev: ScheduleState,
+  formData: FormData,
+): Promise<ScheduleState> {
+  await requirePermission('daily_progress', 'edit')
+
+  const id = text(formData, 'id')
+  const spkId = text(formData, 'spk_id')
+  const progressDate = text(formData, 'progress_date')
+  const actual = numeric(formData, 'actual_value')
+
+  if (!id) return { error: 'Entri tidak dikenali.' }
+  if (!spkId || !progressDate) return { error: 'SPK dan tanggal wajib diisi.' }
+  if (actual === null) return { error: 'Hasil aktual wajib diisi.' }
+  if (actual < 0) return { error: 'Hasil aktual tidak boleh negatif.' }
+
+  const planId = nullable(formData, 'daily_plan_id')
+  let activityId = nullable(formData, 'spk_activity_id')
+  let vendorId = nullable(formData, 'vendor_id')
+  let teamId = nullable(formData, 'team_id')
+
+  const supabase = await createClient()
+
+  if (planId) {
+    const { data: plan } = await supabase
+      .from('daily_plans')
+      .select('spk_activity_id, vendor_id, team_id')
+      .eq('id', planId)
+      .maybeSingle()
+    if (plan) {
+      activityId = activityId ?? plan.spk_activity_id
+      vendorId = vendorId ?? plan.vendor_id
+      teamId = teamId ?? plan.team_id
+    }
+  }
+
+  const { error } = await supabase
+    .from('daily_progress')
+    .update({
+      daily_plan_id: planId,
+      spk_id: spkId,
+      spk_activity_id: activityId,
+      progress_date: progressDate,
+      vendor_id: vendorId,
+      team_id: teamId,
+      actual_value: actual,
+      unit: text(formData, 'unit') || (await unitForActivity(activityId)),
+      notes: nullable(formData, 'notes'),
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/schedule/daily-progress')
+  revalidatePath('/schedule')
+  revalidatePath(`/spk/${spkId}`)
+  revalidatePath('/spk')
+  return {
+    error: null,
+    success: 'Daily Progress diperbarui. Progress SPK dihitung ulang otomatis.',
   }
 }
 

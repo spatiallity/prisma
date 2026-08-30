@@ -6,12 +6,17 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
+import type { Database } from '@/lib/supabase/types'
 import {
   createPersonnel,
+  updatePersonnel,
   setPersonnelStatus,
   type PersonnelState,
 } from './actions'
+
+type PersonnelRow = Database['public']['Tables']['personnel']['Row']
 
 const initialState: PersonnelState = { error: null }
 
@@ -21,18 +26,29 @@ function Feedback({ state }: { state: PersonnelState }) {
   return null
 }
 
-function Submit() {
+function Submit({ editing }: { editing: boolean }) {
   const { pending } = useFormStatus()
   return (
     <Button type="submit" disabled={pending}>
       <Plus size={16} aria-hidden />
-      {pending ? 'Menyimpan…' : 'Tambah personel'}
+      {pending ? 'Menyimpan…' : editing ? 'Simpan perubahan' : 'Tambah personel'}
     </Button>
   )
 }
 
-export function PersonnelForm({ onSaved }: { onSaved?: () => void }) {
-  const [state, formAction] = useActionState(createPersonnel, initialState)
+export function PersonnelForm({
+  personnel,
+  onSaved,
+}: {
+  /** Present → editing this existing row instead of creating a new one. */
+  personnel?: PersonnelRow
+  onSaved?: () => void
+}) {
+  const editing = !!personnel
+  const [state, formAction] = useActionState(
+    editing ? updatePersonnel : createPersonnel,
+    initialState,
+  )
   const savedKey = useRef<string | undefined>(undefined)
 
   useEffect(() => {
@@ -46,20 +62,22 @@ export function PersonnelForm({ onSaved }: { onSaved?: () => void }) {
     <form action={formAction} className="grid gap-3">
       <Feedback state={state} />
 
+      {personnel && <input type="hidden" name="id" value={personnel.id} />}
+
       <Field label="Nama lengkap" htmlFor="pn_name" required>
-        <Input id="pn_name" name="full_name" required />
+        <Input id="pn_name" name="full_name" required defaultValue={personnel?.full_name} />
       </Field>
       <Field label="Kode" htmlFor="pn_code">
-        <Input id="pn_code" name="code" placeholder="SVY-01" />
+        <Input id="pn_code" name="code" placeholder="SVY-01" defaultValue={personnel?.code ?? undefined} />
       </Field>
       <Field label="Posisi" htmlFor="pn_pos">
-        <Input id="pn_pos" name="position" placeholder="Surveyor" />
+        <Input id="pn_pos" name="position" placeholder="Surveyor" defaultValue={personnel?.position ?? undefined} />
       </Field>
       <Field label="Tanggal masuk" htmlFor="pn_join">
-        <Input id="pn_join" name="join_date" type="date" />
+        <Input id="pn_join" name="join_date" type="date" defaultValue={personnel?.join_date ?? undefined} />
       </Field>
       <div>
-        <Submit />
+        <Submit editing={editing} />
       </div>
     </form>
   )
@@ -81,6 +99,30 @@ export function AddPersonnelButton() {
       }
     >
       <PersonnelForm onSaved={() => setOpen(false)} />
+    </Modal>
+  )
+}
+
+/** Row-level "Edit" trigger — opens the same form pre-filled. */
+export function EditPersonnelButton({ personnel }: { personnel: PersonnelRow }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit personel"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <PersonnelForm personnel={personnel} onSaved={() => setOpen(false)} />
     </Modal>
   )
 }

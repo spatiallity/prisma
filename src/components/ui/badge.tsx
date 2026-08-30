@@ -5,11 +5,11 @@ type Tone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
 
 const tones: Record<Tone, string> = {
   neutral: 'bg-slate-100 text-slate-600 border-slate-200',
-  primary: 'bg-primary-soft text-primary border-blue-200',
+  primary: 'bg-primary-soft text-primary border-primary/25',
   success: 'bg-green-50 text-success border-green-200',
   warning: 'bg-amber-50 text-warning border-amber-200',
   danger: 'bg-red-50 text-danger border-red-200',
-  info: 'bg-primary-soft text-info border-blue-200',
+  info: 'bg-slate-100 text-info border-slate-200',
 }
 
 export function Badge({

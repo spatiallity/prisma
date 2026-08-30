@@ -1,18 +1,26 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
+import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
+import type { Database } from '@/lib/supabase/types'
 import {
   createDailyPlan,
   createDailyProgress,
   setPlanStatus,
   setProgressStatus,
+  updateDailyPlan,
+  updateDailyProgress,
   type ScheduleState,
 } from './actions'
 import type { ScheduleOptions } from './options'
+
+type DailyPlanRow = Database['public']['Tables']['daily_plans']['Row']
+type DailyProgressRow = Database['public']['Tables']['daily_progress']['Row']
 
 const initialState: ScheduleState = { error: null }
 
@@ -32,9 +40,9 @@ function Submit({ label }: { label: string }) {
 }
 
 /** SPK → activity, vendor → team: the second select follows the first. */
-function useCascade(options: ScheduleOptions) {
-  const [spkId, setSpkId] = useState(options.spks[0]?.id ?? '')
-  const [vendorId, setVendorId] = useState('')
+function useCascade(options: ScheduleOptions, initialSpkId?: string, initialVendorId?: string) {
+  const [spkId, setSpkId] = useState(initialSpkId ?? options.spks[0]?.id ?? '')
+  const [vendorId, setVendorId] = useState(initialVendorId ?? '')
 
   return {
     spkId,
@@ -46,12 +54,30 @@ function useCascade(options: ScheduleOptions) {
   }
 }
 
-export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
-  const [state, formAction] = useActionState(createDailyPlan, initialState)
-  const cascade = useCascade(options)
+export function DailyPlanForm({
+  options,
+  plan,
+  onSaved,
+}: {
+  options: ScheduleOptions
+  /** Present → editing this existing plan instead of creating a new one. */
+  plan?: DailyPlanRow
+  onSaved?: () => void
+}) {
+  const editing = !!plan
+  const [state, formAction] = useActionState(editing ? updateDailyPlan : createDailyPlan, initialState)
+  const cascade = useCascade(options, plan?.spk_id, plan?.vendor_id ?? undefined)
   const today = new Date().toISOString().slice(0, 10)
+  const savedKey = useRef<string | undefined>(undefined)
 
-  if (options.spks.length === 0) {
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      onSaved?.()
+    }
+  }, [state.success, onSaved])
+
+  if (options.spks.length === 0 && !editing) {
     return (
       <Alert tone="warning">
         Belum ada SPK berstatus Draft atau On Going untuk dijadwalkan.
@@ -62,6 +88,8 @@ export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
   return (
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
+
+      {plan && <input type="hidden" name="id" value={plan.id} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="SPK" htmlFor="plan_spk" required className="lg:col-span-2">
@@ -81,7 +109,13 @@ export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
         </Field>
 
         <Field label="Tanggal" htmlFor="plan_date" required>
-          <Input id="plan_date" name="plan_date" type="date" defaultValue={today} required />
+          <Input
+            id="plan_date"
+            name="plan_date"
+            type="date"
+            defaultValue={plan?.plan_date ?? today}
+            required
+          />
         </Field>
 
         <Field
@@ -93,7 +127,7 @@ export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
               : undefined
           }
         >
-          <Select id="plan_activity" name="spk_activity_id" defaultValue="">
+          <Select id="plan_activity" name="spk_activity_id" defaultValue={plan?.spk_activity_id ?? ''}>
             <option value="">— tidak spesifik —</option>
             {cascade.activities.map((activity) => (
               <option key={activity.id} value={activity.id}>
@@ -120,7 +154,7 @@ export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
         </Field>
 
         <Field label="Team" htmlFor="plan_team">
-          <Select id="plan_team" name="team_id" defaultValue="">
+          <Select id="plan_team" name="team_id" defaultValue={plan?.team_id ?? ''}>
             <option value="">— seluruh vendor —</option>
             {cascade.teams.map((team) => (
               <option key={team.id} value={team.id}>
@@ -131,45 +165,94 @@ export function DailyPlanForm({ options }: { options: ScheduleOptions }) {
         </Field>
 
         <Field label="Target" htmlFor="plan_target">
-          <Input id="plan_target" name="target_value" inputMode="decimal" placeholder="1.5" />
+          <Input
+            id="plan_target"
+            name="target_value"
+            inputMode="decimal"
+            placeholder="1.5"
+            defaultValue={plan?.target_value ?? undefined}
+          />
         </Field>
 
         <Field label="Satuan" htmlFor="plan_unit" hint="Kosong = ikut satuan aktivitas.">
-          <Input id="plan_unit" name="unit" placeholder="Ha" />
+          <Input id="plan_unit" name="unit" placeholder="Ha" defaultValue={plan?.unit ?? undefined} />
         </Field>
 
         <Field label="Catatan" htmlFor="plan_notes" className="sm:col-span-2">
-          <Input id="plan_notes" name="notes" />
+          <Input id="plan_notes" name="notes" defaultValue={plan?.notes ?? undefined} />
         </Field>
       </div>
 
       <div>
-        <Submit label="Simpan Daily Plan" />
+        <Submit label={editing ? 'Simpan perubahan' : 'Simpan Daily Plan'} />
       </div>
     </form>
+  )
+}
+
+/** Row-level "Edit" trigger — opens the same form pre-filled. */
+export function EditDailyPlanButton({ plan, options }: { plan: DailyPlanRow; options: ScheduleOptions }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit Daily Plan"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <DailyPlanForm options={options} plan={plan} onSaved={() => setOpen(false)} />
+    </Modal>
   )
 }
 
 export function DailyProgressForm({
   options,
   plans,
+  entry,
+  onSaved,
 }: {
   options: ScheduleOptions
   plans: { id: string; label: string; spkId: string }[]
+  /** Present → editing this existing entry instead of creating a new one. */
+  entry?: DailyProgressRow
+  onSaved?: () => void
 }) {
-  const [state, formAction] = useActionState(createDailyProgress, initialState)
-  const cascade = useCascade(options)
+  const editing = !!entry
+  const [state, formAction] = useActionState(
+    editing ? updateDailyProgress : createDailyProgress,
+    initialState,
+  )
+  const cascade = useCascade(options, entry?.spk_id, entry?.vendor_id ?? undefined)
   const today = new Date().toISOString().slice(0, 10)
+  const savedKey = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (state.success && state.success !== savedKey.current) {
+      savedKey.current = state.success
+      onSaved?.()
+    }
+  }, [state.success, onSaved])
 
   const spkPlans = plans.filter((plan) => plan.spkId === cascade.spkId)
 
-  if (options.spks.length === 0) {
+  if (options.spks.length === 0 && !editing) {
     return <Alert tone="warning">Belum ada SPK aktif untuk dilaporkan.</Alert>
   }
 
   return (
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
+
+      {entry && <input type="hidden" name="id" value={entry.id} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="SPK" htmlFor="prog_spk" required className="lg:col-span-2">
@@ -193,7 +276,7 @@ export function DailyProgressForm({
             id="prog_date"
             name="progress_date"
             type="date"
-            defaultValue={today}
+            defaultValue={entry?.progress_date ?? today}
             required
           />
         </Field>
@@ -204,7 +287,7 @@ export function DailyProgressForm({
           hint="Memilih plan otomatis mewarisi aktivitas, vendor, dan team-nya."
           className="lg:col-span-2"
         >
-          <Select id="prog_plan" name="daily_plan_id" defaultValue="">
+          <Select id="prog_plan" name="daily_plan_id" defaultValue={entry?.daily_plan_id ?? ''}>
             <option value="">— tanpa plan —</option>
             {spkPlans.map((plan) => (
               <option key={plan.id} value={plan.id}>
@@ -215,7 +298,7 @@ export function DailyProgressForm({
         </Field>
 
         <Field label="Aktivitas" htmlFor="prog_activity">
-          <Select id="prog_activity" name="spk_activity_id" defaultValue="">
+          <Select id="prog_activity" name="spk_activity_id" defaultValue={entry?.spk_activity_id ?? ''}>
             <option value="">— ikut plan —</option>
             {cascade.activities.map((activity) => (
               <option key={activity.id} value={activity.id}>
@@ -237,22 +320,55 @@ export function DailyProgressForm({
             inputMode="decimal"
             required
             placeholder="1.4"
+            defaultValue={entry?.actual_value ?? undefined}
           />
         </Field>
 
         <Field label="Satuan" htmlFor="prog_unit">
-          <Input id="prog_unit" name="unit" placeholder="Ha" />
+          <Input id="prog_unit" name="unit" placeholder="Ha" defaultValue={entry?.unit ?? undefined} />
         </Field>
 
         <Field label="Catatan" htmlFor="prog_notes">
-          <Input id="prog_notes" name="notes" />
+          <Input id="prog_notes" name="notes" defaultValue={entry?.notes ?? undefined} />
         </Field>
       </div>
 
       <div>
-        <Submit label="Simpan Daily Progress" />
+        <Submit label={editing ? 'Simpan perubahan' : 'Simpan Daily Progress'} />
       </div>
     </form>
+  )
+}
+
+/** Row-level "Edit" trigger — opens the same form pre-filled. */
+export function EditDailyProgressButton({
+  entry,
+  options,
+  plans,
+}: {
+  entry: DailyProgressRow
+  options: ScheduleOptions
+  plans: { id: string; label: string; spkId: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit Daily Progress"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <DailyProgressForm options={options} plans={plans} entry={entry} onSaved={() => setOpen(false)} />
+    </Modal>
   )
 }
 

@@ -66,7 +66,7 @@ export async function DesignTab({ spkId }: { spkId: string }) {
           <div>
             <CardTitle>{design.title ?? 'Desain'}</CardTitle>
             <CardDescription>
-              Section 21 — tanpa penyimpanan file; yang dilacak tahap, PIC, dan lamanya.
+              Tanpa penyimpanan file — yang dilacak tahap, PIC, dan lamanya.
             </CardDescription>
           </div>
           <Link

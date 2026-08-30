@@ -37,7 +37,7 @@ export default async function AuditLogPage() {
     <>
       <PageHeader
         title="Audit Log"
-        description={`Section 33 — siapa mengubah apa, kapan, dari nilai berapa. ${PAGE_SIZE} perubahan terakhir.`}
+        description={`Siapa mengubah apa, kapan, dari nilai berapa. ${PAGE_SIZE} perubahan terakhir.`}
       />
 
       {error && (

@@ -58,8 +58,8 @@ export async function ProgressTab({
             <div>
               <CardTitle>Belum ada aktivitas</CardTitle>
               <CardDescription>
-                Terapkan Progress Template (Section 17) untuk membuat daftar
-                aktivitas beserta bobotnya sekaligus.
+                Terapkan Progress Template untuk membuat daftar aktivitas
+                beserta bobotnya sekaligus.
               </CardDescription>
             </div>
           </CardHeader>

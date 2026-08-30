@@ -8,8 +8,7 @@ import { formatDate, formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
 import type { FinanceTransactionRow } from '@/lib/supabase/types'
 import { deleteFinanceTransaction } from './rab/actions'
-
-type AkunOption = { kode_akun: string; uraian: string }
+import { EditTransactionButton, type AkunOption } from './rab/finance-form'
 
 /**
  * Column definitions (and their render closures) have to live in a client
@@ -123,11 +122,14 @@ export function FinanceTransactionsTable({
             label: 'Aksi',
             align: 'right',
             render: (row: FinanceTransactionRow) => (
-              <DeleteButton
-                action={deleteFinanceTransaction}
-                hiddenFields={{ id: row.id }}
-                itemLabel="transaksi ini"
-              />
+              <div className="flex items-center justify-end gap-3">
+                <EditTransactionButton akunOptions={coa} transaction={row} />
+                <DeleteButton
+                  action={deleteFinanceTransaction}
+                  hiddenFields={{ id: row.id }}
+                  itemLabel="transaksi ini"
+                />
+              </div>
             ),
           } satisfies DataTableColumn<FinanceTransactionRow>,
         ]

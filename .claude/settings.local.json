@@ -29,7 +29,15 @@
       "Bash(\"C:\\\\Users\\\\Arvian Riatmaja\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import json,sys; print\\(json.load\\(sys.stdin\\)['scripts']\\)\")",
       "Bash(git check-ignore *)",
       "Bash(pnpm add *)",
-      "Bash(rtk gh *)"
+      "Bash(rtk gh *)",
+      "Bash(git remote *)",
+      "Bash(gh repo *)",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__list_teams",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__list_projects",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__create_git_project",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__get_deployment",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__web_fetch_vercel_url",
+      "mcp__6ab11833-4e86-4c94-9eb5-a571d3cd2260__get_project"
     ],
     "defaultMode": "bypassPermissions"
   }

@@ -34,6 +34,39 @@ const GAJI_AKUN: Record<'Upah' | 'Tunjangan', string> = {
   Tunjangan: '1.7.3',
 }
 
+/** Shared by insert and update — same fields, same validation either way. */
+function parseTransactionFields(formData: FormData) {
+  const kategori = text(formData, 'kategori') as FinanceCategory
+  const tanggal = text(formData, 'tanggal')
+  const jumlah = money(formData, 'jumlah')
+  const jenisDetail = nullable(formData, 'jenis_detail')
+
+  if (!kategori) return { error: 'Kategori wajib dipilih.' } as const
+  if (!tanggal) return { error: 'Tanggal wajib diisi.' } as const
+  if (jumlah === null || jumlah <= 0) return { error: 'Jumlah harus lebih dari nol.' } as const
+
+  let kodeAkun = FIXED_AKUN[kategori] ?? null
+  if (kategori === 'gaji_ptt') {
+    if (jenisDetail !== 'Upah' && jenisDetail !== 'Tunjangan') {
+      return { error: 'Jenis (Upah/Tunjangan) wajib dipilih.' } as const
+    }
+    kodeAkun = GAJI_AKUN[jenisDetail]
+  }
+  if (!kodeAkun) {
+    kodeAkun = text(formData, 'kode_akun') || null
+    if (!kodeAkun) return { error: 'Kode akun wajib dipilih.' } as const
+  }
+
+  return {
+    error: null,
+    kategori,
+    kodeAkun,
+    tanggal,
+    jumlah,
+    jenisDetail,
+  } as const
+}
+
 /**
  * One action for every kategori — the Excel-tab origin only changes which
  * kode_akun is allowed and which extra fields apply, not the shape of the row.
@@ -44,26 +77,9 @@ export async function saveFinanceTransaction(
 ): Promise<FinanceTxState> {
   const user = await requirePermission('spending', 'edit')
 
-  const kategori = text(formData, 'kategori') as FinanceCategory
-  const tanggal = text(formData, 'tanggal')
-  const jumlah = money(formData, 'jumlah')
-  const jenisDetail = nullable(formData, 'jenis_detail')
-
-  if (!kategori) return { error: 'Kategori wajib dipilih.' }
-  if (!tanggal) return { error: 'Tanggal wajib diisi.' }
-  if (jumlah === null || jumlah <= 0) return { error: 'Jumlah harus lebih dari nol.' }
-
-  let kodeAkun = FIXED_AKUN[kategori] ?? null
-  if (kategori === 'gaji_ptt') {
-    if (jenisDetail !== 'Upah' && jenisDetail !== 'Tunjangan') {
-      return { error: 'Jenis (Upah/Tunjangan) wajib dipilih.' }
-    }
-    kodeAkun = GAJI_AKUN[jenisDetail]
-  }
-  if (!kodeAkun) {
-    kodeAkun = text(formData, 'kode_akun') || null
-    if (!kodeAkun) return { error: 'Kode akun wajib dipilih.' }
-  }
+  const parsed = parseTransactionFields(formData)
+  if (parsed.error) return { error: parsed.error }
+  const { kategori, kodeAkun, tanggal, jumlah, jenisDetail } = parsed
 
   const supabase = await createClient()
 
@@ -96,6 +112,51 @@ export async function saveFinanceTransaction(
   revalidatePath('/financial/rab')
   revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
   return { error: null, success: 'Transaksi tersimpan.' }
+}
+
+/** Same fields as create — corrects a typo/wrong amount without touching audit history's row identity. */
+export async function updateFinanceTransaction(
+  _prev: FinanceTxState,
+  formData: FormData,
+): Promise<FinanceTxState> {
+  await requirePermission('spending', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'Transaksi tidak dikenali.' }
+
+  const parsed = parseTransactionFields(formData)
+  if (parsed.error) return { error: parsed.error }
+  const { kategori, kodeAkun, tanggal, jumlah, jenisDetail } = parsed
+
+  const supabase = await createClient()
+
+  const { data: akun } = await supabase
+    .from('chart_of_accounts')
+    .select('kode_akun')
+    .eq('kode_akun', kodeAkun)
+    .maybeSingle()
+  if (!akun) return { error: 'Kode akun tidak dikenali.' }
+
+  const { error } = await supabase
+    .from('finance_transactions')
+    .update({
+      kategori,
+      kode_akun: kodeAkun,
+      tanggal,
+      bulan: `${tanggal.slice(0, 7)}-01`,
+      jumlah,
+      deskripsi: nullable(formData, 'deskripsi'),
+      no_bukti: nullable(formData, 'no_bukti'),
+      personil_nama: nullable(formData, 'personil_nama'),
+      jenis_detail: kategori === 'gaji_ptt' ? jenisDetail : null,
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/financial/rab')
+  revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
+  return { error: null, success: 'Perubahan tersimpan.' }
 }
 
 /**

@@ -78,8 +78,7 @@ export function ApplyTemplateForm({
         <Submit label="Terapkan template" icon={<Wand2 size={16} aria-hidden />} />
       </div>
       <p className="text-xs text-muted-foreground">
-        Aktivitas berbasis luas otomatis memakai luas area SPK sebagai target
-        (Section 4.2).
+        Aktivitas berbasis luas otomatis memakai luas area SPK sebagai target.
       </p>
     </form>
   )

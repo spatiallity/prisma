@@ -194,7 +194,7 @@ export function DesignDetailsForm({
         <Field
           label="Status"
           htmlFor="u_status"
-          hint="Section 4.4 — record dinonaktifkan, tidak dihapus."
+          hint="Record dinonaktifkan, tidak dihapus."
         >
           <Select id="u_status" name="status" defaultValue={design.status}>
             <option value="Active">Active</option>

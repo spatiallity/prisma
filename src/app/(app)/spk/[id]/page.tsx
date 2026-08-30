@@ -197,12 +197,8 @@ export default async function SpkDetailPage({
               {t.label}
             </Link>
           ) : (
-            <span
-              key={t.key}
-              className={className}
-              title={`Tab ${t.label} dibangun pada Phase ${t.phase} (Section 37)`}
-            >
-              {t.label} · P{t.phase}
+            <span key={t.key} className={className} title={`Tab ${t.label} belum tersedia`}>
+              {t.label}
             </span>
           )
         })}
@@ -263,7 +259,7 @@ export default async function SpkDetailPage({
                 value={
                   progress
                     ? `${progress.activity_completed}/${progress.activity_count} selesai`
-                    : 'Belum ada (Phase 3)'
+                    : 'Belum ada aktivitas'
                 }
               />
             </dl>

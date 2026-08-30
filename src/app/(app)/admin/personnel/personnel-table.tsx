@@ -5,7 +5,7 @@ import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import type { Database } from '@/lib/supabase/types'
-import { PersonnelStatusToggle } from './forms'
+import { EditPersonnelButton, PersonnelStatusToggle } from './forms'
 import { deletePersonnel } from './actions'
 
 type PersonnelRow = Database['public']['Tables']['personnel']['Row']
@@ -91,6 +91,7 @@ export function PersonnelTable({
             align: 'right' as const,
             render: (row: PersonnelRow) => (
               <div className="flex items-center justify-end gap-3">
+                <EditPersonnelButton personnel={row} />
                 <PersonnelStatusToggle id={row.id} status={row.status} />
                 <DeleteButton action={deletePersonnel} hiddenFields={{ id: row.id }} />
               </div>

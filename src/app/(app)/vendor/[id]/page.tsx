@@ -12,7 +12,14 @@ import { can } from '@/lib/auth/permissions'
 import { formatDate } from '@/lib/utils'
 import { updateVendor } from '../actions'
 import { VendorForm } from '../vendor-form'
-import { AddMemberForm, AddTeamForm, DeleteEntry, StatusToggle } from '../team-forms'
+import {
+  AddMemberForm,
+  AddTeamForm,
+  DeleteEntry,
+  EditMemberButton,
+  EditTeamButton,
+  StatusToggle,
+} from '../team-forms'
 
 export const metadata: Metadata = { title: 'Detail vendor' }
 
@@ -115,6 +122,7 @@ export default async function VendorDetailPage({
                         {mayEdit && (
                           <Td className="text-right">
                             <div className="flex items-center justify-end gap-3">
+                              <EditTeamButton team={team} vendorId={vendor.id} />
                               <StatusToggle
                                 kind="team"
                                 id={team.id}
@@ -173,6 +181,11 @@ export default async function VendorDetailPage({
                         {mayEdit && (
                           <Td className="text-right">
                             <div className="flex items-center justify-end gap-3">
+                              <EditMemberButton
+                                member={member}
+                                vendorId={vendor.id}
+                                teams={teams ?? []}
+                              />
                               <StatusToggle
                                 kind="member"
                                 id={member.id}

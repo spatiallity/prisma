@@ -47,7 +47,7 @@ export default async function VendorListPage() {
     <>
       <PageHeader
         title="Vendor Jasa Survey"
-        description="Master vendor beserta team dan anggotanya (Section 19)."
+        description="Master vendor beserta team dan anggotanya."
         actions={mayEdit && <AddVendorButton />}
       />
 

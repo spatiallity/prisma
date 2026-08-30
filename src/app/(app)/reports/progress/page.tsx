@@ -139,7 +139,7 @@ export default async function ProgressReportPage() {
           <CardHeader>
             <div>
               <CardTitle>Produktivitas</CardTitle>
-              <CardDescription>Section 20 — hasil per hari kerja.</CardDescription>
+              <CardDescription>Hasil per hari kerja.</CardDescription>
             </div>
           </CardHeader>
 

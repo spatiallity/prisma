@@ -26,7 +26,7 @@ const FEATURES = [
   {
     icon: Wallet,
     label: 'RAB Anggaran vs Realisasi',
-    desc: 'UMK, SPPD, PPBJ, Gaji PTT Project, dan MCU menempel ke satu Chart of Accounts — realisasi dihitung, bukan diketik.',
+    desc: 'UMK, SPPD, PPBJ, Gaji PTT Project, dan MCU menempel ke satu Chart of Accounts.',
   },
 ]
 
