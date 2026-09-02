@@ -337,6 +337,7 @@ export async function createAssignment(
   if (error) return { error: friendlyError(error.message, error.code) }
 
   revalidatePath('/vendor/assignment')
+  revalidatePath(`/vendor/${vendorId}`)
   revalidatePath(`/spk/${spkId}`)
   return { error: null, success: 'Assignment dibuat.' }
 }
@@ -350,6 +351,7 @@ export async function setAssignmentStatus(
 
   const id = text(formData, 'id')
   const spkId = text(formData, 'spk_id')
+  const vendorId = text(formData, 'vendor_id')
   const status = text(formData, 'status') as RecordStatus
   if (!id || !status) return { error: 'Data tidak lengkap.' }
 
@@ -359,6 +361,7 @@ export async function setAssignmentStatus(
 
   revalidatePath('/vendor/assignment')
   if (spkId) revalidatePath(`/spk/${spkId}`)
+  if (vendorId) revalidatePath(`/vendor/${vendorId}`)
   return { error: null, success: `Assignment di-set ${status}.` }
 }
 
@@ -371,6 +374,7 @@ export async function deleteAssignment(
 
   const id = text(formData, 'id')
   const spkId = text(formData, 'spk_id')
+  const vendorId = text(formData, 'vendor_id')
   if (!id) return { error: 'Assignment tidak dikenali.' }
 
   const supabase = await createClient()
@@ -379,5 +383,6 @@ export async function deleteAssignment(
 
   revalidatePath('/vendor/assignment')
   if (spkId) revalidatePath(`/spk/${spkId}`)
+  if (vendorId) revalidatePath(`/vendor/${vendorId}`)
   return { error: null }
 }

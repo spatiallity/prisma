@@ -117,11 +117,13 @@ export default async function AssignmentPage() {
                           <AssignmentStatusToggle
                             id={assignment.id}
                             spkId={assignment.spk_id}
+                            vendorId={assignment.vendor_id}
                             status={assignment.status}
                           />
                           <AssignmentDeleteButton
                             id={assignment.id}
                             spkId={assignment.spk_id}
+                            vendorId={assignment.vendor_id}
                           />
                         </div>
                       </Td>

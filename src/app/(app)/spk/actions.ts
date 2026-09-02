@@ -6,8 +6,15 @@ import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { SpkStatus } from '@/lib/supabase/types'
 import { WORK_TYPE_TEMPLATE_CODE } from '@/lib/spk'
+import { pickFormValues } from '@/lib/form-values'
 
-export type SpkFormState = { error: string | null; success?: string }
+export type SpkFormState = {
+  error: string | null
+  success?: string
+  /** Raw submission, echoed back on error so the form can restore what the
+   *  user typed instead of the action's reset wiping it. */
+  values?: Record<string, string>
+}
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -99,7 +106,7 @@ export async function createSpk(
   const user = await requirePermission('spk', 'create')
 
   const fields = readFields(formData)
-  if (typeof fields === 'string') return { error: fields }
+  if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
   const supabase = await createClient()
 
@@ -132,7 +139,9 @@ export async function createSpk(
     .select('id')
     .single()
 
-  if (error) return { error: friendlyError(error.message, error.code) }
+  if (error) {
+    return { error: friendlyError(error.message, error.code), values: pickFormValues(formData) }
+  }
 
   if (activityTemplate) {
     const { data: items } = await supabase
@@ -171,7 +180,7 @@ export async function updateSpk(
   if (!id) return { error: 'SPK tidak dikenali.' }
 
   const fields = readFields(formData)
-  if (typeof fields === 'string') return { error: fields }
+  if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -179,7 +188,9 @@ export async function updateSpk(
     .update({ ...fields, updated_by: user.id })
     .eq('id', id)
 
-  if (error) return { error: friendlyError(error.message, error.code) }
+  if (error) {
+    return { error: friendlyError(error.message, error.code), values: pickFormValues(formData) }
+  }
 
   revalidatePath('/spk')
   revalidatePath(`/spk/${id}`)

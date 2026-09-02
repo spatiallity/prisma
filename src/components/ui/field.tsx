@@ -1,5 +1,34 @@
+'use client'
+
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+
+/**
+ * A Server Action resets a `<form>`'s uncontrolled inputs once it returns —
+ * even on a validation error the page never left. Pair with a server action
+ * that echoes `values: pickFormValues(formData)` (lib/form-values.ts) back
+ * on every `{ error }` return, and this restores exactly what the user had
+ * typed so they only need to fix the one field that was wrong.
+ */
+export function useRestoreFormValues(
+  formRef: React.RefObject<HTMLFormElement | null>,
+  values: Record<string, string> | undefined,
+) {
+  React.useEffect(() => {
+    if (!values || !formRef.current) return
+    for (const [name, value] of Object.entries(values)) {
+      const field = formRef.current.elements.namedItem(name)
+      if (
+        field instanceof HTMLInputElement ||
+        field instanceof HTMLTextAreaElement ||
+        field instanceof HTMLSelectElement
+      ) {
+        field.value = value
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values])
+}
 
 export function Label({
   className,

@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select, Textarea } from '@/components/ui/field'
+import { Field, Input, Select, Textarea, useRestoreFormValues } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useActionToast } from '@/components/ui/toast'
 import { SPK_STATUSES, type SpkRow } from '@/lib/supabase/types'
 import { WORK_TYPE_OPTIONS } from '@/lib/spk'
 import type { SpkFormState } from './actions'
@@ -39,9 +40,12 @@ export function SpkForm({
   vendors: Option[]
 }) {
   const [state, formAction] = useActionState(action, initialState)
+  useActionToast(state)
+  const formRef = useRef<HTMLFormElement>(null)
+  useRestoreFormValues(formRef, state.values)
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form ref={formRef} action={formAction} className="grid gap-5">
       {spk && <input type="hidden" name="id" value={spk.id} />}
 
       {state.error && <Alert tone="danger">{state.error}</Alert>}
