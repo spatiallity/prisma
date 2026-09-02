@@ -15,6 +15,8 @@ export type DataTableColumn<T> = {
   /** Omit to make the column unsortable (e.g. an actions column). */
   sortAccessor?: (row: T) => string | number | null
   render: (row: T) => ReactNode
+  /** Cell has its own clickable controls (e.g. Edit/Hapus) — don't let clicks in it trigger onRowClick. */
+  stopRowClick?: boolean
 }
 
 /**
@@ -32,6 +34,7 @@ export function DataTable<T>({
   emptyTitle = 'Belum ada data',
   emptyDescription,
   defaultSort,
+  onRowClick,
 }: {
   columns: DataTableColumn<T>[]
   rows: T[]
@@ -42,6 +45,8 @@ export function DataTable<T>({
   emptyTitle?: string
   emptyDescription?: string
   defaultSort?: { key: string; dir: 'asc' | 'desc' }
+  /** Row opens a detail view on click — e.g. a truncated cell's full content. */
+  onRowClick?: (row: T) => void
 }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(
@@ -137,9 +142,17 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {sorted.map((row) => (
-              <Tr key={rowKey(row)}>
+              <Tr
+                key={rowKey(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={onRowClick ? 'cursor-pointer' : undefined}
+              >
                 {columns.map((col) => (
-                  <Td key={col.key} className={cn(col.align === 'right' && 'text-right', col.className)}>
+                  <Td
+                    key={col.key}
+                    className={cn(col.align === 'right' && 'text-right', col.className)}
+                    onClick={col.stopRowClick ? (e) => e.stopPropagation() : undefined}
+                  >
                     {col.render(row)}
                   </Td>
                 ))}

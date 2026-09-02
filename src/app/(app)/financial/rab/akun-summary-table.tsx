@@ -37,13 +37,15 @@ export function AkunSummaryTable({
 }) {
   const [selected, setSelected] = useState<AkunSummaryRow | null>(null)
   const [rows, setRows] = useState<FinanceTransactionRow[]>([])
+  const [actorName, setActorName] = useState<Record<string, string>>({})
   const [isPending, startTransition] = useTransition()
 
   function openAkun(row: AkunSummaryRow) {
     setSelected(row)
     startTransition(async () => {
       const data = await getTransactionsByAkun(row.kode_akun, bulan)
-      setRows(data)
+      setRows(data.rows)
+      setActorName(data.actorName)
     })
   }
 
@@ -121,6 +123,7 @@ export function AkunSummaryTable({
             coa={coa}
             mayEdit={mayEdit}
             emptyTitle="Belum ada transaksi"
+            actorName={actorName}
           />
         )}
       </Modal>

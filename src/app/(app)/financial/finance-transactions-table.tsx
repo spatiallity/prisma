@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { formatDate, formatRupiah } from '@/lib/utils'
+import { Modal } from '@/components/ui/modal'
+import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
 import type { FinanceTransactionRow } from '@/lib/supabase/types'
 import { deleteFinanceTransaction } from './rab/actions'
@@ -23,6 +24,7 @@ export function FinanceTransactionsTable({
   showKategori = false,
   emptyTitle = 'Belum ada transaksi',
   searchPlaceholder = 'Cari deskripsi, personel, kode akun…',
+  actorName = {},
 }: {
   rows: FinanceTransactionRow[]
   coa: AkunOption[]
@@ -30,9 +32,12 @@ export function FinanceTransactionsTable({
   showKategori?: boolean
   emptyTitle?: string
   searchPlaceholder?: string
+  /** user id -> full_name, for "ditambahkan oleh" in the row detail popup. */
+  actorName?: Record<string, string>
 }) {
   const akunByKode = useMemo(() => new Map(coa.map((a) => [a.kode_akun, a])), [coa])
   const showJenis = rows.some((r) => r.jenis_detail)
+  const [detail, setDetail] = useState<FinanceTransactionRow | null>(null)
 
   const columns: DataTableColumn<FinanceTransactionRow>[] = [
     ...(showKategori
@@ -121,6 +126,7 @@ export function FinanceTransactionsTable({
             key: 'aksi',
             label: 'Aksi',
             align: 'right',
+            stopRowClick: true,
             render: (row: FinanceTransactionRow) => (
               <div className="flex items-center justify-end gap-3">
                 <EditTransactionButton akunOptions={coa} transaction={row} />
@@ -137,24 +143,80 @@ export function FinanceTransactionsTable({
   ]
 
   return (
-    <DataTable
-      columns={columns}
-      rows={rows}
-      rowKey={(row) => row.id}
-      searchAccessor={(row) =>
-        [
-          showKategori ? FINANCE_CATEGORY_META[row.kategori].label : null,
-          row.kode_akun,
-          row.deskripsi,
-          row.personil_nama,
-          row.no_bukti,
-        ]
-          .filter(Boolean)
-          .join(' ')
-      }
-      searchPlaceholder={searchPlaceholder}
-      emptyTitle={emptyTitle}
-      defaultSort={{ key: 'tanggal', dir: 'desc' }}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        searchAccessor={(row) =>
+          [
+            showKategori ? FINANCE_CATEGORY_META[row.kategori].label : null,
+            row.kode_akun,
+            row.deskripsi,
+            row.personil_nama,
+            row.no_bukti,
+          ]
+            .filter(Boolean)
+            .join(' ')
+        }
+        searchPlaceholder={searchPlaceholder}
+        emptyTitle={emptyTitle}
+        defaultSort={{ key: 'tanggal', dir: 'desc' }}
+        onRowClick={setDetail}
+      />
+
+      <Modal
+        open={!!detail}
+        onOpenChange={(open) => !open && setDetail(null)}
+        title={detail ? `${detail.kode_akun} — ${akunByKode.get(detail.kode_akun)?.uraian ?? ''}` : ''}
+        description="Detail transaksi."
+      >
+        {detail && (
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
+            {showKategori && (
+              <Field label="Kategori">
+                {FINANCE_CATEGORY_META[detail.kategori].label}
+              </Field>
+            )}
+            {detail.jenis_detail && <Field label="Jenis">{detail.jenis_detail}</Field>}
+            <Field label="Tanggal">{formatDate(detail.tanggal ?? detail.bulan)}</Field>
+            <Field label="Jumlah">
+              <span className="font-bold">{formatRupiah(detail.jumlah)}</span>
+            </Field>
+            <Field label="Personel">{detail.personil_nama ?? '—'}</Field>
+            <Field label="No. bukti">{detail.no_bukti ?? '—'}</Field>
+            <Field label="Deskripsi" full>
+              <span className="whitespace-pre-wrap break-words">{detail.deskripsi ?? '—'}</span>
+            </Field>
+            <Field label="Ditambahkan oleh">
+              {detail.created_by ? (actorName[detail.created_by] ?? 'Tidak diketahui') : 'Sistem'}
+            </Field>
+            <Field label="Pada">{formatDateTime(detail.created_at)}</Field>
+            {detail.updated_at !== detail.created_at && (
+              <Field label="Terakhir diubah">{formatDateTime(detail.updated_at)}</Field>
+            )}
+          </dl>
+        )}
+      </Modal>
+    </>
+  )
+}
+
+function Field({
+  label,
+  full = false,
+  children,
+}: {
+  label: string
+  full?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className={full ? 'sm:col-span-2' : undefined}>
+      <dt className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-slate-900">{children}</dd>
+    </div>
   )
 }

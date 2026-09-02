@@ -122,6 +122,14 @@ export default async function MonitoringRabPage({
     a.kode_akun.localeCompare(b.kode_akun),
   )
 
+  const creatorIds = [
+    ...new Set((recent ?? []).map((r) => r.created_by).filter(Boolean)),
+  ] as string[]
+  const { data: creators } = creatorIds.length
+    ? await supabase.from('users').select('id, full_name').in('id', creatorIds)
+    : { data: [] }
+  const actorName = Object.fromEntries((creators ?? []).map((a) => [a.id, a.full_name]))
+
   return (
     <>
       <PageHeader
@@ -231,6 +239,7 @@ export default async function MonitoringRabPage({
           showKategori
           emptyTitle="Belum ada transaksi"
           searchPlaceholder="Cari kategori, deskripsi, personel, kode akun…"
+          actorName={actorName}
         />
       </Card>
     </>

@@ -36,6 +36,14 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
 
   const total = (rows ?? []).reduce((sum, r) => sum + Number(r.jumlah), 0)
 
+  const creatorIds = [
+    ...new Set((rows ?? []).map((r) => r.created_by).filter(Boolean)),
+  ] as string[]
+  const { data: creators } = creatorIds.length
+    ? await supabase.from('users').select('id, full_name').in('id', creatorIds)
+    : { data: [] }
+  const actorName = Object.fromEntries((creators ?? []).map((a) => [a.id, a.full_name]))
+
   return (
     <>
       <PageHeader
@@ -81,6 +89,7 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
           coa={coa ?? []}
           mayEdit={mayEdit}
           emptyTitle={`Belum ada transaksi ${meta.label}`}
+          actorName={actorName}
         />
       </Card>
     </>

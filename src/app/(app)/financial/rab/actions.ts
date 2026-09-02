@@ -166,7 +166,7 @@ export async function updateFinanceTransaction(
 export async function getTransactionsByAkun(
   kodeAkun: string,
   bulan?: string,
-): Promise<FinanceTransactionRow[]> {
+): Promise<{ rows: FinanceTransactionRow[]; actorName: Record<string, string> }> {
   await requirePermission('spending', 'view')
 
   const supabase = await createClient()
@@ -180,7 +180,15 @@ export async function getTransactionsByAkun(
   if (bulan) query = query.eq('bulan', `${bulan}-01`)
 
   const { data } = await query
-  return data ?? []
+  const rows = data ?? []
+
+  const creatorIds = [...new Set(rows.map((r) => r.created_by).filter(Boolean))] as string[]
+  const { data: creators } = creatorIds.length
+    ? await supabase.from('users').select('id, full_name').in('id', creatorIds)
+    : { data: [] }
+  const actorName = Object.fromEntries((creators ?? []).map((a) => [a.id, a.full_name]))
+
+  return { rows, actorName }
 }
 
 export type DeleteState = { error: string | null }
