@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { AlertTriangle, Trash2 } from 'lucide-react'
 import { Button } from './button'
 import { Modal } from './modal'
+import { useToast } from './toast'
 
 export type DeleteState = { error: string | null }
 
@@ -41,6 +42,7 @@ export function DeleteButton({
 }) {
   const [state, formAction] = useActionState(action, { error: null })
   const [open, setOpen] = useState(false)
+  const toast = useToast()
   // Initial state is also {error: null}, same shape as a successful delete —
   // this flag is what tells the two apart so the dialog doesn't auto-close
   // the instant it opens, before the user ever confirms anything.
@@ -49,10 +51,16 @@ export function DeleteButton({
   // A successful delete returns {error: null} and the row disappears on
   // revalidation; only close the dialog once that has actually happened.
   useEffect(() => {
-    if (submitted.current && open && state.error === null) {
+    if (!submitted.current) return
+    if (state.error) {
+      submitted.current = false
+      toast.error(state.error)
+    } else if (open) {
       submitted.current = false
       setOpen(false)
+      toast.success(`${itemLabel[0].toUpperCase()}${itemLabel.slice(1)} dihapus.`)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, open])
 
   return (

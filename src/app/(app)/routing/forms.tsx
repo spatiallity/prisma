@@ -6,6 +6,7 @@ import { ArrowRight, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import type { SpkRoutingRow } from '@/lib/supabase/types'
 import {
   advanceStep,
@@ -60,6 +61,7 @@ export function NewRoutingForm({
   templates: Option[]
 }) {
   const [state, formAction] = useActionState(createRouting, initialState)
+  useActionToast(state)
 
   if (spks.length === 0 || templates.length === 0) {
     return (
@@ -132,6 +134,7 @@ export function AdvanceStepForm({
   defaultPic: string | null
 }) {
   const [state, formAction] = useActionState(advanceStep, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -163,6 +166,7 @@ export function StepStatusForm({
   status: string
 }) {
   const [state, formAction] = useActionState(setStepStatus, initialState)
+  useActionToast(state)
   const blocked = status === 'Returned' || status === 'Rejected'
 
   return (
@@ -199,6 +203,7 @@ export function StepStatusForm({
 
 export function RoutingDetailsForm({ routing }: { routing: SpkRoutingRow }) {
   const [state, formAction] = useActionState(updateRouting, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-4">

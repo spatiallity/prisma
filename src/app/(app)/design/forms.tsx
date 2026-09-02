@@ -6,6 +6,7 @@ import { ArrowRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import { DESIGN_STAGES, type DesignRow, type DesignStage } from '@/lib/supabase/types'
 import {
   advanceStage,
@@ -43,6 +44,7 @@ export function NewDesignForm({
   pics: PicOption[]
 }) {
   const [state, formAction] = useActionState(createDesign, initialState)
+  useActionToast(state)
 
   if (spks.length === 0) {
     return (
@@ -109,6 +111,7 @@ export function AdvanceStageForm({
   pics: PicOption[]
 }) {
   const [state, formAction] = useActionState(advanceStage, initialState)
+  useActionToast(state)
   const options = DESIGN_STAGES.filter((stage) => stage !== currentStage)
 
   return (
@@ -160,6 +163,7 @@ export function DesignDetailsForm({
   pics: PicOption[]
 }) {
   const [state, formAction] = useActionState(updateDesign, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-4">

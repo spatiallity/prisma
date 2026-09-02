@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Field, Input } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
+import { useActionToast } from '@/components/ui/toast'
 import type { Database } from '@/lib/supabase/types'
 import {
   createPersonnel,
@@ -49,14 +50,7 @@ export function PersonnelForm({
     editing ? updatePersonnel : createPersonnel,
     initialState,
   )
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -148,6 +142,7 @@ export function PersonnelStatusToggle({
   status: string
 }) {
   const [state, formAction] = useActionState(setPersonnelStatus, initialState)
+  useActionToast(state)
   const next = status === 'Active' ? 'Inactive' : 'Active'
 
   return (

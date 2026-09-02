@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import type { VendorRow } from '@/lib/supabase/types'
 import type { VendorFormState } from './actions'
 
@@ -29,6 +30,7 @@ export function VendorForm({
   vendor?: VendorRow
 }) {
   const [state, formAction] = useActionState(action, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-4">

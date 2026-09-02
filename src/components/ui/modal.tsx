@@ -99,17 +99,3 @@ export function Modal({
     </>
   )
 }
-
-/** Closes the modal it lives in after its action state reports success. */
-export function useCloseOnSuccess(
-  success: string | null | undefined,
-  onOpenChange: (open: boolean) => void,
-) {
-  const seen = React.useRef<string | null | undefined>(undefined)
-  React.useEffect(() => {
-    if (success && success !== seen.current) {
-      seen.current = success
-      onOpenChange(false)
-    }
-  }, [success, onOpenChange])
-}

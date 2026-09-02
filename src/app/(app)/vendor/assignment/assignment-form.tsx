@@ -1,11 +1,12 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { DeleteButton } from '@/components/ui/delete-button'
+import { useActionToast } from '@/components/ui/toast'
 import {
   createAssignment,
   deleteAssignment,
@@ -41,14 +42,7 @@ export function AssignmentForm({
 }) {
   const [state, formAction] = useActionState(createAssignment, initialState)
   const [vendorId, setVendorId] = useState(vendors[0]?.id ?? '')
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   // A team belongs to exactly one vendor, so the list narrows with the choice.
   const vendorTeams = teams.filter((team) => team.vendorId === vendorId)
@@ -145,19 +139,23 @@ function ToggleSubmit({ label }: { label: string }) {
 export function AssignmentStatusToggle({
   id,
   spkId,
+  vendorId,
   status,
 }: {
   id: string
   spkId: string
+  vendorId: string
   status: string
 }) {
   const [state, formAction] = useActionState(setAssignmentStatus, initialState)
+  useActionToast(state)
   const next = status === 'Active' ? 'Inactive' : 'Active'
 
   return (
     <form action={formAction} className="inline">
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="spk_id" value={spkId} />
+      <input type="hidden" name="vendor_id" value={vendorId} />
       <input type="hidden" name="status" value={next} />
       <ToggleSubmit label={next === 'Active' ? 'Aktifkan' : 'Akhiri'} />
       {state.error && <span className="ml-2 text-xs text-danger">{state.error}</span>}
@@ -165,6 +163,19 @@ export function AssignmentStatusToggle({
   )
 }
 
-export function AssignmentDeleteButton({ id, spkId }: { id: string; spkId: string }) {
-  return <DeleteButton action={deleteAssignment} hiddenFields={{ id, spk_id: spkId }} />
+export function AssignmentDeleteButton({
+  id,
+  spkId,
+  vendorId,
+}: {
+  id: string
+  spkId: string
+  vendorId: string
+}) {
+  return (
+    <DeleteButton
+      action={deleteAssignment}
+      hiddenFields={{ id, spk_id: spkId, vendor_id: vendorId }}
+    />
+  )
 }

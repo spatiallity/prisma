@@ -6,6 +6,7 @@ import { Plus, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import {
   MEASUREMENTS,
   STAGE_STATUSES,
@@ -47,6 +48,7 @@ export function ApplyTemplateForm({
   defaultTemplateId?: string | null
 }) {
   const [state, formAction] = useActionState(applyTemplate, initialState)
+  useActionToast(state)
 
   if (templates.length === 0) {
     return (
@@ -86,6 +88,7 @@ export function ApplyTemplateForm({
 
 export function AddActivityForm({ spkId }: { spkId: string }) {
   const [state, formAction] = useActionState(addActivity, initialState)
+  useActionToast(state)
   const [measurement, setMeasurement] = useState<MeasurementType>('percentage')
 
   return (
@@ -149,6 +152,7 @@ export function RecordProgressForm({
   targetValue: number | null
 }) {
   const [state, formAction] = useActionState(recordProgress, initialState)
+  useActionToast(state)
   const today = new Date().toISOString().slice(0, 10)
 
   return (

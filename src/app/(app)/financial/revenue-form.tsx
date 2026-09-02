@@ -1,12 +1,13 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { DeleteButton } from '@/components/ui/delete-button'
+import { useActionToast } from '@/components/ui/toast'
 import { FINANCIAL_DOC_STATUSES } from '@/lib/supabase/types'
 import { REVENUE_META, type RevenueKind } from '@/lib/financial'
 import {
@@ -54,14 +55,7 @@ export function RevenueForm({
 }) {
   const [state, formAction] = useActionState(saveRevenueDoc, initialState)
   const meta = REVENUE_META[kind]
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   if (spks.length === 0) {
     return <Alert tone="warning">Belum ada SPK untuk dicatat dokumennya.</Alert>
@@ -192,6 +186,7 @@ export function RevenueStatusToggle({
 }) {
   const [state, formAction] = useActionState(setRevenueDocStatus, initialState)
   const next = status === 'Cancelled' ? 'Draft' : 'Cancelled'
+  useActionToast(state)
 
   return (
     <form action={formAction} className="inline">

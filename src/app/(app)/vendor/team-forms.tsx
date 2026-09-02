@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
+import { useActionToast } from '@/components/ui/toast'
 import type { Database } from '@/lib/supabase/types'
 import {
   createMember,
@@ -44,6 +45,7 @@ function Feedback({ state }: { state: VendorFormState }) {
 
 export function AddTeamForm({ vendorId }: { vendorId: string }) {
   const [state, formAction] = useActionState(createTeam, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-2">
@@ -71,6 +73,7 @@ export function AddMemberForm({
   teams: { id: string; name: string }[]
 }) {
   const [state, formAction] = useActionState(createMember, initialState)
+  useActionToast(state)
 
   if (teams.length === 0) {
     return (
@@ -131,14 +134,7 @@ function EditSubmit() {
 export function EditTeamButton({ team, vendorId }: { team: VendorTeamRow; vendorId: string }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(updateTeam, initialState)
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      setOpen(false)
-    }
-  }, [state.success])
+  useActionToast(state, () => setOpen(false))
 
   return (
     <Modal
@@ -183,14 +179,7 @@ export function EditMemberButton({
 }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(updateMember, initialState)
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      setOpen(false)
-    }
-  }, [state.success])
+  useActionToast(state, () => setOpen(false))
 
   return (
     <Modal
@@ -265,6 +254,7 @@ export function StatusToggle({
 }) {
   const action = kind === 'team' ? setTeamStatus : setMemberStatus
   const [state, formAction] = useActionState(action, initialState)
+  useActionToast(state)
   const next = status === 'Active' ? 'Inactive' : 'Active'
 
   return (

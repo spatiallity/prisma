@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import type { FormState } from './actions'
 
 export type RoleOption = { id: string; code: string; name: string }
@@ -43,6 +44,7 @@ export function UserForm({
   }
 }) {
   const [state, formAction] = useActionState(action, initialState)
+  useActionToast(state)
   const [roleId, setRoleId] = useState(user?.role_id ?? roles[0]?.id ?? '')
 
   const isVendorRole = roles.find((role) => role.id === roleId)?.code === 'vendor'

@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import {
   ACTION_LABEL,
   ALL_ACTIONS,
@@ -42,6 +43,7 @@ export function MatrixForm({
   readOnly: boolean
 }) {
   const [state, formAction] = useActionState(saveRoleMatrix, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-4">

@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { useActionToast } from '@/components/ui/toast'
 import { resetPassword, type FormState } from './actions'
 
 const initialState: FormState = { error: null }
@@ -20,6 +21,7 @@ function Submit() {
 
 export function PasswordForm({ userId }: { userId: string }) {
   const [state, formAction] = useActionState(resetPassword, initialState)
+  useActionToast(state)
 
   return (
     <form action={formAction} className="grid gap-4">

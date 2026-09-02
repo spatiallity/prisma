@@ -1,12 +1,13 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
+import { useActionState, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
+import { useActionToast } from '@/components/ui/toast'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
 import type { FinanceCategory, FinanceTransactionRow } from '@/lib/supabase/types'
 import { saveFinanceTransaction, updateFinanceTransaction, type FinanceTxState } from './actions'
@@ -141,14 +142,7 @@ export function FinanceTransactionForm({
   const meta = FINANCE_CATEGORY_META[kategori]
   const isGaji = kategori === 'gaji_ptt'
   const needsAkun = meta.fixedAkun === null && !isGaji
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   return (
     <form action={formAction} className="grid gap-4">

@@ -1,12 +1,13 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
+import { useActionToast } from '@/components/ui/toast'
 import type { Database } from '@/lib/supabase/types'
 import {
   createDailyPlan,
@@ -68,14 +69,7 @@ export function DailyPlanForm({
   const [state, formAction] = useActionState(editing ? updateDailyPlan : createDailyPlan, initialState)
   const cascade = useCascade(options, plan?.spk_id, plan?.vendor_id ?? undefined)
   const today = new Date().toISOString().slice(0, 10)
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   if (options.spks.length === 0 && !editing) {
     return (
@@ -233,14 +227,7 @@ export function DailyProgressForm({
   )
   const cascade = useCascade(options, entry?.spk_id, entry?.vendor_id ?? undefined)
   const today = new Date().toISOString().slice(0, 10)
-  const savedKey = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (state.success && state.success !== savedKey.current) {
-      savedKey.current = state.success
-      onSaved?.()
-    }
-  }, [state.success, onSaved])
+  useActionToast(state, onSaved)
 
   const spkPlans = plans.filter((plan) => plan.spkId === cascade.spkId)
 
@@ -397,6 +384,7 @@ export function ScheduleStatusToggle({
   const action = kind === 'plan' ? setPlanStatus : setProgressStatus
   const [state, formAction] = useActionState(action, initialState)
   const next = status === 'Active' ? 'Inactive' : 'Active'
+  useActionToast(state)
 
   return (
     <form action={formAction} className="inline">

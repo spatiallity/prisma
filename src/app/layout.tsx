@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { BRAND } from '@/lib/brand'
+import { ToastProvider } from '@/components/ui/toast'
 import './globals.css'
 
 // Same typeface as spatiallity/tenderhub-lsi, self-hosted by next/font.
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="id"
       className={`${jakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans">{children}</body>
+      <body className="min-h-full font-sans">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   )
 }
