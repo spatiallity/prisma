@@ -24,7 +24,6 @@ export default async function ActivityProgressPage({
 }) {
   const user = await requirePermission('progress', 'view')
   const { id: spkId, activityId } = await params
-  const mayEdit = can(user.permissions, 'progress', 'edit')
 
   const supabase = await createClient()
 
@@ -34,6 +33,22 @@ export default async function ActivityProgressPage({
   ])
 
   if (!activity || !spk || activity.spk_id !== spkId) notFound()
+
+  // A vendor's progress-edit window closes once Desain Siteplan starts — the
+  // design team takes over from there (spk_progress_editable() enforces the
+  // same cutoff at the database level).
+  let mayEdit = can(user.permissions, 'progress', 'edit')
+  if (mayEdit && user.vendorId) {
+    const { data: designActivity } = await supabase
+      .from('spk_activities')
+      .select('current_stage')
+      .eq('spk_id', spkId)
+      .eq('name', 'Desain Siteplan')
+      .maybeSingle()
+    if (designActivity && designActivity.current_stage !== 'Belum Mulai') {
+      mayEdit = false
+    }
+  }
 
   const { data: history } = await supabase
     .from('activity_progress')

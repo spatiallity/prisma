@@ -19,6 +19,15 @@ function numeric(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** Postgres 42501 — RLS refused the write. For a vendor account this is
+ *  almost always the Desain Siteplan cutoff (spk_progress_editable()). */
+function friendlyProgressError(message: string, code: string | undefined, isVendor: boolean) {
+  if (code === '42501' && isVendor) {
+    return 'SPK ini sudah masuk tahapan Desain Siteplan — progress hanya bisa diubah oleh tim internal sekarang.'
+  }
+  return message
+}
+
 /**
  * Section 17 — instantiate a Progress Template onto one SPK.
  *
@@ -30,7 +39,7 @@ export async function applyTemplate(
   _prev: ProgressState,
   formData: FormData,
 ): Promise<ProgressState> {
-  await requirePermission('progress', 'edit')
+  const user = await requirePermission('progress', 'edit')
 
   const spkId = text(formData, 'spk_id')
   const templateId = text(formData, 'template_id')
@@ -73,7 +82,7 @@ export async function applyTemplate(
   }))
 
   const { error } = await supabase.from('spk_activities').insert(rows)
-  if (error) return { error: error.message }
+  if (error) return { error: friendlyProgressError(error.message, error.code, !!user.vendorId) }
 
   // Keep the SPK pointing at the template it was built from.
   await supabase.from('spks').update({ activity_template_id: templateId }).eq('id', spkId)
@@ -88,7 +97,7 @@ export async function addActivity(
   _prev: ProgressState,
   formData: FormData,
 ): Promise<ProgressState> {
-  await requirePermission('progress', 'edit')
+  const user = await requirePermission('progress', 'edit')
 
   const spkId = text(formData, 'spk_id')
   const name = text(formData, 'name')
@@ -126,7 +135,7 @@ export async function addActivity(
     return {
       error: error.message.includes('melebihi 100')
         ? 'Total bobot aktivitas SPK ini akan melebihi 100%.'
-        : error.message,
+        : friendlyProgressError(error.message, error.code, !!user.vendorId),
     }
   }
 
@@ -179,7 +188,7 @@ export async function recordProgress(
     recorded_by: user.id,
   })
 
-  if (error) return { error: error.message }
+  if (error) return { error: friendlyProgressError(error.message, error.code, !!user.vendorId) }
 
   revalidatePath(`/spk/${spkId}`)
   revalidatePath(`/spk/${spkId}/progress/${activityId}`)

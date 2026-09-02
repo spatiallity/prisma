@@ -163,7 +163,10 @@ with matrix(role_code, module, action, scope) as (
   ('vendor','schedule','view','own'),
   ('vendor','daily_plan','view','own'),  ('vendor','daily_plan','edit','own'),  ('vendor','daily_plan','create','own'),
   ('vendor','daily_progress','view','own'), ('vendor','daily_progress','edit','own'), ('vendor','daily_progress','create','own'),
-  ('vendor','progress','view','own'),
+  -- 'edit' lets a vendor record progress on its own SPK — gated off once
+  -- Desain Siteplan starts by spk_progress_editable() (see migration
+  -- 20260902000100_vendor_progress_gate.sql), not by scope.
+  ('vendor','progress','view','own'), ('vendor','progress','edit','own'),
   ('vendor','routing','view','own'),
   ('vendor','audit_log','view','own')
 )

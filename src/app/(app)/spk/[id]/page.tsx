@@ -107,6 +107,22 @@ export default async function SpkDetailPage({
   const remaining = daysLeft(spk.end_date)
   const overall = progress?.overall_progress ?? 0
 
+  // A vendor's progress-edit window closes once Desain Siteplan starts —
+  // the design team takes over from there (spk_progress_editable() enforces
+  // the same cutoff at the database level).
+  let mayEditProgress = can(user.permissions, 'progress', 'edit')
+  if (mayEditProgress && user.vendorId) {
+    const { data: designActivity } = await supabase
+      .from('spk_activities')
+      .select('current_stage')
+      .eq('spk_id', spk.id)
+      .eq('name', 'Desain Siteplan')
+      .maybeSingle()
+    if (designActivity && designActivity.current_stage !== 'Belum Mulai') {
+      mayEditProgress = false
+    }
+  }
+
   return (
     <>
       <Link
@@ -208,7 +224,7 @@ export default async function SpkDetailPage({
         <ProgressTab
           spkId={spk.id}
           activityTemplateId={spk.activity_template_id}
-          mayEdit={can(user.permissions, 'progress', 'edit')}
+          mayEdit={mayEditProgress}
         />
       )}
 
