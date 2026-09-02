@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { SpkStatus } from '@/lib/supabase/types'
+import { WORK_TYPE_TEMPLATE_CODE } from '@/lib/spk'
 
 export type SpkFormState = { error: string | null; success?: string }
 
@@ -25,6 +26,15 @@ function numeric(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** Ha is typed with a decimal dot/comma (12.06), never an Indonesian
+ *  thousands dot — 9.6 must stay 9.6, not become 96. */
+function decimal(formData: FormData, key: string) {
+  const raw = text(formData, key)
+  if (!raw) return null
+  const parsed = Number(raw.replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 type SpkFields = {
   spk_number: string
   site_code: string | null
@@ -38,9 +48,6 @@ type SpkFields = {
   start_date: string | null
   end_date: string | null
   vendor_id: string | null
-  project_manager_id: string | null
-  activity_template_id: string | null
-  routing_template_id: string | null
   status: SpkStatus
   notes: string | null
 }
@@ -67,14 +74,11 @@ function readFields(formData: FormData): SpkFields | string {
     location: nullable(formData, 'location'),
     kabupaten: nullable(formData, 'kabupaten'),
     provinsi: nullable(formData, 'provinsi'),
-    area_ha: numeric(formData, 'area_ha'),
+    area_ha: decimal(formData, 'area_ha'),
     contract_value: numeric(formData, 'contract_value'),
     start_date: startDate,
     end_date: endDate,
     vendor_id: nullable(formData, 'vendor_id'),
-    project_manager_id: nullable(formData, 'project_manager_id'),
-    activity_template_id: nullable(formData, 'activity_template_id'),
-    routing_template_id: nullable(formData, 'routing_template_id'),
     status: (text(formData, 'status') || 'Draft') as SpkStatus,
     notes: nullable(formData, 'notes'),
   }
@@ -98,13 +102,60 @@ export async function createSpk(
   if (typeof fields === 'string') return { error: fields }
 
   const supabase = await createClient()
+
+  // Jenis pekerjaan picks its Progress Template automatically — this is the
+  // only moment it's chosen (Section 17: changing it later would orphan the
+  // activities already instantiated from it). Routing has exactly one
+  // template (RT-PERTAMINA), so it's never a user choice either.
+  const templateCode = fields.work_type ? WORK_TYPE_TEMPLATE_CODE[fields.work_type] : undefined
+  const [{ data: activityTemplate }, { data: routingTemplates }] = await Promise.all([
+    templateCode
+      ? supabase.from('activity_templates').select('id').eq('code', templateCode).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from('routing_templates')
+      .select('id')
+      .eq('status', 'Active')
+      .order('created_at')
+      .limit(1),
+  ])
+
   const { data, error } = await supabase
     .from('spks')
-    .insert({ ...fields, created_by: user.id, updated_by: user.id })
+    .insert({
+      ...fields,
+      activity_template_id: activityTemplate?.id ?? null,
+      routing_template_id: routingTemplates?.[0]?.id ?? null,
+      created_by: user.id,
+      updated_by: user.id,
+    })
     .select('id')
     .single()
 
   if (error) return { error: friendlyError(error.message, error.code) }
+
+  if (activityTemplate) {
+    const { data: items } = await supabase
+      .from('activity_template_items')
+      .select('*')
+      .eq('template_id', activityTemplate.id)
+      .order('sequence')
+
+    if (items && items.length > 0) {
+      await supabase.from('spk_activities').insert(
+        items.map((item) => ({
+          spk_id: data.id,
+          template_item_id: item.id,
+          name: item.name,
+          weight: item.weight,
+          measurement: item.measurement,
+          unit: item.unit,
+          sequence: item.sequence,
+          target_value: item.target_from_spk_area ? fields.area_ha : item.default_target,
+        })),
+      )
+    }
+  }
 
   revalidatePath('/spk')
   redirect(`/spk/${data.id}?created=1`)

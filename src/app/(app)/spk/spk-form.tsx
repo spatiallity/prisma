@@ -7,6 +7,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SPK_STATUSES, type SpkRow } from '@/lib/supabase/types'
+import { WORK_TYPE_OPTIONS } from '@/lib/spk'
 import type { SpkFormState } from './actions'
 
 export type Option = { id: string; label: string }
@@ -31,17 +32,11 @@ export function SpkForm({
   submitLabel,
   spk,
   vendors,
-  managers,
-  activityTemplates,
-  routingTemplates,
 }: {
   action: (state: SpkFormState, formData: FormData) => Promise<SpkFormState>
   submitLabel: string
   spk?: SpkRow
   vendors: Option[]
-  managers: Option[]
-  activityTemplates: Option[]
-  routingTemplates: Option[]
 }) {
   const [state, formAction] = useActionState(action, initialState)
 
@@ -67,11 +62,7 @@ export function SpkForm({
             />
           </Field>
 
-          <Field
-            label="Kode Lokasi"
-            htmlFor="site_code"
-            hint="Tampil di header Detail SPK, contoh BNG-A03."
-          >
+          <Field label="Kode Lokasi" htmlFor="site_code">
             <Input
               id="site_code"
               name="site_code"
@@ -91,12 +82,24 @@ export function SpkForm({
           </Field>
 
           <Field label="Jenis pekerjaan" htmlFor="work_type">
-            <Input
-              id="work_type"
-              name="work_type"
-              defaultValue={spk?.work_type ?? ''}
-              placeholder="Topografi / Stake Out"
-            />
+            {spk ? (
+              <Input
+                id="work_type"
+                name="work_type"
+                defaultValue={spk.work_type ?? ''}
+                readOnly
+                className="bg-slate-50 text-muted-foreground"
+              />
+            ) : (
+              <Select id="work_type" name="work_type" defaultValue="">
+                <option value="">— pilih jenis pekerjaan —</option>
+                {WORK_TYPE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
+            )}
           </Field>
 
           <Field label="Status" htmlFor="status">
@@ -128,11 +131,7 @@ export function SpkForm({
             <Input id="provinsi" name="provinsi" defaultValue={spk?.provinsi ?? ''} />
           </Field>
 
-          <Field
-            label="Luas area (Ha)"
-            htmlFor="area_ha"
-            hint="Dipakai ulang sebagai target aktivitas berbasis luas."
-          >
+          <Field label="Luas area (Ha)" htmlFor="area_ha">
             <Input
               id="area_ha"
               name="area_ha"
@@ -174,7 +173,7 @@ export function SpkForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Penugasan &amp; template</CardTitle>
+          <CardTitle>Vendor</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <Field label="Vendor Jasa Survey" htmlFor="vendor_id">
@@ -183,55 +182,6 @@ export function SpkForm({
               {vendors.map((vendor) => (
                 <option key={vendor.id} value={vendor.id}>
                   {vendor.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Project Manager" htmlFor="project_manager_id">
-            <Select
-              id="project_manager_id"
-              name="project_manager_id"
-              defaultValue={spk?.project_manager_id ?? ''}
-            >
-              <option value="">— belum ditentukan —</option>
-              {managers.map((manager) => (
-                <option key={manager.id} value={manager.id}>
-                  {manager.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field
-            label="Progress Template"
-            htmlFor="activity_template_id"
-            hint="Menentukan daftar aktivitas dan bobotnya."
-          >
-            <Select
-              id="activity_template_id"
-              name="activity_template_id"
-              defaultValue={spk?.activity_template_id ?? ''}
-            >
-              <option value="">— belum ditentukan —</option>
-              {activityTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Routing Template" htmlFor="routing_template_id">
-            <Select
-              id="routing_template_id"
-              name="routing_template_id"
-              defaultValue={spk?.routing_template_id ?? ''}
-            >
-              <option value="">— belum ditentukan —</option>
-              {routingTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.label}
                 </option>
               ))}
             </Select>

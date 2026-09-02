@@ -36,6 +36,21 @@ export function formatPercent(value: number | null | undefined) {
   return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)}%`
 }
 
+/**
+ * Jenis pekerjaan -> activity_templates.code (Section 13/17). Picking one on
+ * the SPK create form instantiates that template's activities immediately —
+ * the only other entry point is the manual template picker in the Progress
+ * tab (applyTemplate, progress-actions.ts), kept for SPK that predate this
+ * dropdown or were left without a jenis pekerjaan.
+ */
+export const WORK_TYPE_TEMPLATE_CODE: Record<string, string> = {
+  'Dengan Desain Siteplan': 'TPL-A',
+  'Tanpa Desain Siteplan': 'TPL-B',
+  'Stake Out': 'TPL-C',
+}
+
+export const WORK_TYPE_OPTIONS = Object.keys(WORK_TYPE_TEMPLATE_CODE)
+
 /** Days between today and the SPK end date; negative once it is overdue. */
 export function daysLeft(endDate: string | null) {
   if (!endDate) return null

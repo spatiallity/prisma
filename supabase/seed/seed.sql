@@ -316,6 +316,32 @@ on conflict (template_id, name) do update
       target_from_spk_area = excluded.target_from_spk_area;
 
 -- ---------------------------------------------------------------------------
+-- Progress Template C — Stake Out saja (no siteplan, no terrestrial survey)
+-- ---------------------------------------------------------------------------
+insert into activity_templates (code, name, description) values
+  ('TPL-C', 'Template C — Stake Out',
+   'Rincian bobot pekerjaan Topografi tanpa Desain Siteplan (stake out saja).')
+on conflict (code) do update set name = excluded.name;
+
+with tpl as (select id from activity_templates where code = 'TPL-C'),
+items(name, weight, measurement, unit, sequence, from_area) as (
+  values
+    ('Stake Out',         70.000, 'quantity',   'patok', 1, false),
+    ('Inventaris Lahan',  20.000, 'percentage', '%',     2, false),
+    ('Laporan',           10.000, 'percentage', '%',     3, false)
+)
+insert into activity_template_items
+  (template_id, name, weight, measurement, unit, sequence, target_from_spk_area)
+select tpl.id, i.name, i.weight, i.measurement::measurement_type, i.unit, i.sequence, i.from_area
+from tpl, items i
+on conflict (template_id, name) do update
+  set weight = excluded.weight,
+      measurement = excluded.measurement,
+      unit = excluded.unit,
+      sequence = excluded.sequence,
+      target_from_spk_area = excluded.target_from_spk_area;
+
+-- ---------------------------------------------------------------------------
 -- Routing template — Pertamina chain (Section 23)
 --
 -- NOTE: sla_days below are placeholders so bottleneck detection has something
