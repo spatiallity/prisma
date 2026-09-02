@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea, useRestoreFormValues } from '@/components/ui/field'
@@ -33,16 +33,21 @@ export function SpkForm({
   submitLabel,
   spk,
   vendors,
+  stakeOutTarget,
 }: {
   action: (state: SpkFormState, formData: FormData) => Promise<SpkFormState>
   submitLabel: string
   spk?: SpkRow
   vendors: Option[]
+  /** Current "Stake Out" activity target (jumlah titik), when editing one. */
+  stakeOutTarget?: number | null
 }) {
   const [state, formAction] = useActionState(action, initialState)
   useActionToast(state)
   const formRef = useRef<HTMLFormElement>(null)
   useRestoreFormValues(formRef, state.values)
+  const [workType, setWorkType] = useState(spk?.work_type ?? '')
+  const isStakeOut = workType === 'Stake Out'
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-5">
@@ -95,7 +100,12 @@ export function SpkForm({
                 className="bg-slate-50 text-muted-foreground"
               />
             ) : (
-              <Select id="work_type" name="work_type" defaultValue="">
+              <Select
+                id="work_type"
+                name="work_type"
+                value={workType}
+                onChange={(event) => setWorkType(event.target.value)}
+              >
                 <option value="">— pilih jenis pekerjaan —</option>
                 {WORK_TYPE_OPTIONS.map((option) => (
                   <option key={option} value={option}>
@@ -105,6 +115,24 @@ export function SpkForm({
               </Select>
             )}
           </Field>
+
+          {isStakeOut && (
+            <Field
+              label="Jumlah titik Stake Out"
+              htmlFor="stake_out_target"
+              required
+              hint="Jumlah patok yang akan di-stake out — target progress aktivitas Stake Out."
+            >
+              <Input
+                id="stake_out_target"
+                name="stake_out_target"
+                inputMode="numeric"
+                defaultValue={stakeOutTarget ?? ''}
+                placeholder="50"
+                required
+              />
+            </Field>
+          )}
 
           <Field label="Status" htmlFor="status">
             <Select id="status" name="status" defaultValue={spk?.status ?? 'Draft'}>

@@ -108,6 +108,19 @@ export async function createSpk(
   const fields = readFields(formData)
   if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
+  // Stake Out has no natural target elsewhere (unlike an area-based activity,
+  // which inherits luas area) — someone has to say how many patok up front.
+  let stakeOutTarget: number | null = null
+  if (fields.work_type === 'Stake Out') {
+    stakeOutTarget = numeric(formData, 'stake_out_target')
+    if (stakeOutTarget === null || stakeOutTarget <= 0) {
+      return {
+        error: 'Jumlah titik Stake Out wajib diisi.',
+        values: pickFormValues(formData),
+      }
+    }
+  }
+
   const supabase = await createClient()
 
   // Jenis pekerjaan picks its Progress Template automatically — this is the
@@ -160,7 +173,11 @@ export async function createSpk(
           measurement: item.measurement,
           unit: item.unit,
           sequence: item.sequence,
-          target_value: item.target_from_spk_area ? fields.area_ha : item.default_target,
+          target_value: item.target_from_spk_area
+            ? fields.area_ha
+            : item.name === 'Stake Out' && fields.work_type === 'Stake Out'
+              ? stakeOutTarget
+              : item.default_target,
         })),
       )
     }
@@ -182,6 +199,17 @@ export async function updateSpk(
   const fields = readFields(formData)
   if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
+  let stakeOutTarget: number | null = null
+  if (fields.work_type === 'Stake Out') {
+    stakeOutTarget = numeric(formData, 'stake_out_target')
+    if (stakeOutTarget === null || stakeOutTarget <= 0) {
+      return {
+        error: 'Jumlah titik Stake Out wajib diisi.',
+        values: pickFormValues(formData),
+      }
+    }
+  }
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('spks')
@@ -190,6 +218,14 @@ export async function updateSpk(
 
   if (error) {
     return { error: friendlyError(error.message, error.code), values: pickFormValues(formData) }
+  }
+
+  if (fields.work_type === 'Stake Out') {
+    await supabase
+      .from('spk_activities')
+      .update({ target_value: stakeOutTarget })
+      .eq('spk_id', id)
+      .eq('name', 'Stake Out')
   }
 
   revalidatePath('/spk')
