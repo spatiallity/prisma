@@ -2,21 +2,27 @@
 
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Plus, Wand2 } from 'lucide-react'
+import { Pencil, Plus, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
 import {
   MEASUREMENTS,
   STAGE_STATUSES,
   type MeasurementType,
+  type StageStatus,
 } from '@/lib/supabase/types'
 import { MEASUREMENT_LABEL } from '@/lib/progress'
 import {
   addActivity,
   applyTemplate,
+  deleteProgressEntry,
   recordProgress,
+  updateActivityTarget,
+  updateProgressEntry,
   type ProgressState,
 } from './progress-actions'
 
@@ -137,6 +143,47 @@ export function AddActivityForm({ spkId }: { spkId: string }) {
   )
 }
 
+/**
+ * Target isn't always known up front — jumlah titik Stake Out, luas
+ * Pengukuran Terestris (which only inherits the SPK's luas area as a
+ * starting point). Only meaningful for quantity/area measurement — a
+ * percentage target is implicitly 100, and a tahapan has no number at all.
+ */
+export function EditTargetForm({
+  spkId,
+  activityId,
+  unit,
+  targetValue,
+}: {
+  spkId: string
+  activityId: string
+  unit: string | null
+  targetValue: number | null
+}) {
+  const [state, formAction] = useActionState(updateActivityTarget, initialState)
+  useActionToast(state)
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-end gap-3">
+      <Feedback state={state} />
+      <input type="hidden" name="spk_id" value={spkId} />
+      <input type="hidden" name="spk_activity_id" value={activityId} />
+
+      <Field label={`Target${unit ? ` (${unit})` : ''}`} htmlFor="target_value" className="w-32">
+        <Input
+          id="target_value"
+          name="target_value"
+          inputMode="decimal"
+          defaultValue={targetValue ?? ''}
+          placeholder="—"
+        />
+      </Field>
+
+      <Submit label="Simpan target" />
+    </form>
+  )
+}
+
 /** Section 14 — the input shape follows the activity's measurement type. */
 export function RecordProgressForm({
   spkId,
@@ -210,6 +257,137 @@ export function RecordProgressForm({
         <Submit label="Catat progress" />
       </div>
     </form>
+  )
+}
+
+/** Section 16 — fixes one existing entry, e.g. a mistyped value or wrong
+ *  date. Only for `manual` entries: a `daily_progress`-sourced row is
+ *  recomputed from Daily Progress, so correcting it here would just get
+ *  overwritten the next time that module recalculates — go fix it there. */
+export function EditProgressEntryButton({
+  spkId,
+  activityId,
+  measurement,
+  unit,
+  targetValue,
+  entry,
+}: {
+  spkId: string
+  activityId: string
+  measurement: MeasurementType
+  unit: string | null
+  targetValue: number | null
+  entry: {
+    id: string
+    progress_date: string
+    actual_value: number | null
+    stage: StageStatus | null
+    notes: string | null
+  }
+}) {
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useActionState(updateProgressEntry, initialState)
+  useActionToast(state, () => setOpen(false))
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit entri progress"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit entri"
+        >
+          <Pencil size={12} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <form action={formAction} className="grid gap-3">
+        {state.error && <Alert tone="danger">{state.error}</Alert>}
+        <input type="hidden" name="entry_id" value={entry.id} />
+        <input type="hidden" name="spk_id" value={spkId} />
+        <input type="hidden" name="spk_activity_id" value={activityId} />
+        <input type="hidden" name="measurement" value={measurement} />
+
+        <Field label="Tanggal" htmlFor="e_progress_date" required>
+          <Input
+            id="e_progress_date"
+            name="progress_date"
+            type="date"
+            defaultValue={entry.progress_date}
+            required
+          />
+        </Field>
+
+        {measurement === 'stage' ? (
+          <Field label="Status tahapan" htmlFor="e_stage" required>
+            <Select id="e_stage" name="stage" defaultValue={entry.stage ?? ''} required>
+              {STAGE_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : (
+          <Field
+            label={
+              measurement === 'percentage'
+                ? 'Progress (%)'
+                : `Kumulatif${unit ? ` (${unit})` : ''}`
+            }
+            htmlFor="e_actual_value"
+            required
+            hint={
+              measurement !== 'percentage' && targetValue !== null
+                ? `Target ${targetValue}${unit ? ` ${unit}` : ''}`
+                : undefined
+            }
+          >
+            <Input
+              id="e_actual_value"
+              name="actual_value"
+              inputMode="decimal"
+              defaultValue={entry.actual_value ?? ''}
+              required
+            />
+          </Field>
+        )}
+
+        <Field label="Catatan" htmlFor="e_notes">
+          <Input id="e_notes" name="notes" defaultValue={entry.notes ?? ''} />
+        </Field>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Batal
+          </Button>
+          <Submit label="Simpan" />
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/** Same manual-only scope as EditProgressEntryButton. */
+export function DeleteProgressEntryButton({
+  spkId,
+  activityId,
+  entryId,
+}: {
+  spkId: string
+  activityId: string
+  entryId: string
+}) {
+  return (
+    <DeleteButton
+      action={deleteProgressEntry}
+      hiddenFields={{ entry_id: entryId, spk_id: spkId, spk_activity_id: activityId }}
+      itemLabel="entri progress ini"
+    />
   )
 }
 

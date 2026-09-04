@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import type { DesignStage, RecordStatus } from '@/lib/supabase/types'
+import type { DesignStage, StageStatus } from '@/lib/supabase/types'
 
 export type DesignState = { error: string | null; success?: string }
+
+type Supabase = Awaited<ReturnType<typeof createClient>>
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -15,6 +17,92 @@ function text(formData: FormData, key: string) {
 
 function nullable(formData: FormData, key: string) {
   return text(formData, key) || null
+}
+
+/** A picked date (YYYY-MM-DD) becomes noon that day — avoids the previous
+ *  day showing up in a timezone west of UTC. Falls back to right now. */
+function pickedOrNow(formData: FormData, key: string) {
+  const raw = text(formData, key)
+  return raw ? new Date(`${raw}T12:00:00`).toISOString() : new Date().toISOString()
+}
+
+function today(formData: FormData, key: string) {
+  return text(formData, key) || new Date().toISOString().slice(0, 10)
+}
+
+/**
+ * PIC is a free-typed name (see the datalist in forms.tsx), not a fixed
+ * dropdown — a name that doesn't exist yet in design_pics is created on the
+ * spot, matched case-insensitively against what's already there.
+ */
+async function resolvePicId(supabase: Supabase, name: string, userId: string) {
+  if (!name) return null
+
+  const { data: existing } = await supabase
+    .from('design_pics')
+    .select('id')
+    .ilike('full_name', name)
+    .maybeSingle()
+
+  if (existing) return existing.id
+
+  const { data: created, error } = await supabase
+    .from('design_pics')
+    .insert({ full_name: name, created_by: userId })
+    .select('id')
+    .single()
+
+  // A concurrent insert of the same name loses the unique-index race; look
+  // it up instead of failing the whole design action over it.
+  if (error) {
+    const { data: retry } = await supabase
+      .from('design_pics')
+      .select('id')
+      .ilike('full_name', name)
+      .maybeSingle()
+    return retry?.id ?? null
+  }
+
+  return created.id
+}
+
+/**
+ * Section 21 — the design module's own stage tracking (design_revisions) and
+ * the SPK's own weighted Progress tab (spk_activities) used to be two
+ * disconnected systems. This writes an activity_progress row for whichever
+ * spk_activities item shares the stage's exact name, so a design move here
+ * also moves the SPK's overall progress % — the same path recordProgress()
+ * uses on the Progress tab (see progress-actions.ts). Silently does nothing
+ * when no matching item exists: SPKs created before the two-phase
+ * restructure carry one legacy "Desain Siteplan" row instead of these 9
+ * per-stage names, and "Finish" itself carries no weight so has no row at
+ * all — both are expected, not errors.
+ */
+async function syncSpkActivityStage(
+  supabase: Supabase,
+  spkId: string,
+  stageName: string,
+  stageStatus: StageStatus,
+  progressDate: string,
+  userId: string,
+) {
+  const { data: activity } = await supabase
+    .from('spk_activities')
+    .select('id')
+    .eq('spk_id', spkId)
+    .eq('name', stageName)
+    .eq('measurement', 'stage')
+    .maybeSingle()
+
+  if (!activity) return
+
+  await supabase.from('activity_progress').insert({
+    spk_activity_id: activity.id,
+    progress_date: progressDate,
+    stage: stageStatus,
+    source: 'manual',
+    recorded_by: userId,
+  })
 }
 
 /**
@@ -32,6 +120,7 @@ export async function createDesign(
   if (!spkId) return { error: 'SPK wajib dipilih.' }
 
   const supabase = await createClient()
+  const picId = await resolvePicId(supabase, text(formData, 'pic_name'), user.id)
 
   const { data: existing } = await supabase
     .from('designs')
@@ -49,8 +138,7 @@ export async function createDesign(
     .insert({
       spk_id: spkId,
       title: nullable(formData, 'title'),
-      pic_id: nullable(formData, 'pic_id'),
-      target_date: nullable(formData, 'target_date'),
+      pic_id: picId,
       notes: nullable(formData, 'notes'),
       created_by: user.id,
     })
@@ -59,16 +147,27 @@ export async function createDesign(
 
   if (error) return { error: error.message }
 
+  const startedAt = pickedOrNow(formData, 'tanggal')
+
   const { error: revisionError } = await supabase.from('design_revisions').insert({
     design_id: design.id,
     revision_no: 0,
-    stage: 'Desain Awal',
-    pic_id: nullable(formData, 'pic_id'),
-    started_at: new Date().toISOString(),
+    stage: 'Pembuatan Desain Awal',
+    pic_id: picId,
+    started_at: startedAt,
     created_by: user.id,
   })
 
   if (revisionError) return { error: revisionError.message }
+
+  await syncSpkActivityStage(
+    supabase,
+    spkId,
+    'Pembuatan Desain Awal',
+    'Dalam Pengerjaan',
+    today(formData, 'tanggal'),
+    user.id,
+  )
 
   revalidatePath('/design')
   revalidatePath(`/spk/${spkId}`)
@@ -78,7 +177,10 @@ export async function createDesign(
 /**
  * Moves the design to its next stage. Each move closes the current revision
  * and opens a new one, which is what makes the Section 24-style lead time per
- * stage measurable at all.
+ * stage measurable at all. Desain Siteplan and Finalisasi Desain are tracked
+ * as separate spk_activities rows (see syncSpkActivityStage), so this never
+ * blends the two phases' progress into one number — each phase's own
+ * weighted items in the SPK Progress tab move independently.
  */
 export async function advanceStage(
   _prev: DesignState,
@@ -92,9 +194,16 @@ export async function advanceStage(
 
   const supabase = await createClient()
 
+  const { data: designRow } = await supabase
+    .from('designs')
+    .select('spk_id')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
   const { data: revisions, error: readError } = await supabase
     .from('design_revisions')
-    .select('id, revision_no, stage, completed_at')
+    .select('id, revision_no, stage, completed_at, pic_id')
     .eq('design_id', designId)
     .eq('status', 'Active')
     .order('revision_no', { ascending: false })
@@ -107,7 +216,13 @@ export async function advanceStage(
     return { error: `Desain sudah berada di tahap ${stage}.` }
   }
 
-  const now = new Date().toISOString()
+  const now = pickedOrNow(formData, 'tanggal')
+  // A blank PIC field carries the previous stage's PIC forward, matching the
+  // "sama seperti sebelumnya" placeholder — only a typed name changes it.
+  const typedPicName = text(formData, 'pic_name')
+  const picId = typedPicName
+    ? await resolvePicId(supabase, typedPicName, user.id)
+    : (current?.pic_id ?? null)
 
   if (current && !current.completed_at) {
     const { error } = await supabase
@@ -117,16 +232,17 @@ export async function advanceStage(
     if (error) return { error: error.message }
   }
 
-  // Returning to Revisi starts a new numbered round; everything else continues
-  // the current one, so revision_no counts actual rework, not stage hops.
+  // Returning to Revisi Desain Awal starts a new numbered round; everything
+  // else continues the current one, so revision_no counts actual rework, not
+  // stage hops.
   const nextRevisionNo =
-    stage === 'Revisi' ? (current?.revision_no ?? 0) + 1 : (current?.revision_no ?? 0)
+    stage === 'Revisi Desain Awal' ? (current?.revision_no ?? 0) + 1 : (current?.revision_no ?? 0)
 
   const { error: insertError } = await supabase.from('design_revisions').insert({
     design_id: designId,
     revision_no: nextRevisionNo,
     stage,
-    pic_id: nullable(formData, 'pic_id'),
+    pic_id: picId,
     started_at: now,
     notes: nullable(formData, 'notes'),
     created_by: user.id,
@@ -140,8 +256,9 @@ export async function advanceStage(
     }
   }
 
-  // Approval is a property of the design itself, not of one revision.
-  if (stage === 'Approved') {
+  // Approval is a property of the design itself, not of one revision —
+  // Submit Peta is the terminal stage of Finalisasi Desain.
+  if (stage === 'Submit Peta') {
     await supabase
       .from('designs')
       .update({ approved_at: now, approved_by: user.id })
@@ -153,35 +270,140 @@ export async function advanceStage(
       .eq('id', designId)
   }
 
+  const progressDate = today(formData, 'tanggal')
+  if (current) {
+    await syncSpkActivityStage(
+      supabase,
+      designRow.spk_id,
+      current.stage,
+      'Selesai',
+      progressDate,
+      user.id,
+    )
+  }
+  await syncSpkActivityStage(
+    supabase,
+    designRow.spk_id,
+    stage,
+    stage === 'Submit Peta' ? 'Selesai' : 'Dalam Pengerjaan',
+    progressDate,
+    user.id,
+  )
+
   revalidatePath('/design')
   revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${designRow.spk_id}`)
   return { error: null, success: `Desain dipindahkan ke ${stage}.` }
 }
 
-export async function updateDesign(
+/**
+ * Fixes a mistake on one history row — date, PIC, or notes. The stage itself
+ * is never editable here: it drives designs.current_stage (via the DB
+ * trigger) and the SPK Progress tab sync in advanceStage/createDesign, and
+ * changing it after the fact would desync both without redoing that work.
+ * Use deleteRevisionEntry to undo a wrong stage move instead.
+ */
+export async function updateRevisionEntry(
   _prev: DesignState,
   formData: FormData,
 ): Promise<DesignState> {
-  await requirePermission('design', 'edit')
+  const user = await requirePermission('design', 'edit')
 
-  const id = text(formData, 'id')
-  if (!id) return { error: 'Desain tidak dikenali.' }
+  const entryId = text(formData, 'entry_id')
+  const designId = text(formData, 'design_id')
+  if (!entryId) return { error: 'Entri tidak dikenali.' }
 
   const supabase = await createClient()
+  const typedPicName = text(formData, 'pic_name')
+  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
+
   const { error } = await supabase
-    .from('designs')
+    .from('design_revisions')
     .update({
-      title: nullable(formData, 'title'),
-      pic_id: nullable(formData, 'pic_id'),
-      target_date: nullable(formData, 'target_date'),
+      pic_id: picId,
+      started_at: pickedOrNow(formData, 'tanggal'),
       notes: nullable(formData, 'notes'),
-      status: (text(formData, 'status') || 'Active') as RecordStatus,
     })
-    .eq('id', id)
+    .eq('id', entryId)
 
   if (error) return { error: error.message }
 
   revalidatePath('/design')
-  revalidatePath(`/design/${id}`)
-  return { error: null, success: 'Perubahan tersimpan.' }
+  revalidatePath(`/design/${designId}`)
+  return { error: null, success: 'Entri diperbarui.' }
 }
+
+/**
+ * Undoes the last stage move outright — only the LATEST revision can be
+ * deleted, never one buried in the middle, because designs.current_stage
+ * (via refresh_design_current_stage) and the SPK Progress tab sync both
+ * assume history only ever grows at the end. Deleting the latest row lets
+ * the DB trigger fall back to whatever is now latest on its own; the two
+ * spk_activities items touched by that move (the one it left, the one it
+ * entered) are put back the way advanceStage found them.
+ */
+export async function deleteRevisionEntry(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  const user = await requirePermission('design', 'edit')
+
+  const entryId = text(formData, 'entry_id')
+  const designId = text(formData, 'design_id')
+  if (!entryId || !designId) return { error: 'Entri tidak dikenali.' }
+
+  const supabase = await createClient()
+
+  const { data: designRow } = await supabase
+    .from('designs')
+    .select('spk_id')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
+  const { data: revisions, error: readError } = await supabase
+    .from('design_revisions')
+    .select('id, stage')
+    .eq('design_id', designId)
+    .eq('status', 'Active')
+    .order('revision_no', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (readError) return { error: readError.message }
+  if (!revisions || revisions.length === 0) return { error: 'Belum ada riwayat tahap.' }
+
+  const latest = revisions[0]
+  if (latest.id !== entryId) {
+    return { error: 'Hanya tahap terakhir yang bisa dihapus — hapus urut dari yang paling baru.' }
+  }
+  if (revisions.length === 1) {
+    return { error: 'Tahap pertama tidak bisa dihapus — hapus record desainnya jika ingin membatalkan seluruhnya.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('design_revisions')
+    .delete()
+    .eq('id', entryId)
+  if (deleteError) return { error: deleteError.message }
+
+  const previous = revisions[1]
+  const today10 = new Date().toISOString().slice(0, 10)
+
+  // Reverse of what advanceStage did on the way in: the stage being undone
+  // goes back to untouched, the one before it resumes as in-progress.
+  await syncSpkActivityStage(supabase, designRow.spk_id, latest.stage, 'Belum Mulai', today10, user.id)
+  await syncSpkActivityStage(supabase, designRow.spk_id, previous.stage, 'Dalam Pengerjaan', today10, user.id)
+
+  if (latest.stage === 'Submit Peta') {
+    await supabase
+      .from('designs')
+      .update({ approved_at: null, approved_by: null })
+      .eq('id', designId)
+  }
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${designRow.spk_id}`)
+  return { error: null, success: 'Tahap terakhir dibatalkan.' }
+}
+

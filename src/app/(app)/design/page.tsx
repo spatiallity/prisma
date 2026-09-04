@@ -9,6 +9,9 @@ import { can } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { DESIGN_STAGES } from '@/lib/supabase/types'
 import { STAGE_FILTERS, stagesFromFilterKey } from '@/lib/design'
+
+/** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
+const PHASE_GROUPS = STAGE_FILTERS.slice(1)
 import { NewDesignForm } from './forms'
 import { DesignTable } from './design-table'
 
@@ -46,7 +49,7 @@ export default async function DesignQueuePage({
         .from('spks')
         .select('id, spk_number, site_code, work_name')
         .in('status', ['Draft', 'On Going']),
-      supabase.from('users').select('id, full_name').eq('status', 'Active').order('full_name'),
+      supabase.from('design_pics').select('id, full_name').order('full_name'),
     ])
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
@@ -66,7 +69,7 @@ export default async function DesignQueuePage({
     <>
       <PageHeader
         title="Design Queue"
-        description="Desain Awal → Review → Pemaparan → Revisi → Finalisasi → Approved. Tanpa penyimpanan file — hanya tahap, PIC, tanggal, dan catatan."
+        description="Desain Siteplan (Pembuatan Desain Awal → Review → Revisi → Peta Inventaris/Stake Out → Finish), lalu Finalisasi Desain (Pembuatan → Review internal → Sinkronisasi → Submit Peta). Tanpa penyimpanan file — hanya tahap, PIC, tanggal, dan catatan."
       />
 
       {error && (
@@ -75,20 +78,31 @@ export default async function DesignQueuePage({
         </Alert>
       )}
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {DESIGN_STAGES.map((s) => (
-          <Card key={s}>
-            <CardContent className="p-4">
-              <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                {s}
-              </div>
-              <div className="tnum mt-1 text-2xl font-black text-slate-900">
-                {perStage.get(s) ?? 0}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Two separate groups, not one flat 9-card row — Desain Siteplan and
+          Finalisasi Desain are different phases with different owners
+          within the design team, so their counts stay next to each other's
+          own phase, never blended into one row. */}
+      {PHASE_GROUPS.map((phase) => (
+        <div key={phase.key} className="mb-5">
+          <h2 className="mb-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
+            {phase.label}
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {(phase.stages ?? []).map((s) => (
+              <Card key={s}>
+                <CardContent className="p-4">
+                  <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                    {s}
+                  </div>
+                  <div className="tnum mt-1 text-2xl font-black text-slate-900">
+                    {perStage.get(s) ?? 0}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
 
       <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
         {STAGE_FILTERS.map((filter) => {

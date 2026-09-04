@@ -112,13 +112,21 @@ export default async function SpkDetailPage({
   // the same cutoff at the database level).
   let mayEditProgress = can(user.permissions, 'progress', 'edit')
   if (mayEditProgress && user.vendorId) {
-    const { data: designActivity } = await supabase
+    const { data: designActivities } = await supabase
       .from('spk_activities')
       .select('current_stage')
       .eq('spk_id', spk.id)
-      .eq('name', 'Desain Siteplan')
-      .maybeSingle()
-    if (designActivity && designActivity.current_stage !== 'Belum Mulai') {
+      .in('name', [
+        // Legacy single-row activity, still on SPKs created before the
+        // two-phase restructure.
+        'Desain Siteplan',
+        // Desain Siteplan's own sub-activities on SPKs created after it.
+        'Pembuatan Desain Awal',
+        'Review Desain Awal',
+        'Revisi Desain Awal',
+        'Pembuatan Peta Inventaris dan Stake Out',
+      ])
+    if (designActivities?.some((a) => a.current_stage !== 'Belum Mulai')) {
       mayEditProgress = false
     }
   }

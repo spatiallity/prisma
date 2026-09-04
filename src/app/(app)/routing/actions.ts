@@ -17,6 +17,13 @@ function nullable(formData: FormData, key: string) {
   return text(formData, key) || null
 }
 
+/** A picked date (YYYY-MM-DD) becomes noon that day — avoids the previous
+ *  day showing up in a timezone west of UTC. Falls back to right now. */
+function pickedOrNow(formData: FormData, key: string) {
+  const raw = text(formData, key)
+  return raw ? new Date(`${raw}T12:00:00`).toISOString() : new Date().toISOString()
+}
+
 /**
  * Section 23 — puts a document into the routing chain. Every stage of the
  * template is written up front so the whole path is visible from day one, not
@@ -64,7 +71,7 @@ export async function createRouting(
 
   if (error) return { error: error.message }
 
-  const now = new Date().toISOString()
+  const now = pickedOrNow(formData, 'tanggal')
   const rows = steps.map((step, index) => ({
     spk_routing_id: routing.id,
     template_step_id: step.id,
@@ -118,7 +125,7 @@ export async function advanceStep(
     return { error: 'Tahap ini sudah selesai.' }
   }
 
-  const now = new Date().toISOString()
+  const now = pickedOrNow(formData, 'tanggal')
 
   const { error: completeError } = await supabase
     .from('routing_history')
@@ -166,7 +173,7 @@ export async function setStepStatus(
   const status = text(formData, 'status') as RoutingStatus
   if (!stepId || !routingId || !status) return { error: 'Data tidak lengkap.' }
 
-  const now = new Date().toISOString()
+  const now = pickedOrNow(formData, 'tanggal')
   const supabase = await createClient()
 
   const { data: step } = await supabase

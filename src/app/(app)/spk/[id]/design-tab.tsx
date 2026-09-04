@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/page-header'
 import { createClient } from '@/lib/supabase/server'
-import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { DESIGN_STAGES } from '@/lib/supabase/types'
-import { STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
+import { cn, formatDateTime } from '@/lib/utils'
+import { STAGE_ORDER, STAGE_TONE, STAGE_FILTERS, daysInStage } from '@/lib/design'
+
+/** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
+const PHASE_GROUPS = STAGE_FILTERS.slice(1)
 
 /**
  * Section 12 — the Design tab of Detail SPK. Read-only here; the design is
@@ -51,7 +53,7 @@ export async function DesignTab({ spkId }: { spkId: string }) {
       .order('revision_no', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(6),
-    supabase.from('users').select('id, full_name'),
+    supabase.from('design_pics').select('id, full_name'),
   ])
 
   const picName = new Map((pics ?? []).map((p) => [p.id, p.full_name]))
@@ -77,33 +79,40 @@ export async function DesignTab({ spkId }: { spkId: string }) {
           </Link>
         </CardHeader>
         <CardContent>
-          <ol className="mb-5 flex flex-wrap items-center gap-y-2">
-            {DESIGN_STAGES.map((stage, index) => {
-              const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-              const now = stage === design.current_stage
+          <div className="mb-5 grid gap-2">
+            {PHASE_GROUPS.map((phase) => {
+              const stages = phase.stages ?? []
               return (
-                <li key={stage} className="flex items-center">
-                  <span
-                    className={cn(
-                      'rounded-lg px-2 py-0.5 text-[11px] font-bold whitespace-nowrap',
-                      now
-                        ? 'bg-primary text-white'
-                        : done
-                          ? 'bg-green-50 text-success'
-                          : 'text-slate-400',
-                    )}
-                  >
-                    {stage}
-                  </span>
-                  {index < DESIGN_STAGES.length - 1 && (
-                    <span className="mx-1 text-slate-300" aria-hidden>
-                      ›
-                    </span>
-                  )}
-                </li>
+                <ol key={phase.key} className="flex flex-wrap items-center gap-y-2">
+                  {stages.map((stage, index) => {
+                    const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
+                    const now = stage === design.current_stage
+                    return (
+                      <li key={stage} className="flex items-center">
+                        <span
+                          className={cn(
+                            'rounded-lg px-2 py-0.5 text-[11px] font-bold whitespace-nowrap',
+                            now
+                              ? 'bg-primary text-white'
+                              : done
+                                ? 'bg-green-50 text-success'
+                                : 'text-slate-400',
+                          )}
+                        >
+                          {stage}
+                        </span>
+                        {index < stages.length - 1 && (
+                          <span className="mx-1 text-slate-300" aria-hidden>
+                            ›
+                          </span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ol>
               )
             })}
-          </ol>
+          </div>
 
           {revisions && revisions.length > 0 ? (
             <ul className="divide-y divide-slate-100">
@@ -149,7 +158,7 @@ export async function DesignTab({ spkId }: { spkId: string }) {
             <span
               className={cn(
                 'tnum font-bold',
-                held !== null && held > 7 && design.current_stage !== 'Approved'
+                held !== null && held > 7 && design.current_stage !== 'Submit Peta'
                   ? 'text-danger'
                   : 'text-slate-900',
               )}
@@ -164,15 +173,9 @@ export async function DesignTab({ spkId }: { spkId: string }) {
             </span>
           </div>
           <div className="flex justify-between gap-3">
-            <span className="text-muted-foreground">Target</span>
-            <span className="tnum font-bold text-slate-900">
-              {formatDate(design.target_date)}
-            </span>
-          </div>
-          <div className="flex justify-between gap-3">
             <span className="text-muted-foreground">Disetujui</span>
             <span className="tnum font-bold text-slate-900">
-              {design.approved_at ? formatDate(design.approved_at) : '—'}
+              {design.approved_at ? formatDateTime(design.approved_at) : '—'}
             </span>
           </div>
         </CardContent>

@@ -1,17 +1,20 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useId, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { ArrowRight, Plus } from 'lucide-react'
+import { ArrowRight, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select, Textarea } from '@/components/ui/field'
+import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
-import { DESIGN_STAGES, type DesignRow, type DesignStage } from '@/lib/supabase/types'
+import { DESIGN_STAGES, type DesignStage } from '@/lib/supabase/types'
 import {
   advanceStage,
   createDesign,
-  updateDesign,
+  deleteRevisionEntry,
+  updateRevisionEntry,
   type DesignState,
 } from './actions'
 
@@ -36,6 +39,43 @@ function Submit({ label, icon }: { label: string; icon?: React.ReactNode }) {
   )
 }
 
+/** Free-typed PIC name with autocomplete — a name that doesn't match anyone
+ *  in `pics` yet is created automatically when the form is submitted (see
+ *  resolvePicId in actions.ts), so there's nothing to "add a PIC" for. */
+function PicField({
+  label,
+  pics,
+  defaultValue,
+  placeholder,
+  className,
+}: {
+  label: string
+  pics: PicOption[]
+  defaultValue?: string
+  placeholder?: string
+  className?: string
+}) {
+  const id = useId()
+  const listId = `${id}-pics`
+  return (
+    <Field label={label} htmlFor={id} className={className}>
+      <Input
+        id={id}
+        name="pic_name"
+        list={listId}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+      <datalist id={listId}>
+        {pics.map((pic) => (
+          <option key={pic.id} value={pic.label} />
+        ))}
+      </datalist>
+    </Field>
+  )
+}
+
 export function NewDesignForm({
   spks,
   pics,
@@ -45,6 +85,7 @@ export function NewDesignForm({
 }) {
   const [state, formAction] = useActionState(createDesign, initialState)
   useActionToast(state)
+  const today = new Date().toISOString().slice(0, 10)
 
   if (spks.length === 0) {
     return (
@@ -73,19 +114,10 @@ export function NewDesignForm({
           <Input id="d_title" name="title" placeholder="Siteplan Lokasi Bor" />
         </Field>
 
-        <Field label="PIC" htmlFor="d_pic">
-          <Select id="d_pic" name="pic_id" defaultValue="">
-            <option value="">— belum ditentukan —</option>
-            {pics.map((pic) => (
-              <option key={pic.id} value={pic.id}>
-                {pic.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
 
-        <Field label="Target selesai" htmlFor="d_target">
-          <Input id="d_target" name="target_date" type="date" />
+        <Field label="Tanggal mulai" htmlFor="d_start" required>
+          <Input id="d_start" name="tanggal" type="date" defaultValue={today} required />
         </Field>
 
         <Field label="Catatan" htmlFor="d_notes" className="sm:col-span-2 lg:col-span-3">
@@ -113,6 +145,7 @@ export function AdvanceStageForm({
   const [state, formAction] = useActionState(advanceStage, initialState)
   useActionToast(state)
   const options = DESIGN_STAGES.filter((stage) => stage !== currentStage)
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -130,16 +163,16 @@ export function AdvanceStageForm({
           </Select>
         </Field>
 
-        <Field label="PIC tahap ini" htmlFor="a_pic" className="min-w-[180px]">
-          <Select id="a_pic" name="pic_id" defaultValue="">
-            <option value="">— sama seperti sebelumnya —</option>
-            {pics.map((pic) => (
-              <option key={pic.id} value={pic.id}>
-                {pic.label}
-              </option>
-            ))}
-          </Select>
+        <Field label="Tanggal" htmlFor="a_date" required className="w-44">
+          <Input id="a_date" name="tanggal" type="date" defaultValue={today} required />
         </Field>
+
+        <PicField
+          label="PIC tahap ini"
+          pics={pics}
+          placeholder="Sama seperti sebelumnya"
+          className="min-w-[180px]"
+        />
 
         <Field label="Catatan" htmlFor="a_notes" className="min-w-[200px] flex-1">
           <Input id="a_notes" name="notes" placeholder="Alasan revisi, hasil review…" />
@@ -148,73 +181,91 @@ export function AdvanceStageForm({
         <Submit label="Pindahkan" icon={<ArrowRight size={16} aria-hidden />} />
       </div>
       <p className="text-xs text-muted-foreground">
-        Memilih <strong>Revisi</strong> memulai putaran revisi baru; tahap lain
-        melanjutkan putaran yang sedang berjalan.
+        Memilih <strong>Revisi Desain Awal</strong> memulai putaran revisi baru; tahap
+        lain melanjutkan putaran yang sedang berjalan.
       </p>
     </form>
   )
 }
 
-export function DesignDetailsForm({
-  design,
+/** Fixes tanggal/PIC/catatan on one history row — never the stage itself
+ *  (see updateRevisionEntry in actions.ts for why). */
+export function EditRevisionEntryButton({
+  designId,
   pics,
+  entry,
 }: {
-  design: DesignRow
+  designId: string
   pics: PicOption[]
+  entry: { id: string; started_at: string | null; notes: string | null }
 }) {
-  const [state, formAction] = useActionState(updateDesign, initialState)
-  useActionToast(state)
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useActionState(updateRevisionEntry, initialState)
+  useActionToast(state, () => setOpen(false))
 
   return (
-    <form action={formAction} className="grid gap-4">
-      <Feedback state={state} />
-      <input type="hidden" name="id" value={design.id} />
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Edit entri tahap"
+      trigger={
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          aria-label="Edit entri"
+        >
+          <Pencil size={12} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <form action={formAction} className="grid gap-3">
+        {state.error && <Alert tone="danger">{state.error}</Alert>}
+        <input type="hidden" name="entry_id" value={entry.id} />
+        <input type="hidden" name="design_id" value={designId} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Judul desain" htmlFor="u_title">
-          <Input id="u_title" name="title" defaultValue={design.title ?? ''} />
-        </Field>
-
-        <Field label="PIC" htmlFor="u_pic">
-          <Select id="u_pic" name="pic_id" defaultValue={design.pic_id ?? ''}>
-            <option value="">— belum ditentukan —</option>
-            {pics.map((pic) => (
-              <option key={pic.id} value={pic.id}>
-                {pic.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Target selesai" htmlFor="u_target">
+        <Field label="Tanggal" htmlFor="e_tanggal" required>
           <Input
-            id="u_target"
-            name="target_date"
+            id="e_tanggal"
+            name="tanggal"
             type="date"
-            defaultValue={design.target_date ?? ''}
+            defaultValue={entry.started_at?.slice(0, 10)}
+            required
           />
         </Field>
 
-        <Field
-          label="Status"
-          htmlFor="u_status"
-          hint="Record dinonaktifkan, tidak dihapus."
-        >
-          <Select id="u_status" name="status" defaultValue={design.status}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Archived">Archived</option>
-          </Select>
+        <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
+
+        <Field label="Catatan" htmlFor="e_notes">
+          <Input id="e_notes" name="notes" defaultValue={entry.notes ?? ''} />
         </Field>
 
-        <Field label="Catatan" htmlFor="u_notes" className="sm:col-span-2">
-          <Textarea id="u_notes" name="notes" defaultValue={design.notes ?? ''} />
-        </Field>
-      </div>
-
-      <div>
-        <Submit label="Simpan perubahan" />
-      </div>
-    </form>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Batal
+          </Button>
+          <Submit label="Simpan" />
+        </div>
+      </form>
+    </Modal>
   )
 }
+
+/** Only ever shown for the latest history row — see deleteRevisionEntry. */
+export function DeleteRevisionEntryButton({
+  designId,
+  entryId,
+}: {
+  designId: string
+  entryId: string
+}) {
+  return (
+    <DeleteButton
+      action={deleteRevisionEntry}
+      hiddenFields={{ entry_id: entryId, design_id: designId }}
+      itemLabel="tahap terakhir ini"
+      confirmText="Batalkan tahap terakhir ini? Desain kembali ke tahap sebelumnya, dan progress SPK yang sudah tersinkron dari tahap ini ikut dibatalkan."
+    />
+  )
+}
+

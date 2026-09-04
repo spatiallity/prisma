@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { cn, formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
 import type { Database } from '@/lib/supabase/types'
 
@@ -67,20 +67,13 @@ export function DesignTable({
       sortAccessor: (row) => daysInStage(row.updated_at),
       render: (row) => {
         const held = daysInStage(row.updated_at)
-        const late = held !== null && held > 7 && row.current_stage !== 'Approved'
+        const late = held !== null && held > 7 && row.current_stage !== 'Submit Peta'
         return (
           <span className={cn('tnum', late && 'font-bold text-danger')}>
             {held === null ? '—' : `${held} hari`}
           </span>
         )
       },
-    },
-    {
-      key: 'target_date',
-      label: 'Target',
-      className: 'tnum text-muted-foreground',
-      sortAccessor: (row) => row.target_date,
-      render: (row) => formatDate(row.target_date),
     },
   ]
 

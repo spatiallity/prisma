@@ -1,8 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { requirePermission } from '@/lib/auth/session'
+import { requirePermission, requireUser } from '@/lib/auth/session'
+import { can } from '@/lib/auth/permissions'
 import type { MeasurementType, StageStatus } from '@/lib/supabase/types'
 
 export type ProgressState = { error: string | null; success?: string }
@@ -194,4 +196,120 @@ export async function recordProgress(
   revalidatePath(`/spk/${spkId}/progress/${activityId}`)
   revalidatePath('/spk')
   return { error: null, success: 'Progress tercatat.' }
+}
+
+/** Corrects one existing entry — same shape and validation as recordProgress,
+ *  just an update instead of an insert. Same RLS gate (spk_progress_editable),
+ *  so a vendor loses this once the design cutoff hits, same as recording. */
+export async function updateProgressEntry(
+  _prev: ProgressState,
+  formData: FormData,
+): Promise<ProgressState> {
+  const user = await requirePermission('progress', 'edit')
+
+  const entryId = text(formData, 'entry_id')
+  const activityId = text(formData, 'spk_activity_id')
+  const spkId = text(formData, 'spk_id')
+  const measurement = text(formData, 'measurement') as MeasurementType
+  const progressDate = text(formData, 'progress_date')
+
+  if (!entryId || !progressDate) return { error: 'Tanggal progress wajib diisi.' }
+
+  let actualValue: number | null = null
+  let stage: StageStatus | null = null
+
+  if (measurement === 'stage') {
+    stage = text(formData, 'stage') as StageStatus
+    if (!stage) return { error: 'Status tahapan wajib dipilih.' }
+  } else {
+    actualValue = numeric(formData, 'actual_value')
+    if (actualValue === null) return { error: 'Nilai progress wajib diisi.' }
+    if (actualValue < 0) return { error: 'Nilai progress tidak boleh negatif.' }
+    if (measurement === 'percentage' && actualValue > 100) {
+      return { error: 'Progress persentase maksimal 100.' }
+    }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('activity_progress')
+    .update({
+      progress_date: progressDate,
+      actual_value: actualValue,
+      stage,
+      notes: text(formData, 'notes') || null,
+    })
+    .eq('id', entryId)
+
+  if (error) return { error: friendlyProgressError(error.message, error.code, !!user.vendorId) }
+
+  revalidatePath(`/spk/${spkId}`)
+  revalidatePath(`/spk/${spkId}/progress/${activityId}`)
+  revalidatePath('/spk')
+  return { error: null, success: 'Progress diperbarui.' }
+}
+
+/** Removes a mistaken entry outright. The rollup trigger recomputes
+ *  spk_activities from whatever's left, so deleting the latest row falls
+ *  back to the next-latest automatically — nothing else to reconcile. */
+export async function deleteProgressEntry(
+  _prev: ProgressState,
+  formData: FormData,
+): Promise<ProgressState> {
+  const user = await requirePermission('progress', 'edit')
+
+  const entryId = text(formData, 'entry_id')
+  const activityId = text(formData, 'spk_activity_id')
+  const spkId = text(formData, 'spk_id')
+  if (!entryId) return { error: 'Entri tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('activity_progress').delete().eq('id', entryId)
+
+  if (error) return { error: friendlyProgressError(error.message, error.code, !!user.vendorId) }
+
+  revalidatePath(`/spk/${spkId}`)
+  revalidatePath(`/spk/${spkId}/progress/${activityId}`)
+  revalidatePath('/spk')
+  return { error: null, success: 'Entri dihapus.' }
+}
+
+/**
+ * Corrects an activity's target — jumlah titik Stake Out, luas Pengukuran
+ * Terestris, etc. Neither is fixed at instantiation time: Stake Out starts
+ * with no target at all, and the terrestrial-survey area only inherits the
+ * SPK's luas area as a starting point, not a permanent one. Same dual
+ * permission path as everything else on spk_activities (spk_editable OR
+ * spk_progress_editable) — a vendor can fix its own number up to the design
+ * cutoff, an internal SPK editor always can.
+ */
+export async function updateActivityTarget(
+  _prev: ProgressState,
+  formData: FormData,
+): Promise<ProgressState> {
+  const user = await requireUser()
+  if (!can(user.permissions, 'progress', 'edit') && !can(user.permissions, 'spk', 'edit')) {
+    redirect('/forbidden')
+  }
+
+  const activityId = text(formData, 'spk_activity_id')
+  const spkId = text(formData, 'spk_id')
+  if (!activityId) return { error: 'Aktivitas tidak dikenali.' }
+
+  const targetValue = numeric(formData, 'target_value')
+  if (targetValue !== null && targetValue < 0) {
+    return { error: 'Target tidak boleh negatif.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spk_activities')
+    .update({ target_value: targetValue })
+    .eq('id', activityId)
+
+  if (error) return { error: friendlyProgressError(error.message, error.code, !!user.vendorId) }
+
+  revalidatePath(`/spk/${spkId}`)
+  revalidatePath(`/spk/${spkId}/progress/${activityId}`)
+  return { error: null, success: 'Target diperbarui.' }
 }

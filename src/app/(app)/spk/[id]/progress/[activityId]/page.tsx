@@ -12,7 +12,12 @@ import { can } from '@/lib/auth/permissions'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { formatPercent } from '@/lib/spk'
 import { MEASUREMENT_HINT, MEASUREMENT_LABEL, STAGE_TONE, formatMeasure } from '@/lib/progress'
-import { RecordProgressForm } from '../../../progress-forms'
+import {
+  DeleteProgressEntryButton,
+  EditProgressEntryButton,
+  EditTargetForm,
+  RecordProgressForm,
+} from '../../../progress-forms'
 
 export const metadata: Metadata = { title: 'Progress aktivitas' }
 
@@ -39,16 +44,28 @@ export default async function ActivityProgressPage({
   // same cutoff at the database level).
   let mayEdit = can(user.permissions, 'progress', 'edit')
   if (mayEdit && user.vendorId) {
-    const { data: designActivity } = await supabase
+    const { data: designActivities } = await supabase
       .from('spk_activities')
       .select('current_stage')
       .eq('spk_id', spkId)
-      .eq('name', 'Desain Siteplan')
-      .maybeSingle()
-    if (designActivity && designActivity.current_stage !== 'Belum Mulai') {
+      .in('name', [
+        'Desain Siteplan',
+        'Pembuatan Desain Awal',
+        'Review Desain Awal',
+        'Revisi Desain Awal',
+        'Pembuatan Peta Inventaris dan Stake Out',
+      ])
+    if (designActivities?.some((a) => a.current_stage !== 'Belum Mulai')) {
       mayEdit = false
     }
   }
+
+  // Target editing takes the same dual path as spk_activities' RLS: an
+  // internal spk:edit holder always can (structural, not progress); a
+  // vendor only through progress:edit, so still gated by the cutoff above.
+  const mayEditTarget =
+    (can(user.permissions, 'spk', 'edit') || mayEdit) &&
+    (activity.measurement === 'quantity' || activity.measurement === 'area')
 
   const { data: history } = await supabase
     .from('activity_progress')
@@ -112,6 +129,7 @@ export default async function ActivityProgressPage({
                     <Th>Sumber</Th>
                     <Th>Dicatat oleh</Th>
                     <Th>Catatan</Th>
+                    {mayEdit && <Th className="text-right">Aksi</Th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -141,6 +159,35 @@ export default async function ActivityProgressPage({
                       <Td className="max-w-xs text-muted-foreground">
                         {entry.notes ?? '—'}
                       </Td>
+                      {mayEdit && (
+                        <Td className="text-right whitespace-nowrap">
+                          {entry.source === 'manual' ? (
+                            <div className="flex justify-end gap-3">
+                              <EditProgressEntryButton
+                                spkId={spkId}
+                                activityId={activity.id}
+                                measurement={activity.measurement}
+                                unit={activity.unit}
+                                targetValue={
+                                  activity.target_value === null
+                                    ? null
+                                    : Number(activity.target_value)
+                                }
+                                entry={entry}
+                              />
+                              <DeleteProgressEntryButton
+                                spkId={spkId}
+                                activityId={activity.id}
+                                entryId={entry.id}
+                              />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              via Daily Progress
+                            </span>
+                          )}
+                        </Td>
+                      )}
                     </Tr>
                   ))}
                 </tbody>
@@ -201,6 +248,31 @@ export default async function ActivityProgressPage({
           </CardContent>
         </Card>
       </div>
+
+      {mayEditTarget && (
+        <Card className="mt-5">
+          <CardHeader>
+            <div>
+              <CardTitle>Target</CardTitle>
+              <CardDescription>
+                {activity.target_value === null
+                  ? 'Belum ada target — isi supaya persentase progress bisa dihitung.'
+                  : 'Ubah target aktivitas ini.'}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <EditTargetForm
+              spkId={spkId}
+              activityId={activity.id}
+              unit={activity.unit}
+              targetValue={
+                activity.target_value === null ? null : Number(activity.target_value)
+              }
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {mayEdit && (
         <Card className="mt-5">

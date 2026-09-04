@@ -120,8 +120,7 @@ export function SpkForm({
             <Field
               label="Jumlah titik Stake Out"
               htmlFor="stake_out_target"
-              required
-              hint="Jumlah patok yang akan di-stake out — target progress aktivitas Stake Out."
+              hint="Jumlah patok yang akan di-stake out — target progress aktivitas Stake Out. Juga bisa diisi/diubah dari tab Progress."
             >
               <Input
                 id="stake_out_target"
@@ -129,7 +128,6 @@ export function SpkForm({
                 inputMode="numeric"
                 defaultValue={stakeOutTarget ?? ''}
                 placeholder="50"
-                required
               />
             </Field>
           )}

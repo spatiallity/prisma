@@ -67,20 +67,28 @@ export const ROUTING_STATUSES: RoutingStatus[] = [
   'Rejected',
 ]
 export type DesignStage =
-  | 'Desain Awal'
-  | 'Review'
-  | 'Pemaparan'
-  | 'Revisi'
-  | 'Finalisasi'
-  | 'Approved'
+  // Desain Siteplan
+  | 'Pembuatan Desain Awal'
+  | 'Review Desain Awal'
+  | 'Revisi Desain Awal'
+  | 'Pembuatan Peta Inventaris dan Stake Out'
+  | 'Finish'
+  // Finalisasi Desain
+  | 'Pembuatan'
+  | 'Review internal'
+  | 'Sinkronisasi'
+  | 'Submit Peta'
 
 export const DESIGN_STAGES: DesignStage[] = [
-  'Desain Awal',
-  'Review',
-  'Pemaparan',
-  'Revisi',
-  'Finalisasi',
-  'Approved',
+  'Pembuatan Desain Awal',
+  'Review Desain Awal',
+  'Revisi Desain Awal',
+  'Pembuatan Peta Inventaris dan Stake Out',
+  'Finish',
+  'Pembuatan',
+  'Review internal',
+  'Sinkronisasi',
+  'Submit Peta',
 ]
 export type DailyUpdateStatus =
   | 'Updated Today'
@@ -352,6 +360,14 @@ export type DesignRevisionRow = Timestamps & {
   created_by: string | null
 }
 
+/** A design PIC — a named staff member, not a login. */
+export type DesignPicRow = {
+  id: string
+  full_name: string
+  created_at: string
+  created_by: string | null
+}
+
 export type RoutingTemplateStepRow = Timestamps & {
   id: string
   template_id: string
@@ -596,6 +612,7 @@ export type BottleneckView = {
   severity: NotificationSeverity
   /** The number that triggered it — days late, rupiah short, and so on. */
   metric: number | null
+  site_code: string | null
 }
 
 /** migrations/20260825001100 — Section 26.1, revenue reconciliation per SPK. */
@@ -912,6 +929,7 @@ export type Database = {
         | 'notes'
         | 'created_by'
       >
+      design_pics: Table<DesignPicRow, 'id' | 'created_at' | 'created_by'>
       activity_progress: Table<
         ActivityProgressRow,
         | 'id'

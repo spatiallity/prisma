@@ -62,6 +62,7 @@ export function NewRoutingForm({
 }) {
   const [state, formAction] = useActionState(createRouting, initialState)
   useActionToast(state)
+  const today = new Date().toISOString().slice(0, 10)
 
   if (spks.length === 0 || templates.length === 0) {
     return (
@@ -111,6 +112,10 @@ export function NewRoutingForm({
           <Input id="r_number" name="document_number" placeholder="BA-OPN-2026-014" />
         </Field>
 
+        <Field label="Tanggal masuk" htmlFor="r_date" required>
+          <Input id="r_date" name="tanggal" type="date" defaultValue={today} required />
+        </Field>
+
         <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2 lg:col-span-3">
           <Input id="r_notes" name="notes" />
         </Field>
@@ -135,6 +140,7 @@ export function AdvanceStepForm({
 }) {
   const [state, formAction] = useActionState(advanceStep, initialState)
   useActionToast(state)
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -143,6 +149,9 @@ export function AdvanceStepForm({
       <input type="hidden" name="step_id" value={stepId} />
 
       <div className="flex flex-wrap items-end gap-3">
+        <Field label="Tanggal" htmlFor="adv_date" required className="w-44">
+          <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
+        </Field>
         <Field label="PIC tahap ini" htmlFor="adv_pic" className="min-w-[180px]">
           <Input id="adv_pic" name="pic_name" defaultValue={defaultPic ?? ''} />
         </Field>
@@ -168,6 +177,7 @@ export function StepStatusForm({
   const [state, formAction] = useActionState(setStepStatus, initialState)
   useActionToast(state)
   const blocked = status === 'Returned' || status === 'Rejected'
+  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -176,6 +186,9 @@ export function StepStatusForm({
       <input type="hidden" name="step_id" value={stepId} />
 
       <div className="flex flex-wrap items-end gap-3">
+        <Field label="Tanggal" htmlFor="st_date" required className="w-44">
+          <Input id="st_date" name="tanggal" type="date" defaultValue={today} required />
+        </Field>
         <Field label="Ubah status tahap" htmlFor="st_status" className="min-w-[170px]">
           <Select id="st_status" name="status" defaultValue={blocked ? 'In Progress' : 'Returned'}>
             {blocked ? (

@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { DESIGN_STAGES } from '@/lib/supabase/types'
-import { STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
-import { AdvanceStageForm, DesignDetailsForm } from '../forms'
+import { cn, formatDateTime } from '@/lib/utils'
+import { STAGE_ORDER, STAGE_TONE, STAGE_FILTERS, daysInStage } from '@/lib/design'
+import { AdvanceStageForm, DeleteRevisionEntryButton, EditRevisionEntryButton } from '../forms'
+
+/** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
+const PHASE_GROUPS = STAGE_FILTERS.slice(1)
 
 export const metadata: Metadata = { title: 'Detail desain' }
 
@@ -55,7 +57,7 @@ export default async function DesignDetailPage({
       .eq('status', 'Active')
       .order('revision_no', { ascending: true })
       .order('created_at', { ascending: true }),
-    supabase.from('users').select('id, full_name').eq('status', 'Active').order('full_name'),
+    supabase.from('design_pics').select('id, full_name').order('full_name'),
   ])
 
   const picName = new Map((pics ?? []).map((p) => [p.id, p.full_name]))
@@ -63,6 +65,8 @@ export default async function DesignDetailPage({
   const currentOrder = STAGE_ORDER[design.current_stage]
   const held = daysInStage(design.updated_at)
   const rounds = Math.max(0, ...(revisions ?? []).map((r) => r.revision_no))
+  const latestRevisionId = revisions?.[revisions.length - 1]?.id
+  const picOptions = (pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))
 
   return (
     <>
@@ -94,54 +98,66 @@ export default async function DesignDetailPage({
         }
       />
 
-      {/* Section 21 — the chain, with what has actually been reached. */}
+      {/* Section 21 — two separate rails, one per phase, so a design mid-way
+          through Desain Siteplan never reads as "half done overall" — the
+          two phases' progress is never blended into one bar. */}
       <Card className="mb-5">
-        <CardContent className="p-5">
-          <ol className="flex flex-wrap items-center gap-y-3">
-            {DESIGN_STAGES.map((stage, index) => {
-              const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-              const now = stage === design.current_stage
-              return (
-                <li key={stage} className="flex items-center">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[10px] font-extrabold',
-                        now
-                          ? 'border-primary bg-primary text-white'
-                          : done
-                            ? 'border-success bg-success text-white'
-                            : 'border-slate-200 bg-white text-slate-400',
-                      )}
-                    >
-                      {done ? <Check size={12} aria-hidden /> : index + 1}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-xs font-bold whitespace-nowrap',
-                        now
-                          ? 'text-primary'
-                          : done
-                            ? 'text-slate-700'
-                            : 'text-slate-400',
-                      )}
-                    >
-                      {stage}
-                    </span>
-                  </div>
-                  {index < DESIGN_STAGES.length - 1 && (
-                    <span
-                      className={cn(
-                        'mx-3 h-0.5 w-6 rounded-full',
-                        done ? 'bg-success' : 'bg-slate-200',
-                      )}
-                      aria-hidden
-                    />
-                  )}
-                </li>
-              )
-            })}
-          </ol>
+        <CardContent className="grid gap-5 p-5">
+          {PHASE_GROUPS.map((phase) => {
+            const stages = phase.stages ?? []
+            return (
+              <div key={phase.key}>
+                <div className="mb-2 text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">
+                  {phase.label}
+                </div>
+                <ol className="flex flex-wrap items-center gap-y-3">
+                  {stages.map((stage, index) => {
+                    const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
+                    const now = stage === design.current_stage
+                    return (
+                      <li key={stage} className="flex items-center">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[10px] font-extrabold',
+                              now
+                                ? 'border-primary bg-primary text-white'
+                                : done
+                                  ? 'border-success bg-success text-white'
+                                  : 'border-slate-200 bg-white text-slate-400',
+                            )}
+                          >
+                            {done ? <Check size={12} aria-hidden /> : index + 1}
+                          </span>
+                          <span
+                            className={cn(
+                              'text-xs font-bold whitespace-nowrap',
+                              now
+                                ? 'text-primary'
+                                : done
+                                  ? 'text-slate-700'
+                                  : 'text-slate-400',
+                            )}
+                          >
+                            {stage}
+                          </span>
+                        </div>
+                        {index < stages.length - 1 && (
+                          <span
+                            className={cn(
+                              'mx-3 h-0.5 w-6 rounded-full',
+                              done ? 'bg-success' : 'bg-slate-200',
+                            )}
+                            aria-hidden
+                          />
+                        )}
+                      </li>
+                    )
+                  })}
+                </ol>
+              </div>
+            )
+          })}
         </CardContent>
       </Card>
 
@@ -173,16 +189,33 @@ export default async function DesignDetailPage({
                           </span>
                           {open && <Badge tone="primary">berjalan</Badge>}
                         </div>
-                        <span
-                          className={cn(
-                            'tnum text-xs font-bold',
-                            open && duration !== null && duration > 7
-                              ? 'text-danger'
-                              : 'text-muted-foreground',
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              'tnum text-xs font-bold',
+                              open && duration !== null && duration > 7
+                                ? 'text-danger'
+                                : 'text-muted-foreground',
+                            )}
+                          >
+                            {duration === null ? '—' : `${duration} hari`}
+                          </span>
+                          {mayEdit && (
+                            <div className="flex items-center gap-2">
+                              <EditRevisionEntryButton
+                                designId={design.id}
+                                pics={picOptions}
+                                entry={revision}
+                              />
+                              {revision.id === latestRevisionId && (
+                                <DeleteRevisionEntryButton
+                                  designId={design.id}
+                                  entryId={revision.id}
+                                />
+                              )}
+                            </div>
                           )}
-                        >
-                          {duration === null ? '—' : `${duration} hari`}
-                        </span>
+                        </div>
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {revision.pic_id
@@ -222,7 +255,7 @@ export default async function DesignDetailPage({
                 <span
                   className={cn(
                     'tnum font-bold',
-                    held !== null && held > 7 && design.current_stage !== 'Approved'
+                    held !== null && held > 7 && design.current_stage !== 'Submit Peta'
                       ? 'text-danger'
                       : 'text-slate-900',
                   )}
@@ -234,12 +267,6 @@ export default async function DesignDetailPage({
                 <span className="text-muted-foreground">PIC</span>
                 <span className="font-bold text-slate-900">
                   {design.pic_id ? (picName.get(design.pic_id) ?? '—') : '—'}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Target selesai</span>
-                <span className="tnum font-bold text-slate-900">
-                  {formatDate(design.target_date)}
                 </span>
               </div>
               <div className="flex justify-between gap-3">
@@ -260,27 +287,13 @@ export default async function DesignDetailPage({
                 <AdvanceStageForm
                   designId={design.id}
                   currentStage={design.current_stage}
-                  pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
+                  pics={picOptions}
                 />
               </CardContent>
             </Card>
           )}
         </div>
       </div>
-
-      {mayEdit && (
-        <Card className="mt-5">
-          <CardHeader>
-            <CardTitle>Data desain</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DesignDetailsForm
-              design={design}
-              pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
-            />
-          </CardContent>
-        </Card>
-      )}
     </>
   )
 }

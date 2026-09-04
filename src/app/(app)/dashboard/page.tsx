@@ -354,7 +354,7 @@ export default async function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-slate-900">{item.reason}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.spk_number ?? 'Seluruh project'}
+                          {item.site_code ?? item.spk_number ?? 'Seluruh project'}
                           {formatMetric(item.reason, item.metric) &&
                             ` · ${formatMetric(item.reason, item.metric)}`}
                         </p>

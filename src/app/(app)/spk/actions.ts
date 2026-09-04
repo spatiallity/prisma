@@ -108,18 +108,9 @@ export async function createSpk(
   const fields = readFields(formData)
   if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
-  // Stake Out has no natural target elsewhere (unlike an area-based activity,
-  // which inherits luas area) — someone has to say how many patok up front.
-  let stakeOutTarget: number | null = null
-  if (fields.work_type === 'Stake Out') {
-    stakeOutTarget = numeric(formData, 'stake_out_target')
-    if (stakeOutTarget === null || stakeOutTarget <= 0) {
-      return {
-        error: 'Jumlah titik Stake Out wajib diisi.',
-        values: pickFormValues(formData),
-      }
-    }
-  }
+  // Optional up front — can be filled in later from the SPK edit form or
+  // straight from the Progress tab once the survey knows the real count.
+  const stakeOutTarget = fields.work_type === 'Stake Out' ? numeric(formData, 'stake_out_target') : null
 
   const supabase = await createClient()
 
@@ -199,16 +190,7 @@ export async function updateSpk(
   const fields = readFields(formData)
   if (typeof fields === 'string') return { error: fields, values: pickFormValues(formData) }
 
-  let stakeOutTarget: number | null = null
-  if (fields.work_type === 'Stake Out') {
-    stakeOutTarget = numeric(formData, 'stake_out_target')
-    if (stakeOutTarget === null || stakeOutTarget <= 0) {
-      return {
-        error: 'Jumlah titik Stake Out wajib diisi.',
-        values: pickFormValues(formData),
-      }
-    }
-  }
+  const stakeOutTarget = fields.work_type === 'Stake Out' ? numeric(formData, 'stake_out_target') : null
 
   const supabase = await createClient()
   const { error } = await supabase

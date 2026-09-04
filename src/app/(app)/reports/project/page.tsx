@@ -205,7 +205,7 @@ export default async function ProjectReportPage() {
                         href={`/spk/${row.spk_id}`}
                         className="font-bold text-primary hover:underline"
                       >
-                        {row.spk_number ?? 'SPK'}
+                        {row.site_code ?? row.spk_number ?? 'SPK'}
                       </Link>
                     ) : (
                       <span className="text-muted-foreground">Seluruh project</span>
