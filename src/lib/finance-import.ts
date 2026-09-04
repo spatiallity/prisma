@@ -229,7 +229,26 @@ export type ParsedFinanceRow = {
   personilNama: string | null
 }
 
-function cellToDateString(value: ExcelJS.CellValue): string | null {
+/**
+ * A manually-typed cell isn't always the plain string/number/Date it looks
+ * like — a formula cell's value is `{formula, result}`, and some producers
+ * write rich text as `{richText: [...]}` even for a single unstyled run.
+ * Every other cellTo*() function reads through this first so a value typed
+ * directly (not picked from a dropdown) is exactly as valid as one that was.
+ */
+function unwrapCellValue(value: ExcelJS.CellValue): ExcelJS.CellValue {
+  if (value === null || typeof value !== 'object') return value
+  if (value instanceof Date) return value
+  if ('result' in value) return unwrapCellValue(value.result as ExcelJS.CellValue)
+  if ('text' in value) return value.text as ExcelJS.CellValue
+  if ('richText' in value && Array.isArray(value.richText)) {
+    return value.richText.map((run) => run.text).join('')
+  }
+  return value
+}
+
+function cellToDateString(rawValue: ExcelJS.CellValue): string | null {
+  const value = unwrapCellValue(rawValue)
   if (value instanceof Date) {
     // exceljs builds date cells from the Excel serial using UTC math, so the
     // UTC components are what the cell visually shows — not the local ones.
@@ -248,14 +267,15 @@ function cellToDateString(value: ExcelJS.CellValue): string | null {
   return null
 }
 
-function cellToText(value: ExcelJS.CellValue): string | null {
+function cellToText(rawValue: ExcelJS.CellValue): string | null {
+  const value = unwrapCellValue(rawValue)
   if (value === null || value === undefined) return null
-  if (typeof value === 'object' && 'text' in value) return String(value.text).trim() || null
   const text = String(value).trim()
   return text || null
 }
 
-function cellToNumber(value: ExcelJS.CellValue): number | null {
+function cellToNumber(rawValue: ExcelJS.CellValue): number | null {
+  const value = unwrapCellValue(rawValue)
   if (typeof value === 'number') return value
   if (typeof value === 'string') {
     const parsed = Number(value.trim().replace(/\./g, '').replace(',', '.'))

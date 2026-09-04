@@ -223,6 +223,32 @@ export async function deleteFinanceTransaction(
   return { error: null }
 }
 
+/** Same hard delete as deleteFinanceTransaction, just several rows in one
+ *  confirm instead of one at a time — for cleaning up after a bad import or
+ *  a batch of duplicates. */
+export async function deleteFinanceTransactions(
+  _prev: FinanceTxState,
+  formData: FormData,
+): Promise<FinanceTxState> {
+  await requirePermission('spending', 'edit')
+
+  const ids = formData.getAll('id').map(String).filter(Boolean)
+  if (ids.length === 0) return { error: 'Tidak ada transaksi yang dipilih.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('finance_transactions').delete().in('id', ids)
+  if (error) return { error: error.message }
+
+  revalidatePath('/financial/rab')
+  revalidatePath('/financial/umk')
+  revalidatePath('/financial/sppd')
+  revalidatePath('/financial/ppbj-barang')
+  revalidatePath('/financial/ppbj-jasa')
+  revalidatePath('/financial/mcu')
+  revalidatePath('/financial/gaji-ptt')
+  return { error: null, success: `${ids.length} transaksi dihapus.` }
+}
+
 const MAX_IMPORT_ROWS = 2000
 /** Shown at most this many at once — a 300-row error dump is not readable. */
 const MAX_SHOWN_ERRORS = 15

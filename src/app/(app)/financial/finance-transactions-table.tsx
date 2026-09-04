@@ -1,15 +1,78 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useActionState, useMemo, useState, type ReactNode } from 'react'
+import { useFormStatus } from 'react-dom'
+import { AlertTriangle, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Modal } from '@/components/ui/modal'
+import { useActionToast } from '@/components/ui/toast'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
 import type { FinanceTransactionRow } from '@/lib/supabase/types'
-import { deleteFinanceTransaction } from './rab/actions'
+import { deleteFinanceTransaction, deleteFinanceTransactions, type FinanceTxState } from './rab/actions'
 import { EditTransactionButton, type AkunOption } from './rab/finance-form'
+
+/** Confirm-then-delete for a set of selected rows at once — same pattern as
+ *  the single-row DeleteButton, just with N hidden `id` inputs instead of
+ *  one, and a count in the confirm text. */
+function BulkDeleteButton({ ids, onDeleted }: { ids: string[]; onDeleted: () => void }) {
+  const [state, formAction] = useActionState<FinanceTxState, FormData>(deleteFinanceTransactions, {
+    error: null,
+  })
+  const [open, setOpen] = useState(false)
+  useActionToast(state, () => {
+    setOpen(false)
+    onDeleted()
+  })
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Apakah Anda yakin?"
+      trigger={
+        <Button type="button" variant="danger">
+          <Trash2 size={16} aria-hidden />
+          Hapus {ids.length} terpilih
+        </Button>
+      }
+    >
+      <div className="grid gap-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={20} className="mt-0.5 shrink-0 text-danger" aria-hidden />
+          <p className="text-sm text-slate-700">
+            Hapus {ids.length} transaksi terpilih? Tindakan ini permanen dan tidak bisa
+            dibatalkan.
+          </p>
+        </div>
+
+        {state.error && <p className="text-sm font-semibold text-danger">{state.error}</p>}
+
+        <form action={formAction} className="flex justify-end gap-2">
+          {ids.map((id) => (
+            <input key={id} type="hidden" name="id" value={id} />
+          ))}
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Batal
+          </Button>
+          <BulkDeleteSubmit />
+        </form>
+      </div>
+    </Modal>
+  )
+}
+
+function BulkDeleteSubmit() {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" variant="danger" disabled={pending}>
+      {pending ? 'Menghapus…' : 'Ya, Hapus'}
+    </Button>
+  )
+}
 
 /**
  * Column definitions (and their render closures) have to live in a client
@@ -42,6 +105,7 @@ export function FinanceTransactionsTable({
   const showJenis = rows.some((r) => r.jenis_detail)
   const showPerjab = rows.some((r) => r.perjab)
   const [detail, setDetail] = useState<FinanceTransactionRow | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const columns: DataTableColumn<FinanceTransactionRow>[] = [
     ...(showKategori
@@ -163,6 +227,13 @@ export function FinanceTransactionsTable({
 
   return (
     <>
+      {mayEdit && selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2">
+          <span className="text-sm font-bold text-slate-700">{selected.size} dipilih</span>
+          <BulkDeleteButton ids={[...selected]} onDeleted={() => setSelected(new Set())} />
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         rows={rows}
@@ -182,6 +253,8 @@ export function FinanceTransactionsTable({
         emptyTitle={emptyTitle}
         defaultSort={{ key: 'tanggal', dir: 'desc' }}
         onRowClick={setDetail}
+        selectedKeys={mayEdit ? selected : undefined}
+        onSelectionChange={mayEdit ? setSelected : undefined}
       />
 
       <Modal

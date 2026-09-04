@@ -35,6 +35,8 @@ export function DataTable<T>({
   emptyDescription,
   defaultSort,
   onRowClick,
+  selectedKeys,
+  onSelectionChange,
 }: {
   columns: DataTableColumn<T>[]
   rows: T[]
@@ -47,6 +49,10 @@ export function DataTable<T>({
   defaultSort?: { key: string; dir: 'asc' | 'desc' }
   /** Row opens a detail view on click — e.g. a truncated cell's full content. */
   onRowClick?: (row: T) => void
+  /** Present → a checkbox column is rendered and rows can be multi-selected
+   *  for a bulk action (e.g. delete). Selection is keyed by rowKey(row). */
+  selectedKeys?: Set<string>
+  onSelectionChange?: (keys: Set<string>) => void
 }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(
@@ -83,6 +89,31 @@ export function DataTable<T>({
     })
   }
 
+  const selectable = !!onSelectionChange
+  const allVisibleChecked =
+    selectable && sorted.length > 0 && sorted.every((row) => selectedKeys?.has(rowKey(row)))
+  const someVisibleChecked =
+    selectable && !allVisibleChecked && sorted.some((row) => selectedKeys?.has(rowKey(row)))
+
+  function toggleAllVisible() {
+    if (!onSelectionChange) return
+    const next = new Set(selectedKeys)
+    if (allVisibleChecked) {
+      sorted.forEach((row) => next.delete(rowKey(row)))
+    } else {
+      sorted.forEach((row) => next.add(rowKey(row)))
+    }
+    onSelectionChange(next)
+  }
+
+  function toggleOne(key: string) {
+    if (!onSelectionChange) return
+    const next = new Set(selectedKeys)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    onSelectionChange(next)
+  }
+
   return (
     <div>
       {searchAccessor && (
@@ -108,6 +139,20 @@ export function DataTable<T>({
         <Table>
           <thead>
             <tr>
+              {selectable && (
+                <Th className="w-8">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-slate-300 accent-primary"
+                    checked={allVisibleChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someVisibleChecked
+                    }}
+                    onChange={toggleAllVisible}
+                    aria-label="Pilih semua baris"
+                  />
+                </Th>
+              )}
               {columns.map((col) => (
                 <Th
                   key={col.key}
@@ -147,6 +192,17 @@ export function DataTable<T>({
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={onRowClick ? 'cursor-pointer' : undefined}
               >
+                {selectable && (
+                  <Td onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-slate-300 accent-primary"
+                      checked={selectedKeys?.has(rowKey(row)) ?? false}
+                      onChange={() => toggleOne(rowKey(row))}
+                      aria-label="Pilih baris ini"
+                    />
+                  </Td>
+                )}
                 {columns.map((col) => (
                   <Td
                     key={col.key}
