@@ -154,7 +154,12 @@ export function FinanceTransactionsTable({
       key: 'tanggal',
       label: 'Tanggal',
       className: 'whitespace-nowrap tnum text-muted-foreground',
-      sortAccessor: (row) => row.tanggal ?? row.bulan,
+      // Both parts are ISO strings, so string comparison already sorts them
+      // correctly — tanggal first, created_at as the tiebreak. That tiebreak
+      // is what makes a batch of freshly-imported rows sharing the same
+      // tanggal land together, newest-created first, instead of scattered
+      // in whatever order they happened to be inserted.
+      sortAccessor: (row) => `${row.tanggal ?? row.bulan}T${row.created_at}`,
       render: (row) => formatDate(row.tanggal ?? row.bulan),
     },
     {
