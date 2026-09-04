@@ -366,8 +366,19 @@ export type DesignRevisionRow = Timestamps & {
   started_at: string | null
   completed_at: string | null
   notes: string | null
+  /** Who reviews this stage on the Pertamina side — free text. */
+  pic_pertamina: string | null
   status: RecordStatus
   created_by: string | null
+}
+
+export type DesignStageRevisionRow = {
+  id: string
+  design_revision_id: string
+  note: string
+  resubmit_at: string
+  created_by: string | null
+  created_at: string
 }
 
 /** A design PIC — a named staff member, not a login. */
@@ -956,8 +967,10 @@ export type Database = {
         | 'started_at'
         | 'completed_at'
         | 'notes'
+        | 'pic_pertamina'
         | 'created_by'
       >
+      design_stage_revisions: Table<DesignStageRevisionRow, 'id' | 'created_at' | 'created_by'>
       design_pics: Table<DesignPicRow, 'id' | 'created_at' | 'created_by'>
       activity_progress: Table<
         ActivityProgressRow,

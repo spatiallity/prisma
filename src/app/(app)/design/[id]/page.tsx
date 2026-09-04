@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDateTime } from '@/lib/utils'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { STAGE_ORDER, STAGE_TONE, STAGE_FILTERS, daysInStage } from '@/lib/design'
-import { AdvanceStageForm, DeleteRevisionEntryButton, EditRevisionEntryButton } from '../forms'
+import { DeleteRevisionEntryButton, EditRevisionEntryButton, StageReviewForm } from '../forms'
 
 /** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
 const PHASE_GROUPS = STAGE_FILTERS.slice(1)
@@ -60,13 +60,42 @@ export default async function DesignDetailPage({
     supabase.from('design_pics').select('id, full_name').order('full_name'),
   ])
 
+  const entryIds = (revisions ?? []).map((r) => r.id)
+  const { data: rounds } = entryIds.length
+    ? await supabase
+        .from('design_stage_revisions')
+        .select('*')
+        .in('design_revision_id', entryIds)
+        .order('created_at')
+    : { data: [] }
+  const roundsByEntry = new Map<string, typeof rounds>()
+  for (const round of rounds ?? []) {
+    roundsByEntry.set(round.design_revision_id, [
+      ...(roundsByEntry.get(round.design_revision_id) ?? []),
+      round,
+    ])
+  }
+
   const picName = new Map((pics ?? []).map((p) => [p.id, p.full_name]))
   const reached = new Set((revisions ?? []).map((r) => r.stage))
   const currentOrder = STAGE_ORDER[design.current_stage]
   const held = daysInStage(design.updated_at)
-  const rounds = Math.max(0, ...(revisions ?? []).map((r) => r.revision_no))
+  const roundCount = Math.max(0, ...(revisions ?? []).map((r) => r.revision_no))
   const latestRevisionId = revisions?.[revisions.length - 1]?.id
   const picOptions = (pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))
+
+  // The stage the design is sitting in — the entry that never closed. Its
+  // revision rounds are what "Revisi ke-N" counts, exactly as routing does.
+  const currentEntry = (revisions ?? []).find((r) => !r.completed_at) ?? null
+  const currentRounds = currentEntry
+    ? (roundsByEntry.get(currentEntry.id) ?? []).length
+    : 0
+  const stagesDone = (revisions ?? []).filter((r) => r.completed_at).length
+  const totalDays = (revisions ?? []).reduce(
+    (sum, r) => sum + (spanDays(r.started_at, r.completed_at) ?? 0),
+    0,
+  )
+  const picPertamina = currentEntry?.pic_pertamina ?? null
 
   return (
     <>
@@ -97,6 +126,43 @@ export default async function DesignDetailPage({
           </div>
         }
       />
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+              Tahap selesai
+            </div>
+            <div className="tnum mt-1 text-2xl font-black text-slate-900">
+              {stagesDone}/{revisions?.length ?? 0}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+              Lead time terpakai
+            </div>
+            <div className="tnum mt-1 text-2xl font-black text-slate-900">
+              {Math.round(totalDays * 10) / 10} hari
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+              Posisi sekarang
+            </div>
+            <div className="mt-1 truncate text-lg font-black text-slate-900">
+              {design.current_stage}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {currentRounds > 0 ? `Revisi ke-${currentRounds}` : 'Submission pertama'}
+              {currentEntry?.started_at && ` · mulai ${formatDate(currentEntry.started_at)}`}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Section 21 — two separate rails, one per phase, so a design mid-way
           through Desain Siteplan never reads as "half done overall" — the
@@ -171,7 +237,7 @@ export default async function DesignDetailPage({
                 tahap terukur.
               </CardDescription>
             </div>
-            <Badge tone="neutral">{rounds} putaran revisi</Badge>
+            <Badge tone="neutral">{roundCount} putaran tahap</Badge>
           </CardHeader>
           <CardContent className="p-0">
             {revisions && revisions.length > 0 ? (
@@ -221,12 +287,27 @@ export default async function DesignDetailPage({
                         {revision.pic_id
                           ? (picName.get(revision.pic_id) ?? 'PIC tidak dikenal')
                           : 'PIC belum ditentukan'}
+                        {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
                         {' · '}
                         {formatDateTime(revision.started_at)}
                         {revision.completed_at && ` → ${formatDateTime(revision.completed_at)}`}
                       </div>
                       {revision.notes && (
                         <p className="mt-1.5 text-sm text-slate-700">{revision.notes}</p>
+                      )}
+                      {(roundsByEntry.get(revision.id) ?? []).length > 0 && (
+                        <ul className="mt-2 grid gap-1.5 border-l-2 border-warning/40 pl-3">
+                          {(roundsByEntry.get(revision.id) ?? []).map((round, i) => (
+                            <li key={round.id} className="text-xs">
+                              <span className="font-bold text-warning">Revisi {i + 1}</span>{' '}
+                              <span className="text-slate-700">{round.note}</span>
+                              <span className="text-muted-foreground">
+                                {' '}
+                                · disubmit ulang {formatDate(round.resubmit_at)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                     </li>
                   )
@@ -270,6 +351,16 @@ export default async function DesignDetailPage({
                 </span>
               </div>
               <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">PIC Pertamina</span>
+                <span className="font-bold text-slate-900">{picPertamina ?? '—'}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Putaran tahap ini</span>
+                <span className="font-bold text-slate-900">
+                  {currentRounds > 0 ? `Revisi ke-${currentRounds}` : 'Submission pertama'}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Disetujui</span>
                 <span className="tnum font-bold text-slate-900">
                   {design.approved_at ? formatDateTime(design.approved_at) : '—'}
@@ -281,13 +372,18 @@ export default async function DesignDetailPage({
           {mayEdit && (
             <Card>
               <CardHeader>
-                <CardTitle>Pindah tahap</CardTitle>
+                <div>
+                  <CardTitle>Review</CardTitle>
+                  <CardDescription>{design.current_stage}</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
-                <AdvanceStageForm
+                <StageReviewForm
                   designId={design.id}
+                  entryId={currentEntry?.id ?? null}
                   currentStage={design.current_stage}
                   pics={picOptions}
+                  defaultPicPertamina={picPertamina}
                 />
               </CardContent>
             </Card>

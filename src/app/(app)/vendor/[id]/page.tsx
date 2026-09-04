@@ -13,8 +13,8 @@ import { formatDate } from '@/lib/utils'
 import { updateVendor } from '../actions'
 import { VendorForm } from '../vendor-form'
 import {
-  AddMemberForm,
-  AddTeamForm,
+  AddMemberButton,
+  AddTeamButton,
   DeleteEntry,
   EditMemberButton,
   EditTeamButton,
@@ -95,6 +95,7 @@ export default async function VendorDetailPage({
                   Satu vendor bisa menjalankan beberapa team pada SPK berbeda.
                 </CardDescription>
               </div>
+              {mayEdit && <AddTeamButton vendorId={vendor.id} />}
             </CardHeader>
             <CardContent className="p-0">
               {teams && teams.length > 0 ? (
@@ -141,17 +142,15 @@ export default async function VendorDetailPage({
                 <EmptyState title="Belum ada team" />
               )}
 
-              {mayEdit && (
-                <div className="border-t border-slate-100 px-5 py-4">
-                  <AddTeamForm vendorId={vendor.id} />
-                </div>
-              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Anggota team</CardTitle>
+              {mayEdit && activeTeams.length > 0 && (
+                <AddMemberButton vendorId={vendor.id} teams={activeTeams} />
+              )}
             </CardHeader>
             <CardContent className="p-0">
               {members && members.length > 0 ? (
@@ -204,11 +203,6 @@ export default async function VendorDetailPage({
                 <EmptyState title="Belum ada anggota" />
               )}
 
-              {mayEdit && (
-                <div className="border-t border-slate-100 px-5 py-4">
-                  <AddMemberForm vendorId={vendor.id} teams={activeTeams} />
-                </div>
-              )}
             </CardContent>
           </Card>
 

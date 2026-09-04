@@ -154,6 +154,7 @@ export async function createDesign(
     revision_no: 0,
     stage: 'Pembuatan Desain Awal',
     pic_id: picId,
+    pic_pertamina: nullable(formData, 'pic_pertamina'),
     started_at: startedAt,
     created_by: user.id,
   })
@@ -203,7 +204,7 @@ export async function advanceStage(
 
   const { data: revisions, error: readError } = await supabase
     .from('design_revisions')
-    .select('id, revision_no, stage, completed_at, pic_id')
+    .select('id, revision_no, stage, completed_at, pic_id, pic_pertamina')
     .eq('design_id', designId)
     .eq('status', 'Active')
     .order('revision_no', { ascending: false })
@@ -243,6 +244,8 @@ export async function advanceStage(
     revision_no: nextRevisionNo,
     stage,
     pic_id: picId,
+    // Blank carries the previous stage's reviewer forward, same as PIC.
+    pic_pertamina: nullable(formData, 'pic_pertamina') ?? current?.pic_pertamina ?? null,
     started_at: now,
     notes: nullable(formData, 'notes'),
     created_by: user.id,
@@ -297,6 +300,41 @@ export async function advanceStage(
 }
 
 /**
+ * Section 21 — a review round that isn't ready to pass yet, mirroring the
+ * routing module's Revisi: it does not move the design or close the stage,
+ * it just logs what needs fixing and when it comes back, so one stage can
+ * collect as many rounds as it takes before Lanjut moves it on.
+ */
+export async function addDesignRevision(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  const user = await requirePermission('design', 'edit')
+
+  const designId = text(formData, 'design_id')
+  const entryId = text(formData, 'entry_id')
+  const note = text(formData, 'note')
+  const resubmitAt = text(formData, 'resubmit_at')
+  if (!designId || !entryId || !note || !resubmitAt) {
+    return { error: 'Catatan revisi dan tanggal submit ulang wajib diisi.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('design_stage_revisions').insert({
+    design_revision_id: entryId,
+    note,
+    resubmit_at: resubmitAt,
+    created_by: user.id,
+  })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  return { error: null, success: 'Revisi dicatat.' }
+}
+
+/**
  * Fixes a mistake on one history row — date, PIC, or notes. The stage itself
  * is never editable here: it drives designs.current_stage (via the DB
  * trigger) and the SPK Progress tab sync in advanceStage/createDesign, and
@@ -321,6 +359,7 @@ export async function updateRevisionEntry(
     .from('design_revisions')
     .update({
       pic_id: picId,
+      pic_pertamina: nullable(formData, 'pic_pertamina'),
       started_at: pickedOrNow(formData, 'tanggal'),
       notes: nullable(formData, 'notes'),
     })

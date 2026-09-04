@@ -43,37 +43,61 @@ function Feedback({ state }: { state: VendorFormState }) {
   return null
 }
 
-export function AddTeamForm({ vendorId }: { vendorId: string }) {
+export function AddTeamForm({
+  vendorId,
+  onSaved,
+}: {
+  vendorId: string
+  onSaved?: () => void
+}) {
   const [state, formAction] = useActionState(createTeam, initialState)
-  useActionToast(state)
+  useActionToast(state, onSaved)
 
   return (
-    <form action={formAction} className="grid gap-2">
+    <form action={formAction} className="grid gap-3">
       <Feedback state={state} />
       <input type="hidden" name="vendor_id" value={vendorId} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          name="name"
-          placeholder="Nama team, contoh Team A"
-          required
-          className="max-w-xs"
-          aria-label="Nama team"
-        />
+      <Field label="Nama team" htmlFor="t_name" required>
+        <Input id="t_name" name="name" placeholder="Team A" required />
+      </Field>
+      <div>
         <InlineSubmit label="Tambah team" />
       </div>
     </form>
   )
 }
 
+export function AddTeamButton({ vendorId }: { vendorId: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Team baru"
+      description="Satu vendor bisa menjalankan beberapa team pada SPK berbeda."
+      trigger={
+        <Button type="button" size="sm">
+          <Plus size={14} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <AddTeamForm vendorId={vendorId} onSaved={() => setOpen(false)} />
+    </Modal>
+  )
+}
+
 export function AddMemberForm({
   vendorId,
   teams,
+  onSaved,
 }: {
   vendorId: string
   teams: { id: string; name: string }[]
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(createMember, initialState)
-  useActionToast(state)
+  useActionToast(state, onSaved)
 
   if (teams.length === 0) {
     return (
@@ -84,36 +108,30 @@ export function AddMemberForm({
   }
 
   return (
-    <form action={formAction} className="grid gap-2">
+    <form action={formAction} className="grid gap-3">
       <Feedback state={state} />
       <input type="hidden" name="vendor_id" value={vendorId} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Select name="team_id" required className="max-w-[180px]" aria-label="Team">
-          {teams.map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.name}
-            </option>
-          ))}
-        </Select>
-        <Input
-          name="full_name"
-          placeholder="Nama anggota"
-          required
-          className="max-w-[220px]"
-          aria-label="Nama anggota"
-        />
-        <Input
-          name="position"
-          placeholder="Posisi"
-          className="max-w-[160px]"
-          aria-label="Posisi"
-        />
-        <Input
-          name="phone"
-          placeholder="Telepon"
-          className="max-w-[160px]"
-          aria-label="Telepon"
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Team" htmlFor="m_team" required>
+          <Select id="m_team" name="team_id" required>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Nama anggota" htmlFor="m_name" required>
+          <Input id="m_name" name="full_name" required />
+        </Field>
+        <Field label="Posisi" htmlFor="m_position">
+          <Input id="m_position" name="position" />
+        </Field>
+        <Field label="Telepon" htmlFor="m_phone">
+          <Input id="m_phone" name="phone" />
+        </Field>
+      </div>
+      <div>
         <InlineSubmit label="Tambah anggota" />
       </div>
     </form>
@@ -131,6 +149,31 @@ function EditSubmit() {
 }
 
 /** Row-level "Edit" trigger for a team's name — modal, pre-filled. */
+export function AddMemberButton({
+  vendorId,
+  teams,
+}: {
+  vendorId: string
+  teams: { id: string; name: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Anggota baru"
+      trigger={
+        <Button type="button" size="sm">
+          <Plus size={14} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <AddMemberForm vendorId={vendorId} teams={teams} onSaved={() => setOpen(false)} />
+    </Modal>
+  )
+}
+
 export function EditTeamButton({ team, vendorId }: { team: VendorTeamRow; vendorId: string }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(updateTeam, initialState)

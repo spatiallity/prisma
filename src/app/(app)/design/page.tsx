@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
@@ -12,7 +12,7 @@ import { STAGE_FILTERS, stagesFromFilterKey } from '@/lib/design'
 
 /** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
 const PHASE_GROUPS = STAGE_FILTERS.slice(1)
-import { NewDesignForm } from './forms'
+import { AddDesignButton } from './forms'
 import { DesignTable } from './design-table'
 
 export const metadata: Metadata = { title: 'Design Queue' }
@@ -55,6 +55,39 @@ export default async function DesignQueuePage({
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
   const picName = Object.fromEntries((pics ?? []).map((p) => [p.id, p.full_name]))
 
+  // Open stage entry per design, plus how many revision rounds it has
+  // collected — the Keterangan column, same shape as Routing Monitor's.
+  const designIds = (designs ?? []).map((d) => d.id)
+  const { data: openEntries } = designIds.length
+    ? await supabase
+        .from('design_revisions')
+        .select('id, design_id, started_at, pic_pertamina')
+        .in('design_id', designIds)
+        .eq('status', 'Active')
+        .is('completed_at', null)
+    : { data: [] }
+  const { data: entryRounds } = (openEntries ?? []).length
+    ? await supabase
+        .from('design_stage_revisions')
+        .select('design_revision_id')
+        .in('design_revision_id', (openEntries ?? []).map((e) => e.id))
+    : { data: [] }
+
+  const roundsPerEntry: Record<string, number> = {}
+  for (const round of entryRounds ?? []) {
+    roundsPerEntry[round.design_revision_id] = (roundsPerEntry[round.design_revision_id] ?? 0) + 1
+  }
+  const currentByDesign = Object.fromEntries(
+    (openEntries ?? []).map((entry) => [
+      entry.design_id,
+      {
+        startedAt: entry.started_at,
+        picPertamina: entry.pic_pertamina,
+        rounds: roundsPerEntry[entry.id] ?? 0,
+      },
+    ]),
+  )
+
   const perStage = new Map(DESIGN_STAGES.map((s) => [s, 0]))
   const taken = new Set<string>()
   for (const design of allDesigns ?? []) {
@@ -70,6 +103,17 @@ export default async function DesignQueuePage({
       <PageHeader
         title="Design Queue"
         description="Desain Siteplan (Pembuatan Desain Awal → Review → Revisi → Peta Inventaris/Stake Out → Finish), lalu Finalisasi Desain (Pembuatan → Review internal → Sinkronisasi → Submit Peta). Tanpa penyimpanan file — hanya tahap, PIC, tanggal, dan catatan."
+        actions={
+          mayEdit && (
+            <AddDesignButton
+              spks={openSpks.map((s) => ({
+                id: s.id,
+                label: `${s.spk_number} — ${s.work_name}`,
+              }))}
+              pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
+            />
+          )
+        }
       />
 
       {error && (
@@ -127,7 +171,12 @@ export default async function DesignQueuePage({
 
       <Card className="overflow-hidden">
         {designs && designs.length > 0 ? (
-          <DesignTable designs={designs} spkById={spkById} picName={picName} />
+          <DesignTable
+            designs={designs}
+            spkById={spkById}
+            picName={picName}
+            currentByDesign={currentByDesign}
+          />
         ) : (
           <EmptyState
             title={wanted ? 'Tidak ada desain di tahap ini' : 'Belum ada record desain'}
@@ -140,28 +189,6 @@ export default async function DesignQueuePage({
         )}
       </Card>
 
-      {mayEdit && (
-        <Card className="mt-5">
-          <CardHeader>
-            <div>
-              <CardTitle>Buka record desain</CardTitle>
-              <CardDescription>
-                Satu SPK punya satu record desain aktif; putaran revisi dicatat di
-                dalamnya.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <NewDesignForm
-              spks={openSpks.map((s) => ({
-                id: s.id,
-                label: `${s.spk_number} — ${s.work_name}`,
-              }))}
-              pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
-            />
-          </CardContent>
-        </Card>
-      )}
     </>
   )
 }

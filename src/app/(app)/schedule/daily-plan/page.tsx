@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { formatDate } from '@/lib/utils'
 import { achievementTone, formatAchievement } from '@/lib/schedule'
-import { DailyPlanForm, EditDailyPlanButton, ScheduleStatusToggle } from '../forms'
+import { AddDailyPlanButton, EditDailyPlanButton, ScheduleStatusToggle } from '../forms'
 import { loadScheduleOptions } from '../options'
 
 export const metadata: Metadata = { title: 'Daily Plan' }
@@ -61,23 +61,8 @@ export default async function DailyPlanPage() {
       <PageHeader
         title="Daily Plan"
         description="Rencana pekerjaan per hari, per team, per aktivitas."
+        actions={mayEdit && <AddDailyPlanButton options={options} />}
       />
-
-      {mayEdit && (
-        <Card className="mb-5">
-          <CardHeader>
-            <div>
-              <CardTitle>Rencana baru</CardTitle>
-              <CardDescription>
-                Target di sini yang nanti dibandingkan dengan hasil aktual.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <DailyPlanForm options={options} />
-          </CardContent>
-        </Card>
-      )}
 
       <Card className="overflow-hidden">
         {plans && plans.length > 0 ? (

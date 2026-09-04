@@ -3,21 +3,28 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
 import type { Database } from '@/lib/supabase/types'
 
 type DesignRow = Database['public']['Tables']['designs']['Row']
 type SpkLite = { id: string; spk_number: string; site_code: string | null; work_name: string }
+type CurrentStage = {
+  startedAt: string | null
+  picPertamina: string | null
+  rounds: number
+}
 
 export function DesignTable({
   designs,
   spkById,
   picName,
+  currentByDesign,
 }: {
   designs: DesignRow[]
   spkById: Record<string, SpkLite>
   picName: Record<string, string>
+  currentByDesign: Record<string, CurrentStage>
 }) {
   const columns: DataTableColumn<DesignRow>[] = [
     {
@@ -59,6 +66,30 @@ export function DesignTable({
       className: 'text-muted-foreground',
       sortAccessor: (row) => (row.pic_id ? (picName[row.pic_id] ?? null) : null),
       render: (row) => (row.pic_id ? (picName[row.pic_id] ?? '—') : '—'),
+    },
+    {
+      key: 'pic_pertamina',
+      label: 'PIC Pertamina',
+      className: 'text-muted-foreground',
+      sortAccessor: (row) => currentByDesign[row.id]?.picPertamina ?? null,
+      render: (row) => currentByDesign[row.id]?.picPertamina ?? '—',
+    },
+    {
+      key: 'keterangan',
+      label: 'Keterangan',
+      className: 'text-muted-foreground',
+      render: (row) => {
+        const current = currentByDesign[row.id]
+        if (!current) return '—'
+        return (
+          <>
+            {current.rounds > 0 ? `Revisi ke-${current.rounds}` : 'Submission pertama'}
+            {current.startedAt && (
+              <div className="text-xs">mulai {formatDate(current.startedAt)}</div>
+            )}
+          </>
+        )
+      },
     },
     {
       key: 'held',

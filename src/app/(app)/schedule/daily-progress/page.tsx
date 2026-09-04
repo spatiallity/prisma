@@ -9,7 +9,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import { DailyProgressForm, EditDailyProgressButton, ScheduleStatusToggle } from '../forms'
+import { AddDailyProgressButton, EditDailyProgressButton, ScheduleStatusToggle } from '../forms'
 import { loadScheduleOptions } from '../options'
 
 export const metadata: Metadata = { title: 'Daily Progress' }
@@ -92,24 +92,10 @@ export default async function DailyProgressPage() {
       <PageHeader
         title="Daily Progress"
         description="Realisasi harian, diisi setelah personel kembali ke mess."
+        actions={
+          mayEdit && <AddDailyProgressButton options={options} plans={planOptions} />
+        }
       />
-
-      {mayEdit && (
-        <Card className="mb-5">
-          <CardHeader>
-            <div>
-              <CardTitle>Laporan hari ini</CardTitle>
-              <CardDescription>
-                Isi tambahan hari itu saja. Sistem yang menjumlahkannya jadi
-                kumulatif dan menaikkan Overall Progress.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <DailyProgressForm options={options} plans={planOptions} />
-          </CardContent>
-        </Card>
-      )}
 
       <Alert tone="info" className="mb-5">
         Entri di sini otomatis menaikkan progress aktivitas dan Overall Progress

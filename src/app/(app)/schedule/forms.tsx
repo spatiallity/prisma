@@ -22,6 +22,8 @@ import type { ScheduleOptions } from './options'
 
 type DailyPlanRow = Database['public']['Tables']['daily_plans']['Row']
 type DailyProgressRow = Database['public']['Tables']['daily_progress']['Row']
+/** A plan the progress form can be filed against — SPK-scoped by the cascade. */
+export type PlanOption = { id: string; label: string; spkId: string }
 
 const initialState: ScheduleState = { error: null }
 
@@ -208,6 +210,27 @@ export function EditDailyPlanButton({ plan, options }: { plan: DailyPlanRow; opt
   )
 }
 
+export function AddDailyPlanButton({ options }: { options: ScheduleOptions }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Rencana baru"
+      description="Target di sini yang nanti dibandingkan dengan hasil aktual."
+      size="lg"
+      trigger={
+        <Button type="button">
+          <Plus size={16} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <DailyPlanForm options={options} onSaved={() => setOpen(false)} />
+    </Modal>
+  )
+}
+
 export function DailyProgressForm({
   options,
   plans,
@@ -215,7 +238,7 @@ export function DailyProgressForm({
   onSaved,
 }: {
   options: ScheduleOptions
-  plans: { id: string; label: string; spkId: string }[]
+  plans: PlanOption[]
   /** Present → editing this existing entry instead of creating a new one. */
   entry?: DailyProgressRow
   onSaved?: () => void
@@ -328,6 +351,33 @@ export function DailyProgressForm({
 }
 
 /** Row-level "Edit" trigger — opens the same form pre-filled. */
+export function AddDailyProgressButton({
+  options,
+  plans,
+}: {
+  options: ScheduleOptions
+  plans: PlanOption[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Laporan hari ini"
+      description="Isi tambahan hari itu saja. Sistem yang menjumlahkannya jadi kumulatif dan menaikkan Overall Progress."
+      size="lg"
+      trigger={
+        <Button type="button">
+          <Plus size={16} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <DailyProgressForm options={options} plans={plans} onSaved={() => setOpen(false)} />
+    </Modal>
+  )
+}
+
 export function EditDailyProgressButton({
   entry,
   options,
