@@ -27,6 +27,31 @@ export type SessionResult =
   | { state: 'inactive'; email: string }
   | { state: 'active'; user: SessionUser }
 
+type PermissionCatalogue = { id: string; module: AppModule; action: AppAction }[]
+
+/**
+ * The permission catalogue is reference data — it only changes when a
+ * migration adds a module or an action, never through the app. Fetching it on
+ * every request spent a database round trip per page view on a table that is
+ * effectively frozen, so it is held briefly per server instance instead.
+ */
+const CATALOGUE_TTL_MS = 5 * 60 * 1000
+let catalogueCache: { rows: PermissionCatalogue; expires: number } | null = null
+
+async function getPermissionCatalogue(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<PermissionCatalogue> {
+  if (catalogueCache && catalogueCache.expires > Date.now()) return catalogueCache.rows
+
+  const { data } = await supabase.from('permissions').select('id, module, action')
+  const rows = (data ?? []) as PermissionCatalogue
+  // Only a real answer is worth keeping: an empty result usually means the
+  // request failed, and caching that would strip every permission for the
+  // whole TTL.
+  if (rows.length > 0) catalogueCache = { rows, expires: Date.now() + CATALOGUE_TTL_MS }
+  return rows
+}
+
 /**
  * Resolves the signed-in user together with the Section 6 permission matrix.
  * Wrapped in cache() so a request that renders the shell plus a page hits the
@@ -41,11 +66,12 @@ export const getSession = cache(async (): Promise<SessionResult> => {
 
   if (!authUser) return { state: 'anonymous' }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authUser.id)
-    .maybeSingle()
+  // The catalogue does not depend on which user this is, so it rides along
+  // with the profile lookup instead of queueing behind it.
+  const [{ data: profile }, catalogue] = await Promise.all([
+    supabase.from('users').select('*').eq('id', authUser.id).maybeSingle(),
+    getPermissionCatalogue(supabase),
+  ])
 
   if (!profile) {
     return { state: 'no-profile', authUserId: authUser.id, email: authUser.email ?? null }
@@ -55,13 +81,12 @@ export const getSession = cache(async (): Promise<SessionResult> => {
     return { state: 'inactive', email: profile.email }
   }
 
-  const [{ data: role }, { data: grants }, { data: catalogue }] = await Promise.all([
+  const [{ data: role }, { data: grants }] = await Promise.all([
     supabase.from('roles').select('id, code, name').eq('id', profile.role_id).single(),
     supabase.from('role_permissions').select('permission_id, scope').eq('role_id', profile.role_id),
-    supabase.from('permissions').select('id, module, action'),
   ])
 
-  const byId = new Map((catalogue ?? []).map((p) => [p.id, p]))
+  const byId = new Map(catalogue.map((p) => [p.id, p]))
   const permissions: PermissionMap = {}
   for (const grant of grants ?? []) {
     const permission = byId.get(grant.permission_id)

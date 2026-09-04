@@ -3,6 +3,7 @@ import { NAV } from '@/lib/nav'
 import { BRAND } from '@/lib/brand'
 import { BrandLogo } from '@/components/brand-logo'
 import { can, type PermissionMap } from '@/lib/auth/permissions'
+import { NavGroup } from './nav-group'
 import { NavLink } from './nav-link'
 import { SidebarToggle } from './shell'
 
@@ -40,13 +41,12 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
         {groups.map((group) => {
           const Icon = group.icon
           return (
-            <div key={group.label} className="mb-1">
-              <div className="mt-3 mb-1.5 flex items-center gap-2 px-3 text-[11px] font-black tracking-widest text-sidebar-section uppercase group-data-[collapsed=true]/sb:justify-center group-data-[collapsed=true]/sb:px-0">
-                <Icon size={14} className="shrink-0" aria-hidden />
-                <span className="group-data-[collapsed=true]/sb:hidden">
-                  {group.label}
-                </span>
-              </div>
+            <NavGroup
+              key={group.label}
+              label={group.label}
+              icon={<Icon size={14} className="shrink-0" aria-hidden />}
+              hrefs={group.items.map((item) => item.href)}
+            >
               {group.items.map((item) => {
                 const ItemIcon = item.icon
                 return (
@@ -60,7 +60,7 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
                   />
                 )
               })}
-            </div>
+            </NavGroup>
           )
         })}
       </nav>
