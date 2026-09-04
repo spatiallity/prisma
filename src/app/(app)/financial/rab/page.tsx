@@ -5,7 +5,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
-import { AddTransactionButton } from './finance-form'
+import { AddTransactionButton, DownloadRabButton } from './finance-form'
 import { MonthFilter } from './month-filter'
 import { AnggaranRealisasiChart, MonthlySpendChart } from './rab-charts'
 import { AkunSummaryTable, type AkunSummaryRow } from './akun-summary-table'
@@ -140,7 +140,10 @@ export default async function MonitoringRabPage({
         title="Monitoring RAB"
         description="Anggaran vs Realisasi per kode akun — UMK, SPPD, PPBJ Barang, PPBJ Jasa, Gaji PTT Project, MCU dalam satu tabel transaksi."
         actions={
-          mayEdit && <AddTransactionButton akunOptions={akunOptions} pjOptions={pjOptions} />
+          <div className="flex flex-wrap items-center gap-2">
+            <DownloadRabButton />
+            {mayEdit && <AddTransactionButton akunOptions={akunOptions} pjOptions={pjOptions} />}
+          </div>
         }
       />
 

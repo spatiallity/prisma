@@ -364,6 +364,34 @@ export function DownloadTemplateButton({ kategori }: { kategori: FinanceCategory
   )
 }
 
+/** Exports the kategori's current transaction list as a report — not to be
+ *  confused with the blank template above, which is for bulk-import. */
+export function DownloadDataButton({ kategori }: { kategori: FinanceCategory }) {
+  return (
+    <a
+      href={`/api/financial/export?kategori=${kategori}`}
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+    >
+      <Download size={16} aria-hidden />
+      Download Data
+    </a>
+  )
+}
+
+/** Every kode akun, every month, anggaran vs realisasi — one sheet, not
+ *  filtered to whatever single bulan the page happens to be showing. */
+export function DownloadRabButton() {
+  return (
+    <a
+      href="/api/financial/rab-export"
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+    >
+      <Download size={16} aria-hidden />
+      Download Serapan RAB
+    </a>
+  )
+}
+
 function ImportSubmit() {
   const { pending } = useFormStatus()
   return (

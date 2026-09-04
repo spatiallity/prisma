@@ -6,7 +6,12 @@ import { can } from '@/lib/auth/permissions'
 import { formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META, filterLeafAccounts } from '@/lib/financial'
 import type { FinanceCategory } from '@/lib/supabase/types'
-import { AddTransactionButton, DownloadTemplateButton, ImportTransactionsButton } from './rab/finance-form'
+import {
+  AddTransactionButton,
+  DownloadDataButton,
+  DownloadTemplateButton,
+  ImportTransactionsButton,
+} from './rab/finance-form'
 import { FinanceTransactionsTable } from './finance-transactions-table'
 
 /**
@@ -60,17 +65,20 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
               : 'Kode akun dipilih bebas per transaksi.'
         }
         actions={
-          mayEdit && (
-            <div className="flex flex-wrap items-center gap-2">
-              <DownloadTemplateButton kategori={kategori} />
-              <ImportTransactionsButton kategori={kategori} />
-              <AddTransactionButton
-                akunOptions={akunOptions}
-                lockedKategori={kategori}
-                pjOptions={pjOptions}
-              />
-            </div>
-          )
+          <div className="flex flex-wrap items-center gap-2">
+            <DownloadDataButton kategori={kategori} />
+            {mayEdit && (
+              <>
+                <DownloadTemplateButton kategori={kategori} />
+                <ImportTransactionsButton kategori={kategori} />
+                <AddTransactionButton
+                  akunOptions={akunOptions}
+                  lockedKategori={kategori}
+                  pjOptions={pjOptions}
+                />
+              </>
+            )}
+          </div>
         }
       />
 
