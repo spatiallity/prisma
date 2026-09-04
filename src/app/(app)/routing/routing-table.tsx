@@ -3,25 +3,33 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { ROUTING_TONE, formatDays } from '@/lib/routing'
 import type { Database } from '@/lib/supabase/types'
 
 type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
 type SpkLite = { id: string; spk_number: string; site_code: string | null }
-type CurrentStage = { step_name: string; routing_history_id: string; is_overdue: boolean; elapsed_days: number | null; sla_days: number | null }
+type CurrentStage = {
+  step_name: string
+  routing_history_id: string
+  is_overdue: boolean
+  elapsed_days: number | null
+  started_at: string | null
+}
 
 export function RoutingTable({
   docs,
   spkById,
   currentByDoc,
   picByStage,
+  revisionCountByStep,
   mode,
 }: {
   docs: RoutingDoc[]
   spkById: Record<string, SpkLite>
   currentByDoc: Record<string, CurrentStage>
   picByStage: Record<string, string | null>
+  revisionCountByStep: Record<string, number>
   mode: 'open' | 'pending' | 'history'
 }) {
   const columns: DataTableColumn<RoutingDoc>[] = [
@@ -42,19 +50,6 @@ export function RoutingTable({
       },
     },
     {
-      key: 'document_type',
-      label: 'Dokumen',
-      sortAccessor: (row) => row.document_type,
-      render: (row) => (
-        <>
-          <span className="font-bold text-slate-900">{row.document_type}</span>
-          {row.document_number && (
-            <div className="text-xs text-muted-foreground">{row.document_number}</div>
-          )}
-        </>
-      ),
-    },
-    {
       key: 'posisi',
       label: mode === 'history' ? 'Tahap terakhir' : 'Posisi sekarang',
       className: 'text-muted-foreground',
@@ -64,7 +59,7 @@ export function RoutingTable({
     },
     {
       key: 'pic',
-      label: 'PIC',
+      label: 'PIC Pertamina',
       className: 'text-muted-foreground',
       sortAccessor: (row) => {
         const current = currentByDoc[row.id]
@@ -73,6 +68,27 @@ export function RoutingTable({
       render: (row) => {
         const current = currentByDoc[row.id]
         return current ? (picByStage[current.routing_history_id] ?? '—') : '—'
+      },
+    },
+    {
+      key: 'keterangan',
+      label: 'Keterangan',
+      className: 'text-muted-foreground',
+      render: (row) => {
+        const current = currentByDoc[row.id]
+        if (!current) return '—'
+        const rounds = revisionCountByStep[current.routing_history_id] ?? 0
+        return rounds > 0 ? `Revisi ke-${rounds}` : 'Submission pertama'
+      },
+    },
+    {
+      key: 'last_updated',
+      label: 'Last Updated',
+      className: 'tnum text-muted-foreground',
+      sortAccessor: (row) => currentByDoc[row.id]?.started_at ?? null,
+      render: (row) => {
+        const current = currentByDoc[row.id]
+        return current?.started_at ? formatDate(current.started_at) : '—'
       },
     },
     {
@@ -89,14 +105,6 @@ export function RoutingTable({
           </span>
         )
       },
-    },
-    {
-      key: 'sla',
-      label: 'SLA',
-      align: 'right',
-      className: 'tnum text-muted-foreground',
-      sortAccessor: (row) => currentByDoc[row.id]?.sla_days ?? null,
-      render: (row) => formatDays(currentByDoc[row.id]?.sla_days ?? null),
     },
     {
       key: 'status',

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import type { RoutingLeadTimeView } from '@/lib/supabase/types'
 import { formatDays } from '@/lib/routing'
-import { NewRoutingForm } from './forms'
+import { AddRoutingButton } from './forms'
 import { RoutingTable } from './routing-table'
 
 export const metadata: Metadata = { title: 'Routing Monitor' }
@@ -38,11 +38,7 @@ export async function RoutingMonitor({
         .from('spks')
         .select('id, spk_number, site_code, work_name, status')
         .order('spk_number'),
-      supabase
-        .from('routing_templates')
-        .select('id, name, code')
-        .eq('status', 'Active')
-        .order('code'),
+      supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
     ])
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
@@ -58,6 +54,22 @@ export async function RoutingMonitor({
     if (!held || row.sequence < held.sequence) currentByDoc.set(row.spk_routing_id, row)
   }
   const currentByDocPlain = Object.fromEntries(currentByDoc)
+
+  // How many revision rounds the current stage has already been through —
+  // "Submission pertama" vs "Revisi ke-N" in the table's Keterangan column.
+  const currentStepIds = [...currentByDoc.values()].map((v) => v.routing_history_id)
+  const { data: revisions } = currentStepIds.length
+    ? await supabase
+        .from('routing_step_revisions')
+        .select('routing_history_id')
+        .in('routing_history_id', currentStepIds)
+    : { data: [] }
+  const revisionCountByStep: Record<string, number> = {}
+  for (const r of revisions ?? []) {
+    revisionCountByStep[r.routing_history_id] = (revisionCountByStep[r.routing_history_id] ?? 0) + 1
+  }
+
+  const defaultTemplateId = templates?.[0]?.id ?? null
 
   const filtered = (documents ?? []).filter((doc) => {
     if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
@@ -86,7 +98,21 @@ export async function RoutingMonitor({
 
   return (
     <>
-      <PageHeader title={title} description={description} />
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          mode === 'open' &&
+          mayEdit && (
+            <AddRoutingButton
+              spks={(spks ?? [])
+                .filter((s) => s.status === 'Draft' || s.status === 'On Going')
+                .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
+              templateId={defaultTemplateId}
+            />
+          )
+        }
+      />
 
       {error && (
         <Alert tone="danger" className="mb-4" title="Gagal memuat data">
@@ -113,6 +139,7 @@ export async function RoutingMonitor({
             spkById={spkById}
             currentByDoc={currentByDocPlain}
             picByStage={picByStage}
+            revisionCountByStep={revisionCountByStep}
             mode={mode}
           />
         ) : (
@@ -132,31 +159,6 @@ export async function RoutingMonitor({
       </Card>
 
       {mode === 'history' && <StageAverages />}
-
-      {mode === 'open' && mayEdit && (
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Rutekan dokumen</CardTitle>
-              <CardDescription>
-                Seluruh tahap template dibuat sekaligus; hanya tahap pertama yang
-                langsung berjalan.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <NewRoutingForm
-              spks={(spks ?? [])
-                .filter((s) => s.status === 'Draft' || s.status === 'On Going')
-                .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
-              templates={(templates ?? []).map((t) => ({
-                id: t.id,
-                label: `${t.name} (${t.code})`,
-              }))}
-            />
-          </CardContent>
-        </Card>
-      )}
     </>
   )
 }

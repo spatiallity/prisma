@@ -6,6 +6,7 @@ import { ArrowRight, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
+import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
 import { advanceStep, addRoutingRevision, createRouting, type RoutingState } from './actions'
 
@@ -42,16 +43,20 @@ function Submit({
 
 export function NewRoutingForm({
   spks,
-  templates,
+  templateId,
+  onSaved,
 }: {
   spks: Option[]
-  templates: Option[]
+  /** Only one routing template exists in practice, so it's picked for the
+   *  user instead of asked — there's nothing to choose between. */
+  templateId: string | null
+  onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(createRouting, initialState)
-  useActionToast(state)
+  useActionToast(state, onSaved)
   const today = new Date().toISOString().slice(0, 10)
 
-  if (spks.length === 0 || templates.length === 0) {
+  if (spks.length === 0 || !templateId) {
     return (
       <Alert tone="warning">
         Butuh minimal satu SPK aktif dan satu template routing sebelum dokumen bisa
@@ -64,9 +69,10 @@ export function NewRoutingForm({
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
       <input type="hidden" name="document_type" value={DOCUMENT_TYPE} />
+      <input type="hidden" name="template_id" value={templateId} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="SPK" htmlFor="r_spk" required className="lg:col-span-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="SPK" htmlFor="r_spk" required className="sm:col-span-2">
           <Select id="r_spk" name="spk_id" required>
             {spks.map((spk) => (
               <option key={spk.id} value={spk.id}>
@@ -76,17 +82,7 @@ export function NewRoutingForm({
           </Select>
         </Field>
 
-        <Field label="Template routing" htmlFor="r_template" required>
-          <Select id="r_template" name="template_id" required>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Nomor invoice" htmlFor="r_number">
+        <Field label="Nomor dokumen" htmlFor="r_number">
           <Input id="r_number" name="document_number" placeholder="INV-2026-014" />
         </Field>
 
@@ -94,7 +90,7 @@ export function NewRoutingForm({
           <Input id="r_date" name="tanggal" type="date" defaultValue={today} required />
         </Field>
 
-        <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2 lg:col-span-3">
+        <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2">
           <Input id="r_notes" name="notes" />
         </Field>
       </div>
@@ -103,6 +99,32 @@ export function NewRoutingForm({
         <Submit label="Rutekan invoice" icon={<Plus size={16} aria-hidden />} />
       </div>
     </form>
+  )
+}
+
+export function AddRoutingButton({
+  spks,
+  templateId,
+}: {
+  spks: Option[]
+  templateId: string | null
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title="Rutekan invoice"
+      description="Seluruh tahap template dibuat sekaligus; hanya tahap pertama yang langsung berjalan."
+      trigger={
+        <Button type="button">
+          <Plus size={16} aria-hidden />
+          Add Data
+        </Button>
+      }
+    >
+      <NewRoutingForm spks={spks} templateId={templateId} onSaved={() => setOpen(false)} />
+    </Modal>
   )
 }
 
