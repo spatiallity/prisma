@@ -1,33 +1,20 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { ArrowRight, Plus, RotateCcw } from 'lucide-react'
+import { ArrowRight, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select, Textarea } from '@/components/ui/field'
+import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { useActionToast } from '@/components/ui/toast'
-import type { SpkRoutingRow } from '@/lib/supabase/types'
-import {
-  advanceStep,
-  createRouting,
-  setStepStatus,
-  updateRouting,
-  type RoutingState,
-} from './actions'
+import { advanceStep, addRoutingRevision, createRouting, type RoutingState } from './actions'
 
 const initialState: RoutingState = { error: null }
 
 export type Option = { id: string; label: string }
 
-/** Section 23 — the document kinds that actually get routed on this project. */
-const DOCUMENT_TYPES = [
-  'Berita Acara Opname',
-  'PAD',
-  'Invoice',
-  'Laporan Akhir',
-  'Dokumen Desain',
-]
+/** Section 23 — routing only ever handles one kind of document: Invoice. */
+const DOCUMENT_TYPE = 'Invoice'
 
 function Feedback({ state }: { state: RoutingState }) {
   if (state.error) return <Alert tone="danger">{state.error}</Alert>
@@ -76,6 +63,7 @@ export function NewRoutingForm({
   return (
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
+      <input type="hidden" name="document_type" value={DOCUMENT_TYPE} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="SPK" htmlFor="r_spk" required className="lg:col-span-2">
@@ -98,18 +86,8 @@ export function NewRoutingForm({
           </Select>
         </Field>
 
-        <Field label="Jenis dokumen" htmlFor="r_type" required>
-          <Select id="r_type" name="document_type" required>
-            {DOCUMENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Nomor dokumen" htmlFor="r_number">
-          <Input id="r_number" name="document_number" placeholder="BA-OPN-2026-014" />
+        <Field label="Nomor invoice" htmlFor="r_number">
+          <Input id="r_number" name="document_number" placeholder="INV-2026-014" />
         </Field>
 
         <Field label="Tanggal masuk" htmlFor="r_date" required>
@@ -122,14 +100,19 @@ export function NewRoutingForm({
       </div>
 
       <div>
-        <Submit label="Rutekan dokumen" icon={<Plus size={16} aria-hidden />} />
+        <Submit label="Rutekan invoice" icon={<Plus size={16} aria-hidden />} />
       </div>
     </form>
   )
 }
 
-/** Hands the document to the next stage in the chain. */
-export function AdvanceStepForm({
+/**
+ * Section 23 — a stage ends one of two ways: it passes (Lanjut), or it needs
+ * fixing (Revisi). Revisi never blocks the step or ends it — it just logs a
+ * round (what needs fixing, when it comes back) and leaves the step where it
+ * is, ready for another round or for Lanjut once it's right.
+ */
+export function StepReviewForm({
   routingId,
   stepId,
   defaultPic,
@@ -138,118 +121,60 @@ export function AdvanceStepForm({
   stepId: string
   defaultPic: string | null
 }) {
-  const [state, formAction] = useActionState(advanceStep, initialState)
-  useActionToast(state)
+  const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
+  const [advanceState, advanceAction] = useActionState(advanceStep, initialState)
+  const [revisionState, revisionAction] = useActionState(addRoutingRevision, initialState)
+  useActionToast(advanceState)
+  useActionToast(revisionState)
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <form action={formAction} className="grid gap-3">
-      <Feedback state={state} />
-      <input type="hidden" name="routing_id" value={routingId} />
-      <input type="hidden" name="step_id" value={stepId} />
+    <div className="grid gap-3">
+      <Feedback state={mode === 'lanjut' ? advanceState : revisionState} />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Tanggal" htmlFor="adv_date" required className="w-44">
-          <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
-        </Field>
-        <Field label="PIC tahap ini" htmlFor="adv_pic" className="min-w-[180px]">
-          <Input id="adv_pic" name="pic_name" defaultValue={defaultPic ?? ''} />
-        </Field>
-        <Field label="Catatan" htmlFor="adv_note" className="min-w-[220px] flex-1">
-          <Input id="adv_note" name="note" placeholder="Hasil pemeriksaan…" />
-        </Field>
-        <Submit label="Selesai &amp; teruskan" icon={<ArrowRight size={16} aria-hidden />} />
-      </div>
-    </form>
-  )
-}
+      <Field label="Hasil review" htmlFor="rv_mode">
+        <Select
+          id="rv_mode"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as 'lanjut' | 'revisi')}
+        >
+          <option value="lanjut">Lanjut</option>
+          <option value="revisi">Revisi</option>
+        </Select>
+      </Field>
 
-/** Return, reject, or resume — the three ways a stage ends other than passing. */
-export function StepStatusForm({
-  routingId,
-  stepId,
-  status,
-}: {
-  routingId: string
-  stepId: string
-  status: string
-}) {
-  const [state, formAction] = useActionState(setStepStatus, initialState)
-  useActionToast(state)
-  const blocked = status === 'Returned' || status === 'Rejected'
-  const today = new Date().toISOString().slice(0, 10)
-
-  return (
-    <form action={formAction} className="grid gap-3">
-      <Feedback state={state} />
-      <input type="hidden" name="routing_id" value={routingId} />
-      <input type="hidden" name="step_id" value={stepId} />
-
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Tanggal" htmlFor="st_date" required className="w-44">
-          <Input id="st_date" name="tanggal" type="date" defaultValue={today} required />
-        </Field>
-        <Field label="Ubah status tahap" htmlFor="st_status" className="min-w-[170px]">
-          <Select id="st_status" name="status" defaultValue={blocked ? 'In Progress' : 'Returned'}>
-            {blocked ? (
-              <option value="In Progress">Lanjutkan kembali</option>
-            ) : (
-              <>
-                <option value="Returned">Dikembalikan</option>
-                <option value="Rejected">Ditolak</option>
-              </>
-            )}
-          </Select>
-        </Field>
-        <Field label="Alasan" htmlFor="st_note" className="min-w-[220px] flex-1">
-          <Input id="st_note" name="note" required placeholder="Alasan pengembalian…" />
-        </Field>
-        <Submit
-          label={blocked ? 'Lanjutkan' : 'Simpan'}
-          variant="secondary"
-          icon={blocked ? <RotateCcw size={16} aria-hidden /> : undefined}
-        />
-      </div>
-    </form>
-  )
-}
-
-export function RoutingDetailsForm({ routing }: { routing: SpkRoutingRow }) {
-  const [state, formAction] = useActionState(updateRouting, initialState)
-  useActionToast(state)
-
-  return (
-    <form action={formAction} className="grid gap-4">
-      <Feedback state={state} />
-      <input type="hidden" name="id" value={routing.id} />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Jenis dokumen" htmlFor="u_type" required>
-          <Select id="u_type" name="document_type" defaultValue={routing.document_type}>
-            {[...new Set([routing.document_type, ...DOCUMENT_TYPES])].map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Nomor dokumen" htmlFor="u_number">
-          <Input
-            id="u_number"
-            name="document_number"
-            defaultValue={routing.document_number ?? ''}
-          />
-        </Field>
-
-        <Field label="Catatan" htmlFor="u_notes" className="sm:col-span-2">
-          <Textarea id="u_notes" name="notes" defaultValue={routing.notes ?? ''} />
-        </Field>
-      </div>
-
-      <div>
-        <Submit label="Simpan perubahan" />
-      </div>
-    </form>
+      {mode === 'lanjut' ? (
+        <form action={advanceAction} className="grid gap-3">
+          <input type="hidden" name="routing_id" value={routingId} />
+          <input type="hidden" name="step_id" value={stepId} />
+          <Field label="Tanggal" htmlFor="adv_date" required>
+            <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
+          </Field>
+          <Field label="PIC tahap ini" htmlFor="adv_pic">
+            <Input id="adv_pic" name="pic_name" defaultValue={defaultPic ?? ''} />
+          </Field>
+          <Field label="Catatan" htmlFor="adv_note">
+            <Input id="adv_note" name="note" placeholder="Hasil pemeriksaan…" />
+          </Field>
+          <div>
+            <Submit label="Selesai &amp; teruskan" icon={<ArrowRight size={16} aria-hidden />} />
+          </div>
+        </form>
+      ) : (
+        <form action={revisionAction} className="grid gap-3">
+          <input type="hidden" name="routing_id" value={routingId} />
+          <input type="hidden" name="step_id" value={stepId} />
+          <Field label="Catatan revisi" htmlFor="rv_note" required>
+            <Input id="rv_note" name="note" required placeholder="Yang perlu diperbaiki…" />
+          </Field>
+          <Field label="Disubmit ulang tanggal" htmlFor="rv_resubmit" required>
+            <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />
+          </Field>
+          <div>
+            <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} />
+          </div>
+        </form>
+      )}
+    </div>
   )
 }

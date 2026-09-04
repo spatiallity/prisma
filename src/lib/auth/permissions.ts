@@ -55,8 +55,10 @@ export const MODULE_LABEL: Record<AppModule, string> = {
   design: 'Design',
   routing: 'Routing',
   contract: 'Contract',
-  opname: 'Opname',
-  pad: 'PAD',
+  /** migration 0018 turned Opname/PAD into a mark on the SPK — kept only
+   *  because the app_module enum value still exists in the database. */
+  opname: 'Opname (nonaktif)',
+  pad: 'PAD (nonaktif)',
   invoice: 'Invoice',
   payment: 'Payment',
   spending: 'Finance (RAB)',

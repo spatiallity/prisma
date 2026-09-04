@@ -228,6 +228,12 @@ export type SpkRow = Timestamps & {
   notes: string | null
   created_by: string | null
   updated_by: string | null
+  /** Set once opname is done — usually after Desain Awal. Just a mark, no document. */
+  opname_marked_at: string | null
+  opname_marked_by: string | null
+  /** Set once PAD is made — after opname is marked done. */
+  pad_marked_at: string | null
+  pad_marked_by: string | null
 }
 
 export type SpkAssignmentRow = Timestamps & {
@@ -414,6 +420,15 @@ export type RoutingHistoryRow = Timestamps & {
   sla_days: number | null
   note: string | null
   created_by: string | null
+}
+
+export type RoutingStepRevisionRow = {
+  id: string
+  routing_history_id: string
+  note: string
+  resubmit_at: string
+  created_by: string | null
+  created_at: string
 }
 
 // --- Revenue side (Section 25.1-25.5) ---------------------------------------
@@ -757,6 +772,10 @@ export type Database = {
         | 'notes'
         | 'created_by'
         | 'updated_by'
+        | 'opname_marked_at'
+        | 'opname_marked_by'
+        | 'pad_marked_at'
+        | 'pad_marked_by'
       >
       spk_assignments: Table<
         SpkAssignmentRow,
@@ -901,6 +920,7 @@ export type Database = {
         | 'note'
         | 'created_by'
       >
+      routing_step_revisions: Table<RoutingStepRevisionRow, 'id' | 'created_at' | 'created_by'>
       routing_template_steps: Table<
         RoutingTemplateStepRow,
         | 'id'

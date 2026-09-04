@@ -25,16 +25,13 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
 
   return (
     <div className="flex h-full flex-col p-4">
-      <div className="mb-6 flex items-start justify-between gap-2">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <Link
           href="/dashboard"
-          className="min-w-0 group-data-[collapsed=true]/sb:hidden"
+          className="flex min-w-0 flex-1 justify-center group-data-[collapsed=true]/sb:hidden"
           aria-label={`${BRAND.name} — Dashboard`}
         >
-          <BrandLogo height={34} priority />
-          <div className="mt-1.5 text-[9px] leading-tight font-bold text-slate-500">
-            {BRAND.tagline}
-          </div>
+          <BrandLogo height={64} priority />
         </Link>
         <SidebarToggle />
       </div>

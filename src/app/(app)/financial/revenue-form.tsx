@@ -49,7 +49,7 @@ export function RevenueForm({
 }: {
   kind: RevenueKind
   spks: Choice[]
-  /** PAD picks an opname, invoice picks a PAD, payment picks an invoice. */
+  /** Payment picks the invoice it's against. */
   parents: Choice[]
   onSaved?: () => void
 }) {
@@ -61,8 +61,7 @@ export function RevenueForm({
     return <Alert tone="warning">Belum ada SPK untuk dicatat dokumennya.</Alert>
   }
 
-  const parentLabel =
-    kind === 'pad' ? 'Opname' : kind === 'invoice' ? 'PAD' : 'Invoice'
+  const parentLabel = 'Invoice'
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -116,24 +115,13 @@ export function RevenueForm({
           </Field>
         )}
 
-        {kind === 'opname' && (
-          <>
-            <Field label="Periode mulai" htmlFor="f_ps">
-              <Input id="f_ps" name="period_start" type="date" />
-            </Field>
-            <Field label="Periode selesai" htmlFor="f_pe">
-              <Input id="f_pe" name="period_end" type="date" />
-            </Field>
-          </>
-        )}
-
         {kind === 'invoice' && (
           <Field label="Jatuh tempo" htmlFor="f_due">
             <Input id="f_due" name="due_date" type="date" />
           </Field>
         )}
 
-        {(kind === 'pad' || kind === 'invoice' || kind === 'payment') && (
+        {kind === 'payment' && (
           <Field
             label={parentLabel}
             htmlFor="f_parent"

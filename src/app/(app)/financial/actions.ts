@@ -77,35 +77,9 @@ export async function saveRevenueDoc(
       }))
       break
     }
-    case 'opname':
-      ;({ error } = await supabase.from('opnames').insert({
-        spk_id: spkId,
-        opname_number: number,
-        opname_value: value,
-        opname_date: date,
-        period_start: nullable(formData, 'period_start'),
-        period_end: nullable(formData, 'period_end'),
-        status,
-        notes,
-        created_by: user.id,
-      }))
-      break
-    case 'pad':
-      ;({ error } = await supabase.from('pad').insert({
-        spk_id: spkId,
-        opname_id: nullable(formData, 'parent_id'),
-        pad_number: number,
-        pad_value: value,
-        pad_date: date,
-        status,
-        notes,
-        created_by: user.id,
-      }))
-      break
     case 'invoice':
       ;({ error } = await supabase.from('invoices').insert({
         spk_id: spkId,
-        pad_id: nullable(formData, 'parent_id'),
         invoice_number: number,
         invoice_value: value,
         invoice_date: date,
@@ -158,16 +132,7 @@ export async function setRevenueDocStatus(
   const status = text(formData, 'status') as FinancialDocStatus
   if (!id || !status) return { error: 'Data tidak lengkap.' }
 
-  const table =
-    kind === 'contract'
-      ? 'contracts'
-      : kind === 'opname'
-        ? 'opnames'
-        : kind === 'pad'
-          ? 'pad'
-          : kind === 'invoice'
-            ? 'invoices'
-            : 'payments'
+  const table = kind === 'contract' ? 'contracts' : kind === 'invoice' ? 'invoices' : 'payments'
 
   const supabase = await createClient()
   const { error } = await supabase.from(table).update({ status }).eq('id', id)
@@ -192,16 +157,7 @@ export async function deleteRevenueDoc(
   const spkId = text(formData, 'spk_id')
   if (!id) return { error: 'Data tidak lengkap.' }
 
-  const table =
-    kind === 'contract'
-      ? 'contracts'
-      : kind === 'opname'
-        ? 'opnames'
-        : kind === 'pad'
-          ? 'pad'
-          : kind === 'invoice'
-            ? 'invoices'
-            : 'payments'
+  const table = kind === 'contract' ? 'contracts' : kind === 'invoice' ? 'invoices' : 'payments'
 
   const supabase = await createClient()
   const { error } = await supabase.from(table).delete().eq('id', id)

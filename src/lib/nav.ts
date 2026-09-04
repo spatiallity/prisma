@@ -10,7 +10,6 @@ import {
   CalendarDays,
   CalendarRange,
   ClipboardCheck,
-  ClipboardList,
   Contact,
   CreditCard,
   Database,
@@ -44,7 +43,6 @@ import {
   ScrollText,
   Settings2,
   ShieldCheck,
-  Stamp,
   Sun,
   TrendingUp,
   UserCog,
@@ -153,14 +151,14 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    // Contract → Opname → PAD → Invoice → Payment: the client-payment chain
-    // (SUCOFINDO's receivable side), separate from Financial's spending side.
+    // Contract → Invoice → Payment: the client-payment chain (SUCOFINDO's
+    // receivable side), separate from Financial's spending side. Opname/PAD
+    // used to sit between Contract and Invoice here; they're now just a mark
+    // on the SPK itself (Financial tab of Detail SPK), not a routed document.
     label: 'Pembayaran Klien',
     icon: Receipt,
     items: [
       { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
-      { label: 'Opname', href: '/financial/opname', icon: ClipboardList, module: 'opname', ready: true, phase: 7 },
-      { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
       { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
       { label: 'Payment', href: '/financial/payment', icon: CreditCard, module: 'payment', ready: true, phase: 7 },
     ],

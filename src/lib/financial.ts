@@ -1,15 +1,13 @@
 import type { FinanceCategory, FinancialDocStatus } from '@/lib/supabase/types'
 
-/** Section 25 — the five revenue documents, in the order they are produced. */
-export type RevenueKind = 'contract' | 'opname' | 'pad' | 'invoice' | 'payment'
+/**
+ * Section 25 — the revenue documents still tracked as full documents.
+ * Opname and PAD (formerly 25.2/25.3) are now just a mark on the SPK itself
+ * (migration 0018) — see opname_marked_at/pad_marked_at on spks.
+ */
+export type RevenueKind = 'contract' | 'invoice' | 'payment'
 
-export const REVENUE_KINDS: RevenueKind[] = [
-  'contract',
-  'opname',
-  'pad',
-  'invoice',
-  'payment',
-]
+export const REVENUE_KINDS: RevenueKind[] = ['contract', 'invoice', 'payment']
 
 type RevenueMeta = {
   /** Section 7 menu wording. */
@@ -17,7 +15,7 @@ type RevenueMeta = {
   /** Route segment under /financial. */
   slug: string
   /** Which Section 6 module governs it — each document has its own. */
-  module: 'contract' | 'opname' | 'pad' | 'invoice' | 'payment'
+  module: 'contract' | 'invoice' | 'payment'
   section: string
   description: string
   numberLabel: string
@@ -36,26 +34,6 @@ export const REVENUE_META: Record<RevenueKind, RevenueMeta> = {
     numberLabel: 'Nomor kontrak',
     valueLabel: 'Nilai kontrak',
     dateLabel: 'Tanggal kontrak',
-  },
-  opname: {
-    label: 'Opname',
-    slug: 'opname',
-    module: 'opname',
-    section: '25.2',
-    description: 'Nilai pekerjaan terukur per periode.',
-    numberLabel: 'Nomor opname',
-    valueLabel: 'Nilai opname',
-    dateLabel: 'Tanggal opname',
-  },
-  pad: {
-    label: 'PAD',
-    slug: 'pad',
-    module: 'pad',
-    section: '25.3',
-    description: 'Pengakuan pendapatan atas opname yang sudah disetujui.',
-    numberLabel: 'Nomor PAD',
-    valueLabel: 'Nilai PAD',
-    dateLabel: 'Tanggal PAD',
   },
   invoice: {
     label: 'Invoice',

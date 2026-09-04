@@ -240,6 +240,107 @@ export async function setSpkStatus(
 }
 
 /**
+ * Migration 0018 — Opname and PAD are just a mark on the SPK, not a routed
+ * document. PAD only makes sense once opname is marked; unmarking opname
+ * clears PAD too so the two can't go out of order.
+ */
+export async function markOpname(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  const user = await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ opname_marked_at: new Date().toISOString(), opname_marked_by: user.id })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  return { error: null, success: 'Ditandai sudah opname.' }
+}
+
+export async function unmarkOpname(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({
+      opname_marked_at: null,
+      opname_marked_by: null,
+      pad_marked_at: null,
+      pad_marked_by: null,
+    })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  return { error: null, success: 'Tanda opname dibatalkan.' }
+}
+
+export async function markPad(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  const user = await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { data: spk } = await supabase
+    .from('spks')
+    .select('opname_marked_at')
+    .eq('id', id)
+    .maybeSingle()
+  if (!spk?.opname_marked_at) return { error: 'Tandai opname selesai dulu sebelum PAD.' }
+
+  const { error } = await supabase
+    .from('spks')
+    .update({ pad_marked_at: new Date().toISOString(), pad_marked_by: user.id })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  return { error: null, success: 'Ditandai sudah PAD.' }
+}
+
+export async function unmarkPad(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ pad_marked_at: null, pad_marked_by: null })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  return { error: null, success: 'Tanda PAD dibatalkan.' }
+}
+
+/**
  * Hard delete — migration 0017. Cascades everything owned by this SPK
  * (activities, progress, schedule, design, routing, revenue documents);
  * cross-cutting rows (audit log, files, finance_transactions) just lose the

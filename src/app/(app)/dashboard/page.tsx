@@ -129,7 +129,7 @@ export default async function DashboardPage() {
     { label: 'Total SPK', value: kpi?.total_spk ?? 0, foot: `${kpi?.spk_selesai ?? 0} selesai`, href: '/spk', icon: FolderKanban, accent: 'primary' },
     { label: 'On Going', value: kpi?.spk_on_going ?? 0, foot: 'sedang berjalan', href: '/spk?status=ongoing', icon: Workflow, accent: 'info' },
     { label: 'Masuk Routing', value: kpi?.spk_routing ?? 0, foot: 'punya dokumen dirutekan', href: '/routing', icon: FileStack, accent: 'navy' },
-    { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah terbit PAD', href: '/financial/pad', icon: FileCheck2, accent: 'gold' },
+    { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah ditandai PAD', href: '/spk', icon: FileCheck2, accent: 'gold' },
     { label: 'Invoice', value: kpi?.spk_invoice ?? 0, foot: 'sudah ditagihkan', href: '/financial/invoice', icon: Receipt, accent: 'orange' },
     { label: 'Payment', value: kpi?.spk_payment ?? 0, foot: 'sudah dibayar', href: '/financial/payment', icon: Wallet, accent: 'primary' },
   ]

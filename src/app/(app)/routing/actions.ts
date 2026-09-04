@@ -159,70 +159,35 @@ export async function advanceStep(
 }
 
 /**
- * Section 23 — a stage can send the document back or refuse it outright.
- * Returned keeps the document alive; Rejected ends it.
+ * Section 23 — a review round that isn't ready to pass yet. Doesn't move or
+ * block the step; it just logs what needs fixing and when it comes back, so
+ * a step can collect as many rounds as it needs before Lanjut.
  */
-export async function setStepStatus(
+export async function addRoutingRevision(
   _prev: RoutingState,
   formData: FormData,
 ): Promise<RoutingState> {
-  await requirePermission('routing', 'edit')
+  const user = await requirePermission('routing', 'edit')
 
   const stepId = text(formData, 'step_id')
   const routingId = text(formData, 'routing_id')
-  const status = text(formData, 'status') as RoutingStatus
-  if (!stepId || !routingId || !status) return { error: 'Data tidak lengkap.' }
+  const note = text(formData, 'note')
+  const resubmitAt = text(formData, 'resubmit_at')
+  if (!stepId || !routingId || !note || !resubmitAt) {
+    return { error: 'Catatan revisi dan tanggal submit ulang wajib diisi.' }
+  }
 
-  const now = pickedOrNow(formData, 'tanggal')
   const supabase = await createClient()
-
-  const { data: step } = await supabase
-    .from('routing_history')
-    .select('started_at')
-    .eq('id', stepId)
-    .maybeSingle()
-
-  const { error } = await supabase
-    .from('routing_history')
-    .update({
-      status,
-      // Resuming restarts the clock; the previous run is already recorded in
-      // the audit trail.
-      started_at: status === 'In Progress' ? now : (step?.started_at ?? null),
-      completed_at: null,
-      note: nullable(formData, 'note') ?? undefined,
-    })
-    .eq('id', stepId)
+  const { error } = await supabase.from('routing_step_revisions').insert({
+    routing_history_id: stepId,
+    note,
+    resubmit_at: resubmitAt,
+    created_by: user.id,
+  })
 
   if (error) return { error: error.message }
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
-  return { error: null, success: `Tahap di-set ${status}.` }
-}
-
-export async function updateRouting(
-  _prev: RoutingState,
-  formData: FormData,
-): Promise<RoutingState> {
-  await requirePermission('routing', 'edit')
-
-  const id = text(formData, 'id')
-  if (!id) return { error: 'Dokumen tidak dikenali.' }
-
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('spk_routing')
-    .update({
-      document_type: text(formData, 'document_type') || undefined,
-      document_number: nullable(formData, 'document_number'),
-      notes: nullable(formData, 'notes'),
-    })
-    .eq('id', id)
-
-  if (error) return { error: error.message }
-
-  revalidatePath('/routing')
-  revalidatePath(`/routing/${id}`)
-  return { error: null, success: 'Perubahan tersimpan.' }
+  return { error: null, success: 'Revisi dicatat.' }
 }

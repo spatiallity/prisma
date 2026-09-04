@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDateTime } from '@/lib/utils'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { ROUTING_TONE, formatDays, stageTone } from '@/lib/routing'
-import { AdvanceStepForm, RoutingDetailsForm, StepStatusForm } from '../forms'
+import { StepReviewForm } from '../forms'
 
 export const metadata: Metadata = { title: 'Detail routing' }
 
@@ -45,6 +45,22 @@ export default async function RoutingDetailPage({
       .eq('id', routing.spk_id)
       .maybeSingle(),
   ])
+
+  const stepIds = (steps ?? []).map((s) => s.id)
+  const { data: revisions } = stepIds.length
+    ? await supabase
+        .from('routing_step_revisions')
+        .select('*')
+        .in('routing_history_id', stepIds)
+        .order('created_at')
+    : { data: [] }
+  const revisionsByStep = new Map<string, typeof revisions>()
+  for (const revision of revisions ?? []) {
+    revisionsByStep.set(revision.routing_history_id, [
+      ...(revisionsByStep.get(revision.routing_history_id) ?? []),
+      revision,
+    ])
+  }
 
   const leadByStep = new Map((lead ?? []).map((row) => [row.routing_history_id, row]))
 
@@ -194,6 +210,22 @@ export default async function RoutingDetailPage({
                       {step.note && (
                         <p className="mt-1 text-sm text-slate-700">{step.note}</p>
                       )}
+                      {(revisionsByStep.get(step.id) ?? []).length > 0 && (
+                        <ul className="mt-2 grid gap-1.5 border-l-2 border-warning/40 pl-3">
+                          {(revisionsByStep.get(step.id) ?? []).map((revision, i) => (
+                            <li key={revision.id} className="text-xs">
+                              <span className="font-bold text-warning">
+                                Revisi {i + 1}
+                              </span>{' '}
+                              <span className="text-slate-700">{revision.note}</span>
+                              <span className="text-muted-foreground">
+                                {' '}
+                                · disubmit ulang {formatDate(revision.resubmit_at)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
 
                     <div className="flex flex-col items-end gap-1 pb-5">
@@ -208,11 +240,6 @@ export default async function RoutingDetailPage({
                       >
                         {formatDays(stat?.elapsed_days ?? step.duration_days)}
                       </span>
-                      {step.sla_days !== null && (
-                        <span className="tnum text-[11px] text-slate-400">
-                          SLA {formatDays(step.sla_days)}
-                        </span>
-                      )}
                     </div>
                   </li>
                 )
@@ -223,36 +250,21 @@ export default async function RoutingDetailPage({
 
         <div className="grid content-start gap-5">
           {mayEdit && current && (
-            <>
-              <Card>
-                <CardHeader>
-                  <div>
-                    <CardTitle>Teruskan</CardTitle>
-                    <CardDescription>{current.step_name}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <AdvanceStepForm
-                    routingId={routing.id}
-                    stepId={current.id}
-                    defaultPic={current.pic_name}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Kembalikan / tolak</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StepStatusForm
-                    routingId={routing.id}
-                    stepId={current.id}
-                    status={current.status}
-                  />
-                </CardContent>
-              </Card>
-            </>
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Review</CardTitle>
+                  <CardDescription>{current.step_name}</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <StepReviewForm
+                  routingId={routing.id}
+                  stepId={current.id}
+                  defaultPic={current.pic_name}
+                />
+              </CardContent>
+            </Card>
           )}
 
           {!current && (
@@ -265,17 +277,6 @@ export default async function RoutingDetailPage({
           )}
         </div>
       </div>
-
-      {mayEdit && (
-        <Card className="mt-5">
-          <CardHeader>
-            <CardTitle>Data dokumen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RoutingDetailsForm routing={routing} />
-          </CardContent>
-        </Card>
-      )}
     </>
   )
 }

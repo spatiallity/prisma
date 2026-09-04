@@ -42,58 +42,11 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
       }))
       break
     }
-    case 'opname': {
-      const { data } = await supabase
-        .from('opnames')
-        .select('*')
-        .order('opname_date', { ascending: false, nullsFirst: false })
-      rows = (data ?? []).map((r) => ({
-        id: r.id,
-        spkId: r.spk_id,
-        number: r.opname_number,
-        value: Number(r.opname_value),
-        date: r.opname_date,
-        status: r.status,
-        extra:
-          r.period_start || r.period_end
-            ? `${formatDate(r.period_start)} – ${formatDate(r.period_end)}`
-            : null,
-        notes: r.notes,
-      }))
-      break
-    }
-    case 'pad': {
-      const [{ data }, { data: opnames }] = await Promise.all([
-        supabase.from('pad').select('*').order('pad_date', { ascending: false, nullsFirst: false }),
-        supabase
-          .from('opnames')
-          .select('id, opname_number, opname_value')
-          .neq('status', 'Cancelled'),
-      ])
-      rows = (data ?? []).map((r) => ({
-        id: r.id,
-        spkId: r.spk_id,
-        number: r.pad_number,
-        value: Number(r.pad_value),
-        date: r.pad_date,
-        status: r.status,
-        extra: r.opname_id ? 'Dari opname' : null,
-        notes: r.notes,
-      }))
-      parents = (opnames ?? []).map((o) => ({
-        id: o.id,
-        label: `${o.opname_number ?? 'Opname'} — ${formatRupiah(o.opname_value)}`,
-      }))
-      break
-    }
     case 'invoice': {
-      const [{ data }, { data: pads }] = await Promise.all([
-        supabase
-          .from('invoices')
-          .select('*')
-          .order('invoice_date', { ascending: false, nullsFirst: false }),
-        supabase.from('pad').select('id, pad_number, pad_value').neq('status', 'Cancelled'),
-      ])
+      const { data } = await supabase
+        .from('invoices')
+        .select('*')
+        .order('invoice_date', { ascending: false, nullsFirst: false })
       rows = (data ?? []).map((r) => ({
         id: r.id,
         spkId: r.spk_id,
@@ -103,10 +56,6 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
         status: r.status,
         extra: r.due_date ? `Jatuh tempo ${formatDate(r.due_date)}` : null,
         notes: r.notes,
-      }))
-      parents = (pads ?? []).map((p) => ({
-        id: p.id,
-        label: `${p.pad_number ?? 'PAD'} — ${formatRupiah(p.pad_value)}`,
       }))
       break
     }
