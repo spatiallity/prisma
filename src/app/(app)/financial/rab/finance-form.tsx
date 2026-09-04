@@ -9,13 +9,14 @@ import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
-import { PERJAB_STATUSES, type FinanceCategory, type FinanceTransactionRow } from '@/lib/supabase/types'
+import { PERJAB_STATUSES, type FinanceCategory } from '@/lib/supabase/types'
 import {
   importFinanceTransactions,
   saveFinanceTransaction,
   updateFinanceTransaction,
   type FinanceTxState,
 } from './actions'
+import type { FinanceTransactionListRow } from '../finance-transactions-table'
 
 const initialState: FinanceTxState = { error: null }
 
@@ -134,7 +135,7 @@ export function FinanceTransactionForm({
   /** Pre-select and hide the kategori field — used by the per-kategori submenu pages. */
   lockedKategori?: FinanceCategory
   /** Present → editing this existing row instead of creating a new one. */
-  transaction?: FinanceTransactionRow
+  transaction?: FinanceTransactionListRow
   onSaved?: () => void
   /** Names already used as PJ UMK, for the autocomplete — umk kategori only. */
   pjOptions?: string[]
@@ -323,7 +324,7 @@ export function EditTransactionButton({
   pjOptions,
 }: {
   akunOptions: AkunOption[]
-  transaction: FinanceTransactionRow
+  transaction: FinanceTransactionListRow
   pjOptions?: string[]
 }) {
   const [open, setOpen] = useState(false)

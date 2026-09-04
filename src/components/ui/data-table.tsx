@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Table, Td, Th, Tr } from './table'
 import { Input } from './field'
@@ -24,6 +24,12 @@ export type DataTableColumn<T> = {
  * every list table in the app renders through this so both behaviors only
  * need to exist once. `searchAccessor` builds the haystack the search box
  * matches against; sorting is per-column via `sortAccessor`.
+ *
+ * Rows are paged rather than all rendered at once. Search and sort still run
+ * across the whole set, but a category with 600-odd transactions used to
+ * serialise and hydrate every one of them on each navigation — that page
+ * alone shipped 1.8MB, which is what made some menus feel heavier than
+ * others.
  */
 export function DataTable<T>({
   columns,
@@ -37,6 +43,7 @@ export function DataTable<T>({
   onRowClick,
   selectedKeys,
   onSelectionChange,
+  pageSize = 25,
 }: {
   columns: DataTableColumn<T>[]
   rows: T[]
@@ -53,8 +60,11 @@ export function DataTable<T>({
    *  for a bulk action (e.g. delete). Selection is keyed by rowKey(row). */
   selectedKeys?: Set<string>
   onSelectionChange?: (keys: Set<string>) => void
+  /** Rows per page. Pass Infinity for a short list that never needs paging. */
+  pageSize?: number
 }) {
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(0)
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(
     defaultSort ?? null,
   )
@@ -81,7 +91,18 @@ export function DataTable<T>({
     })
   }, [filtered, sort, columns])
 
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const safePage = Math.min(page, pageCount - 1)
+  const visible = useMemo(
+    () =>
+      pageSize === Infinity
+        ? sorted
+        : sorted.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [sorted, safePage, pageSize],
+  )
+
   function toggleSort(key: string) {
+    setPage(0)
     setSort((current) => {
       if (current?.key !== key) return { key, dir: 'asc' }
       if (current.dir === 'asc') return { key, dir: 'desc' }
@@ -91,17 +112,17 @@ export function DataTable<T>({
 
   const selectable = !!onSelectionChange
   const allVisibleChecked =
-    selectable && sorted.length > 0 && sorted.every((row) => selectedKeys?.has(rowKey(row)))
+    selectable && visible.length > 0 && visible.every((row) => selectedKeys?.has(rowKey(row)))
   const someVisibleChecked =
-    selectable && !allVisibleChecked && sorted.some((row) => selectedKeys?.has(rowKey(row)))
+    selectable && !allVisibleChecked && visible.some((row) => selectedKeys?.has(rowKey(row)))
 
   function toggleAllVisible() {
     if (!onSelectionChange) return
     const next = new Set(selectedKeys)
     if (allVisibleChecked) {
-      sorted.forEach((row) => next.delete(rowKey(row)))
+      visible.forEach((row) => next.delete(rowKey(row)))
     } else {
-      sorted.forEach((row) => next.add(rowKey(row)))
+      visible.forEach((row) => next.add(rowKey(row)))
     }
     onSelectionChange(next)
   }
@@ -126,7 +147,10 @@ export function DataTable<T>({
             />
             <Input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setPage(0)
+                setQuery(event.target.value)
+              }}
               placeholder={searchPlaceholder}
               className="pl-9"
               aria-label={searchPlaceholder}
@@ -186,7 +210,7 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => (
+            {visible.map((row) => (
               <Tr
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -221,6 +245,38 @@ export function DataTable<T>({
           title={query ? 'Tidak ada yang cocok' : emptyTitle}
           description={query ? `Tidak ada baris yang cocok dengan "${query}".` : emptyDescription}
         />
+      )}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+          <span className="tnum text-xs font-semibold text-muted-foreground">
+            {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, sorted.length)} dari{' '}
+            {sorted.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage(safePage - 1)}
+              disabled={safePage === 0}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              Sebelumnya
+            </button>
+            <span className="tnum px-2 text-xs font-bold text-slate-600">
+              {safePage + 1}/{pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage(safePage + 1)}
+              disabled={safePage >= pageCount - 1}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Berikutnya
+              <ArrowRight size={14} aria-hidden />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

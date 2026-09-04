@@ -12,6 +12,30 @@ import { useActionToast } from '@/components/ui/toast'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
 import type { FinanceTransactionRow } from '@/lib/supabase/types'
+
+/**
+ * Only the columns this table and its detail popup actually read. The pages
+ * select exactly these — a category page fetches every transaction it owns,
+ * so the unused ones (meta, file ids, spk_id) were pure payload.
+ */
+export type FinanceTransactionListRow = Pick<
+  FinanceTransactionRow,
+  | 'id'
+  | 'kategori'
+  | 'kode_akun'
+  | 'tanggal'
+  | 'bulan'
+  | 'jumlah'
+  | 'deskripsi'
+  | 'no_bukti'
+  | 'personil_nama'
+  | 'jenis_detail'
+  | 'pj_nama'
+  | 'perjab'
+  | 'created_at'
+  | 'updated_at'
+  | 'created_by'
+>
 import { deleteFinanceTransaction, deleteFinanceTransactions, type FinanceTxState } from './rab/actions'
 import { EditTransactionButton, type AkunOption } from './rab/finance-form'
 
@@ -90,7 +114,7 @@ export function FinanceTransactionsTable({
   actorName = {},
   pjOptions,
 }: {
-  rows: FinanceTransactionRow[]
+  rows: FinanceTransactionListRow[]
   coa: AkunOption[]
   mayEdit: boolean
   showKategori?: boolean
@@ -104,10 +128,10 @@ export function FinanceTransactionsTable({
   const akunByKode = useMemo(() => new Map(coa.map((a) => [a.kode_akun, a])), [coa])
   const showJenis = rows.some((r) => r.jenis_detail)
   const showPerjab = rows.some((r) => r.perjab)
-  const [detail, setDetail] = useState<FinanceTransactionRow | null>(null)
+  const [detail, setDetail] = useState<FinanceTransactionListRow | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const columns: DataTableColumn<FinanceTransactionRow>[] = [
+  const columns: DataTableColumn<FinanceTransactionListRow>[] = [
     ...(showKategori
       ? [
           {
@@ -122,7 +146,7 @@ export function FinanceTransactionsTable({
                 )}
               </>
             ),
-          } satisfies DataTableColumn<FinanceTransactionRow>,
+          } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]
       : []),
     {
@@ -144,10 +168,10 @@ export function FinanceTransactionsTable({
           {
             key: 'jenis_detail',
             label: 'Jenis',
-            sortAccessor: (row: FinanceTransactionRow) => row.jenis_detail,
-            render: (row: FinanceTransactionRow) =>
+            sortAccessor: (row: FinanceTransactionListRow) => row.jenis_detail,
+            render: (row: FinanceTransactionListRow) =>
               row.jenis_detail ? <Badge tone="info">{row.jenis_detail}</Badge> : '—',
-          } satisfies DataTableColumn<FinanceTransactionRow>,
+          } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]
       : []),
     {
@@ -180,14 +204,14 @@ export function FinanceTransactionsTable({
           {
             key: 'perjab',
             label: 'Perjab',
-            sortAccessor: (row: FinanceTransactionRow) => row.perjab,
-            render: (row: FinanceTransactionRow) =>
+            sortAccessor: (row: FinanceTransactionListRow) => row.perjab,
+            render: (row: FinanceTransactionListRow) =>
               row.perjab ? (
                 <Badge tone={row.perjab === 'Sudah' ? 'success' : 'warning'}>{row.perjab}</Badge>
               ) : (
                 '—'
               ),
-          } satisfies DataTableColumn<FinanceTransactionRow>,
+          } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]
       : []),
     ...(!showKategori
@@ -196,8 +220,8 @@ export function FinanceTransactionsTable({
             key: 'no_bukti',
             label: 'No. bukti',
             className: 'text-muted-foreground',
-            render: (row: FinanceTransactionRow) => row.no_bukti ?? '—',
-          } satisfies DataTableColumn<FinanceTransactionRow>,
+            render: (row: FinanceTransactionListRow) => row.no_bukti ?? '—',
+          } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]
       : []),
     {
@@ -215,7 +239,7 @@ export function FinanceTransactionsTable({
             label: 'Aksi',
             align: 'right',
             stopRowClick: true,
-            render: (row: FinanceTransactionRow) => (
+            render: (row: FinanceTransactionListRow) => (
               <div className="flex items-center justify-end gap-3">
                 <EditTransactionButton akunOptions={coa} transaction={row} pjOptions={pjOptions} />
                 <DeleteButton
@@ -225,7 +249,7 @@ export function FinanceTransactionsTable({
                 />
               </div>
             ),
-          } satisfies DataTableColumn<FinanceTransactionRow>,
+          } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]
       : []),
   ]

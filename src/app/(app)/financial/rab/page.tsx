@@ -44,13 +44,13 @@ export default async function MonitoringRabPage({
       bulan
         ? supabase
             .from('finance_transactions')
-            .select('*')
+            .select('id, kategori, kode_akun, tanggal, bulan, jumlah, deskripsi, no_bukti, personil_nama, jenis_detail, pj_nama, perjab, created_at, updated_at, created_by')
             .eq('status', 'Active')
             .eq('bulan', `${bulan}-01`)
             .order('created_at', { ascending: false })
         : supabase
             .from('finance_transactions')
-            .select('*')
+            .select('id, kategori, kode_akun, tanggal, bulan, jumlah, deskripsi, no_bukti, personil_nama, jenis_detail, pj_nama, perjab, created_at, updated_at, created_by')
             .eq('status', 'Active')
             // Not every historical row has a tanggal (some Excel tabs only ever
             // tracked the month) — order by insert recency here so every

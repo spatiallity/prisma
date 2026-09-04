@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { StatusBadge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
