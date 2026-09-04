@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import type { FinanceCategory, FinanceTransactionRow } from '@/lib/supabase/types'
+import { FINANCE_CATEGORY_META } from '@/lib/financial'
+import { loadFinanceWorkbook, parseFinanceWorkbook } from '@/lib/finance-import'
+import type { FinanceCategory, FinanceTransactionRow, PerjabStatus } from '@/lib/supabase/types'
 
 export type FinanceTxState = { error: string | null; success?: string }
 
@@ -104,6 +106,8 @@ export async function saveFinanceTransaction(
     no_bukti: nullable(formData, 'no_bukti'),
     personil_nama: nullable(formData, 'personil_nama'),
     jenis_detail: kategori === 'gaji_ptt' ? jenisDetail : null,
+    pj_nama: kategori === 'umk' ? nullable(formData, 'pj_nama') : null,
+    perjab: kategori === 'umk' ? ((text(formData, 'perjab') as PerjabStatus) || 'Belum') : null,
     created_by: user.id,
   })
 
@@ -149,6 +153,8 @@ export async function updateFinanceTransaction(
       no_bukti: nullable(formData, 'no_bukti'),
       personil_nama: nullable(formData, 'personil_nama'),
       jenis_detail: kategori === 'gaji_ptt' ? jenisDetail : null,
+      pj_nama: kategori === 'umk' ? nullable(formData, 'pj_nama') : null,
+      perjab: kategori === 'umk' ? ((text(formData, 'perjab') as PerjabStatus) || 'Belum') : null,
     })
     .eq('id', id)
 
@@ -215,4 +221,79 @@ export async function deleteFinanceTransaction(
   revalidatePath('/financial/mcu')
   revalidatePath('/financial/gaji-ptt')
   return { error: null }
+}
+
+const MAX_IMPORT_ROWS = 2000
+/** Shown at most this many at once — a 300-row error dump is not readable. */
+const MAX_SHOWN_ERRORS = 15
+
+/**
+ * Bulk version of saveFinanceTransaction — same target table, same field
+ * mapping, same validation rules per kategori, just read from an uploaded
+ * .xlsx (built by /api/financial/template) instead of one form submit.
+ * All-or-nothing: any row failing validation stops the whole import so the
+ * admin fixes the file once, rather than reconciling a half-imported sheet.
+ */
+export async function importFinanceTransactions(
+  _prev: FinanceTxState,
+  formData: FormData,
+): Promise<FinanceTxState> {
+  const user = await requirePermission('spending', 'edit')
+
+  const kategori = text(formData, 'kategori') as FinanceCategory
+  if (!kategori || !(kategori in FINANCE_CATEGORY_META)) {
+    return { error: 'Kategori tidak dikenali.' }
+  }
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: 'Pilih file Excel terlebih dahulu.' }
+  }
+
+  const buffer = await file.arrayBuffer()
+  const workbook = await loadFinanceWorkbook(buffer)
+  if (!workbook) {
+    return { error: 'File tidak bisa dibaca — pastikan ini file .xlsx dari template.' }
+  }
+
+  const supabase = await createClient()
+  const { data: coa } = await supabase.from('chart_of_accounts').select('kode_akun')
+  const validAkunCodes = new Set((coa ?? []).map((a) => a.kode_akun))
+
+  const { rows, errors } = parseFinanceWorkbook(workbook, kategori, validAkunCodes)
+
+  if (errors.length > 0) {
+    const shown = errors.slice(0, MAX_SHOWN_ERRORS).join(' ')
+    const rest = errors.length > MAX_SHOWN_ERRORS ? ` (+${errors.length - MAX_SHOWN_ERRORS} error lainnya)` : ''
+    return { error: `${shown}${rest} Tidak ada data yang diimpor — perbaiki lalu upload ulang.` }
+  }
+  if (rows.length === 0) {
+    return { error: 'Tidak ada baris data untuk diimpor.' }
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { error: `File berisi ${rows.length} baris — maksimal ${MAX_IMPORT_ROWS} per upload. Pisah jadi beberapa file.` }
+  }
+
+  const { error } = await supabase.from('finance_transactions').insert(
+    rows.map((row) => ({
+      kategori,
+      kode_akun: row.kodeAkun,
+      tanggal: row.tanggal,
+      bulan: `${row.tanggal.slice(0, 7)}-01`,
+      jumlah: row.jumlah,
+      deskripsi: row.deskripsi,
+      no_bukti: row.noBukti,
+      personil_nama: row.personilNama,
+      pj_nama: row.pjNama,
+      perjab: row.perjab,
+      jenis_detail: row.jenisDetail,
+      created_by: user.id,
+    })),
+  )
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/financial/rab')
+  revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
+  return { error: null, success: `${rows.length} transaksi berhasil diimpor.` }
 }

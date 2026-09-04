@@ -130,12 +130,18 @@ export default async function MonitoringRabPage({
     : { data: [] }
   const actorName = Object.fromEntries((creators ?? []).map((a) => [a.id, a.full_name]))
 
+  const pjOptions = [
+    ...new Set((recent ?? []).map((r) => r.pj_nama).filter((n): n is string => !!n)),
+  ].sort((a, b) => a.localeCompare(b))
+
   return (
     <>
       <PageHeader
         title="Monitoring RAB"
         description="Anggaran vs Realisasi per kode akun — UMK, SPPD, PPBJ Barang, PPBJ Jasa, Gaji PTT Project, MCU dalam satu tabel transaksi."
-        actions={mayEdit && <AddTransactionButton akunOptions={akunOptions} />}
+        actions={
+          mayEdit && <AddTransactionButton akunOptions={akunOptions} pjOptions={pjOptions} />
+        }
       />
 
       <div className="mb-4 flex items-center gap-3">
@@ -240,6 +246,7 @@ export default async function MonitoringRabPage({
           emptyTitle="Belum ada transaksi"
           searchPlaceholder="Cari kategori, deskripsi, personel, kode akun…"
           actorName={actorName}
+          pjOptions={pjOptions}
         />
       </Card>
     </>

@@ -25,6 +25,7 @@ export function FinanceTransactionsTable({
   emptyTitle = 'Belum ada transaksi',
   searchPlaceholder = 'Cari deskripsi, personel, kode akun…',
   actorName = {},
+  pjOptions,
 }: {
   rows: FinanceTransactionRow[]
   coa: AkunOption[]
@@ -34,9 +35,12 @@ export function FinanceTransactionsTable({
   searchPlaceholder?: string
   /** user id -> full_name, for "ditambahkan oleh" in the row detail popup. */
   actorName?: Record<string, string>
+  /** Names already used as PJ UMK, for the Edit form's autocomplete. */
+  pjOptions?: string[]
 }) {
   const akunByKode = useMemo(() => new Map(coa.map((a) => [a.kode_akun, a])), [coa])
   const showJenis = rows.some((r) => r.jenis_detail)
+  const showPerjab = rows.some((r) => r.perjab)
   const [detail, setDetail] = useState<FinanceTransactionRow | null>(null)
 
   const columns: DataTableColumn<FinanceTransactionRow>[] = [
@@ -102,6 +106,21 @@ export function FinanceTransactionsTable({
       sortAccessor: (row) => row.personil_nama,
       render: (row) => row.personil_nama ?? '—',
     },
+    ...(showPerjab
+      ? [
+          {
+            key: 'perjab',
+            label: 'Perjab',
+            sortAccessor: (row: FinanceTransactionRow) => row.perjab,
+            render: (row: FinanceTransactionRow) =>
+              row.perjab ? (
+                <Badge tone={row.perjab === 'Sudah' ? 'success' : 'warning'}>{row.perjab}</Badge>
+              ) : (
+                '—'
+              ),
+          } satisfies DataTableColumn<FinanceTransactionRow>,
+        ]
+      : []),
     ...(!showKategori
       ? [
           {
@@ -129,7 +148,7 @@ export function FinanceTransactionsTable({
             stopRowClick: true,
             render: (row: FinanceTransactionRow) => (
               <div className="flex items-center justify-end gap-3">
-                <EditTransactionButton akunOptions={coa} transaction={row} />
+                <EditTransactionButton akunOptions={coa} transaction={row} pjOptions={pjOptions} />
                 <DeleteButton
                   action={deleteFinanceTransaction}
                   hiddenFields={{ id: row.id }}
@@ -184,6 +203,14 @@ export function FinanceTransactionsTable({
               <span className="font-bold">{formatRupiah(detail.jumlah)}</span>
             </Field>
             <Field label="Personel">{detail.personil_nama ?? '—'}</Field>
+            {detail.pj_nama && <Field label="PJ UMK">{detail.pj_nama}</Field>}
+            {detail.perjab && (
+              <Field label="Perjab">
+                <Badge tone={detail.perjab === 'Sudah' ? 'success' : 'warning'}>
+                  {detail.perjab}
+                </Badge>
+              </Field>
+            )}
             <Field label="No. bukti">{detail.no_bukti ?? '—'}</Field>
             <Field label="Deskripsi" full>
               <span className="whitespace-pre-wrap break-words">{detail.deskripsi ?? '—'}</span>

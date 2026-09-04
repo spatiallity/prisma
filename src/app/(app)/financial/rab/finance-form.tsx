@@ -1,16 +1,21 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useId, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Plus } from 'lucide-react'
+import { Download, Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
 import { FINANCE_CATEGORY_META } from '@/lib/financial'
-import type { FinanceCategory, FinanceTransactionRow } from '@/lib/supabase/types'
-import { saveFinanceTransaction, updateFinanceTransaction, type FinanceTxState } from './actions'
+import { PERJAB_STATUSES, type FinanceCategory, type FinanceTransactionRow } from '@/lib/supabase/types'
+import {
+  importFinanceTransactions,
+  saveFinanceTransaction,
+  updateFinanceTransaction,
+  type FinanceTxState,
+} from './actions'
 
 const initialState: FinanceTxState = { error: null }
 
@@ -123,6 +128,7 @@ export function FinanceTransactionForm({
   lockedKategori,
   transaction,
   onSaved,
+  pjOptions = [],
 }: {
   akunOptions: AkunOption[]
   /** Pre-select and hide the kategori field — used by the per-kategori submenu pages. */
@@ -130,6 +136,8 @@ export function FinanceTransactionForm({
   /** Present → editing this existing row instead of creating a new one. */
   transaction?: FinanceTransactionRow
   onSaved?: () => void
+  /** Names already used as PJ UMK, for the autocomplete — umk kategori only. */
+  pjOptions?: string[]
 }) {
   const editing = !!transaction
   const [state, formAction] = useActionState(
@@ -142,6 +150,8 @@ export function FinanceTransactionForm({
   const meta = FINANCE_CATEGORY_META[kategori]
   const isGaji = kategori === 'gaji_ptt'
   const needsAkun = meta.fixedAkun === null && !isGaji
+  const isUmk = kategori === 'umk'
+  const pjListId = useId()
   useActionToast(state, onSaved)
 
   return (
@@ -230,6 +240,39 @@ export function FinanceTransactionForm({
         </Field>
       </div>
 
+      {isUmk && (
+        <Field
+          label="PJ UMK"
+          htmlFor="ft_pj"
+          hint="Yang mengambil dana dari kas korporat — beda dari Nama Personel di atas."
+        >
+          <Input
+            id="ft_pj"
+            name="pj_nama"
+            list={pjListId}
+            defaultValue={transaction?.pj_nama ?? undefined}
+            autoComplete="off"
+          />
+          <datalist id={pjListId}>
+            {pjOptions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </Field>
+      )}
+
+      {isUmk && (
+        <Field label="Perjab" htmlFor="ft_perjab" required hint="Sudah dipertanggungjawabkan atau belum.">
+          <Select id="ft_perjab" name="perjab" required defaultValue={transaction?.perjab ?? 'Belum'}>
+            {PERJAB_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+
       <div>
         <Submit editing={editing} />
       </div>
@@ -242,10 +285,12 @@ export function AddTransactionButton({
   akunOptions,
   lockedKategori,
   label = 'Add Data',
+  pjOptions,
 }: {
   akunOptions: AkunOption[]
   lockedKategori?: FinanceCategory
   label?: string
+  pjOptions?: string[]
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -265,6 +310,7 @@ export function AddTransactionButton({
         akunOptions={akunOptions}
         lockedKategori={lockedKategori}
         onSaved={() => setOpen(false)}
+        pjOptions={pjOptions}
       />
     </Modal>
   )
@@ -274,9 +320,11 @@ export function AddTransactionButton({
 export function EditTransactionButton({
   akunOptions,
   transaction,
+  pjOptions,
 }: {
   akunOptions: AkunOption[]
   transaction: FinanceTransactionRow
+  pjOptions?: string[]
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -297,7 +345,83 @@ export function EditTransactionButton({
         akunOptions={akunOptions}
         transaction={transaction}
         onSaved={() => setOpen(false)}
+        pjOptions={pjOptions}
       />
+    </Modal>
+  )
+}
+
+/** Plain GET link — no client JS needed, the browser just downloads it. */
+export function DownloadTemplateButton({ kategori }: { kategori: FinanceCategory }) {
+  return (
+    <a
+      href={`/api/financial/template?kategori=${kategori}`}
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+    >
+      <Download size={16} aria-hidden />
+      Download Template
+    </a>
+  )
+}
+
+function ImportSubmit() {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? 'Mengimpor…' : 'Import'}
+    </Button>
+  )
+}
+
+/**
+ * Admin fills the downloaded template in Excel, then uploads it here —
+ * everything on the sheet is validated and inserted in one go by
+ * importFinanceTransactions (all-or-nothing; see actions.ts for why).
+ */
+export function ImportTransactionsButton({ kategori }: { kategori: FinanceCategory }) {
+  const [open, setOpen] = useState(false)
+  const [state, formAction] = useActionState(importFinanceTransactions, initialState)
+  const formRef = useRef<HTMLFormElement>(null)
+  useActionToast(state, () => {
+    setOpen(false)
+    formRef.current?.reset()
+  })
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title={`Upload Excel — ${FINANCE_CATEGORY_META[kategori].label}`}
+      description="File harus dari template yang di-download — sheet dan kolomnya tidak boleh diubah urutannya."
+      trigger={
+        <Button type="button" variant="secondary">
+          <Upload size={16} aria-hidden />
+          Upload Excel
+        </Button>
+      }
+    >
+      <form ref={formRef} action={formAction} className="grid gap-4">
+        {state.error && <Alert tone="danger">{state.error}</Alert>}
+        <input type="hidden" name="kategori" value={kategori} />
+
+        <Field label="File Excel (.xlsx)" htmlFor="ft_file" required>
+          <input
+            id="ft_file"
+            name="file"
+            type="file"
+            accept=".xlsx"
+            required
+            className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-bold file:text-white"
+          />
+        </Field>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Batal
+          </Button>
+          <ImportSubmit />
+        </div>
+      </form>
     </Modal>
   )
 }

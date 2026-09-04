@@ -6,7 +6,7 @@ import { can } from '@/lib/auth/permissions'
 import { formatRupiah } from '@/lib/utils'
 import { FINANCE_CATEGORY_META, filterLeafAccounts } from '@/lib/financial'
 import type { FinanceCategory } from '@/lib/supabase/types'
-import { AddTransactionButton } from './rab/finance-form'
+import { AddTransactionButton, DownloadTemplateButton, ImportTransactionsButton } from './rab/finance-form'
 import { FinanceTransactionsTable } from './finance-transactions-table'
 
 /**
@@ -44,6 +44,10 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
     : { data: [] }
   const actorName = Object.fromEntries((creators ?? []).map((a) => [a.id, a.full_name]))
 
+  const pjOptions = [
+    ...new Set((rows ?? []).map((r) => r.pj_nama).filter((n): n is string => !!n)),
+  ].sort((a, b) => a.localeCompare(b))
+
   return (
     <>
       <PageHeader
@@ -56,7 +60,17 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
               : 'Kode akun dipilih bebas per transaksi.'
         }
         actions={
-          mayEdit && <AddTransactionButton akunOptions={akunOptions} lockedKategori={kategori} />
+          mayEdit && (
+            <div className="flex flex-wrap items-center gap-2">
+              <DownloadTemplateButton kategori={kategori} />
+              <ImportTransactionsButton kategori={kategori} />
+              <AddTransactionButton
+                akunOptions={akunOptions}
+                lockedKategori={kategori}
+                pjOptions={pjOptions}
+              />
+            </div>
+          )
         }
       />
 
@@ -90,6 +104,7 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
           mayEdit={mayEdit}
           emptyTitle={`Belum ada transaksi ${meta.label}`}
           actorName={actorName}
+          pjOptions={pjOptions}
         />
       </Card>
     </>

@@ -37,6 +37,10 @@ export type FinanceCategory =
   | 'gaji_ptt'
   | 'mcu'
 
+/** Whether a UMK cash advance has been reconciled yet. */
+export type PerjabStatus = 'Belum' | 'Sudah'
+export const PERJAB_STATUSES: PerjabStatus[] = ['Belum', 'Sudah']
+
 export const FINANCIAL_DOC_STATUSES: FinancialDocStatus[] = [
   'Draft',
   'Submitted',
@@ -515,6 +519,11 @@ export type FinanceTransactionRow = Timestamps & {
   personil_nama: string | null
   /** 'Upah' | 'Tunjangan' for kategori 'gaji_ptt'; null otherwise. */
   jenis_detail: string | null
+  /** Who withdrew the money — 'umk' kategori only. Different person from
+   *  personil_nama, who the money was spent on/for. */
+  pj_nama: string | null
+  /** Whether the cash advance has been reconciled — 'umk' kategori only. */
+  perjab: PerjabStatus | null
   spk_id: string | null
   meta: Json | null
   file_id: string | null
@@ -860,7 +869,7 @@ export type Database = {
       finance_transactions: Table<
         FinanceTransactionRow,
         | 'id' | 'created_at' | 'updated_at' | 'status' | 'tanggal' | 'deskripsi'
-        | 'no_bukti' | 'personnel_id' | 'personil_nama' | 'jenis_detail'
+        | 'no_bukti' | 'personnel_id' | 'personil_nama' | 'jenis_detail' | 'pj_nama' | 'perjab'
         | 'spk_id' | 'meta' | 'file_id' | 'created_by'
       >
       spk_routing: Table<
