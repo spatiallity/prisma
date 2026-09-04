@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useId, useMemo, useRef, useState } from 'react'
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Download, Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -377,15 +377,22 @@ function ImportSubmit() {
  * Admin fills the downloaded template in Excel, then uploads it here —
  * everything on the sheet is validated and inserted in one go by
  * importFinanceTransactions (all-or-nothing; see actions.ts for why).
+ *
+ * Deliberately does NOT auto-close on success (unlike every other modal in
+ * this file) — a file upload takes a beat longer than a normal form submit,
+ * and the transient toast alone wasn't enough for someone to notice it
+ * actually landed; they'd re-upload the same file, planting a duplicate row
+ * each retry. The row count now stays on screen until they close it
+ * themselves, and the file input is cleared after a success so accidentally
+ * clicking Import again can't resubmit the same file.
  */
 export function ImportTransactionsButton({ kategori }: { kategori: FinanceCategory }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(importFinanceTransactions, initialState)
   const formRef = useRef<HTMLFormElement>(null)
-  useActionToast(state, () => {
-    setOpen(false)
-    formRef.current?.reset()
-  })
+  useEffect(() => {
+    if (state.success) formRef.current?.reset()
+  }, [state.success])
 
   return (
     <Modal
@@ -402,6 +409,7 @@ export function ImportTransactionsButton({ kategori }: { kategori: FinanceCatego
     >
       <form ref={formRef} action={formAction} className="grid gap-4">
         {state.error && <Alert tone="danger">{state.error}</Alert>}
+        {state.success && <Alert tone="success">{state.success}</Alert>}
         <input type="hidden" name="kategori" value={kategori} />
 
         <Field label="File Excel (.xlsx)" htmlFor="ft_file" required>
@@ -417,7 +425,7 @@ export function ImportTransactionsButton({ kategori }: { kategori: FinanceCatego
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-            Batal
+            {state.success ? 'Tutup' : 'Batal'}
           </Button>
           <ImportSubmit />
         </div>
