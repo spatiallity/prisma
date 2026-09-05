@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { DesignStage, StageStatus } from '@/lib/supabase/types'
+import { PHASE_STAGES } from '@/lib/design'
 
 export type DesignState = { error: string | null; success?: string }
 
@@ -106,9 +107,12 @@ async function syncSpkActivityStage(
 }
 
 /**
- * Section 21 — opens the design record for an SPK and lays down its first
- * stage. `designs.current_stage` is maintained by the trigger in migration
- * 0006, so the stage is only ever written through design_revisions.
+ * Section 21 — opens the Desain Siteplan record for an SPK by hand, for the
+ * rare case the auto-open trigger (Pengolahan Data Topo hitting 100%) hasn't
+ * fired yet or doesn't apply. Finalisasi Desain is never opened this way —
+ * it only ever opens itself once Desain Siteplan reaches Finish.
+ * `designs.current_stage` is maintained by the trigger in migration 0006/
+ * 0020, so the stage is only ever written through design_revisions.
  */
 export async function createDesign(
   _prev: DesignState,
@@ -126,17 +130,19 @@ export async function createDesign(
     .from('designs')
     .select('id')
     .eq('spk_id', spkId)
+    .eq('phase', 'siteplan')
     .eq('status', 'Active')
     .maybeSingle()
 
   if (existing) {
-    return { error: 'SPK ini sudah punya record desain aktif.' }
+    return { error: 'SPK ini sudah punya record Desain Siteplan.' }
   }
 
   const { data: design, error } = await supabase
     .from('designs')
     .insert({
       spk_id: spkId,
+      phase: 'siteplan',
       title: nullable(formData, 'title'),
       pic_id: picId,
       notes: nullable(formData, 'notes'),
@@ -176,6 +182,68 @@ export async function createDesign(
 }
 
 /**
+ * Section 21 — an auto-opened Draft (no design_revisions yet) needs a human
+ * to actually mark it started, at whichever stage it opened at — this never
+ * offers a stage picker like advanceStage does, since a Draft only has one
+ * legitimate starting point (its phase's first stage).
+ */
+export async function startDesign(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  const user = await requirePermission('design', 'edit')
+
+  const designId = text(formData, 'design_id')
+  if (!designId) return { error: 'Desain tidak ditemukan.' }
+
+  const supabase = await createClient()
+  const { data: design } = await supabase
+    .from('designs')
+    .select('id, spk_id, current_stage')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!design) return { error: 'Desain tidak ditemukan.' }
+
+  const { count } = await supabase
+    .from('design_revisions')
+    .select('id', { count: 'exact', head: true })
+    .eq('design_id', designId)
+  if ((count ?? 0) > 0) return { error: 'Desain ini sudah dimulai.' }
+
+  const picId = await resolvePicId(supabase, text(formData, 'pic_name'), user.id)
+  const startedAt = pickedOrNow(formData, 'tanggal')
+
+  const { error } = await supabase.from('design_revisions').insert({
+    design_id: designId,
+    revision_no: 0,
+    stage: design.current_stage,
+    pic_id: picId,
+    pic_pertamina: nullable(formData, 'pic_pertamina'),
+    started_at: startedAt,
+    created_by: user.id,
+  })
+  if (error) return { error: error.message }
+
+  if (picId) {
+    await supabase.from('designs').update({ pic_id: picId }).eq('id', designId)
+  }
+
+  await syncSpkActivityStage(
+    supabase,
+    design.spk_id,
+    design.current_stage,
+    'Dalam Pengerjaan',
+    today(formData, 'tanggal'),
+    user.id,
+  )
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${design.spk_id}`)
+  return { error: null, success: 'Desain dimulai.' }
+}
+
+/**
  * Moves the design to its next stage. Each move closes the current revision
  * and opens a new one, which is what makes the Section 24-style lead time per
  * stage measurable at all. Desain Siteplan and Finalisasi Desain are tracked
@@ -197,10 +265,14 @@ export async function advanceStage(
 
   const { data: designRow } = await supabase
     .from('designs')
-    .select('spk_id')
+    .select('spk_id, phase')
     .eq('id', designId)
     .maybeSingle()
   if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
+  if (!PHASE_STAGES[designRow.phase].includes(stage)) {
+    return { error: `${stage} bukan tahap fase ${designRow.phase === 'siteplan' ? 'Desain Siteplan' : 'Finalisasi Desain'}.` }
+  }
 
   const { data: revisions, error: readError } = await supabase
     .from('design_revisions')

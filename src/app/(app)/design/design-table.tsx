@@ -57,8 +57,13 @@ export function DesignTable({
     {
       key: 'stage',
       label: 'Tahap',
-      sortAccessor: (row) => row.current_stage,
-      render: (row) => <Badge tone={STAGE_TONE[row.current_stage]}>{row.current_stage}</Badge>,
+      sortAccessor: (row) => (currentByDesign[row.id] ? row.current_stage : ''),
+      render: (row) =>
+        currentByDesign[row.id] ? (
+          <Badge tone={STAGE_TONE[row.current_stage]}>{row.current_stage}</Badge>
+        ) : (
+          <Badge tone="neutral">Draft</Badge>
+        ),
     },
     {
       key: 'pic',
@@ -95,8 +100,9 @@ export function DesignTable({
       key: 'held',
       label: 'Di tahap ini',
       align: 'right',
-      sortAccessor: (row) => daysInStage(row.updated_at),
+      sortAccessor: (row) => (currentByDesign[row.id] ? daysInStage(row.updated_at) : null),
       render: (row) => {
+        if (!currentByDesign[row.id]) return <span className="tnum">—</span>
         const held = daysInStage(row.updated_at)
         const late = held !== null && held > 7 && row.current_stage !== 'Submit Peta'
         return (

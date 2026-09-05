@@ -8,18 +8,24 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { DESIGN_STAGES } from '@/lib/supabase/types'
-import { STAGE_FILTERS, stagesFromFilterKey } from '@/lib/design'
+import { PHASE_STAGES, STAGE_FILTERS, phaseFromFilterKey } from '@/lib/design'
+import { AddDesignButton } from './forms'
+import { DesignTable } from './design-table'
 
 /** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
 const PHASE_GROUPS = STAGE_FILTERS.slice(1)
-import { AddDesignButton } from './forms'
-import { DesignTable } from './design-table'
 
 export const metadata: Metadata = { title: 'Design Queue' }
 
 /**
  * Section 21 — where every design sits and who is holding it. Files are out of
  * scope by decision: this queue tracks stage, PIC, and elapsed time only.
+ *
+ * A design belongs to exactly one phase (migration 0020) — Desain Siteplan
+ * opens itself once field work's Pengolahan Data Topo hits 100%, Finalisasi
+ * Desain opens itself once Desain Siteplan reaches Finish. A record with no
+ * revisions yet is a Draft: it showed up on its own, waiting for someone to
+ * mark it started.
  */
 export default async function DesignQueuePage({
   searchParams,
@@ -38,13 +44,13 @@ export default async function DesignQueuePage({
     .eq('status', 'Active')
     .order('updated_at', { ascending: true })
 
-  const wanted = stagesFromFilterKey(stage)
-  if (wanted) query = query.in('current_stage', wanted)
+  const wantedPhase = phaseFromFilterKey(stage)
+  if (wantedPhase) query = query.eq('phase', wantedPhase)
 
   const [{ data: designs, error }, { data: allDesigns }, { data: spks }, { data: pics }] =
     await Promise.all([
       query,
-      supabase.from('designs').select('current_stage, spk_id').eq('status', 'Active'),
+      supabase.from('designs').select('id, phase, current_stage, spk_id').eq('status', 'Active'),
       supabase
         .from('spks')
         .select('id, spk_number, site_code, work_name')
@@ -55,14 +61,15 @@ export default async function DesignQueuePage({
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
   const picName = Object.fromEntries((pics ?? []).map((p) => [p.id, p.full_name]))
 
-  // Open stage entry per design, plus how many revision rounds it has
-  // collected — the Keterangan column, same shape as Routing Monitor's.
-  const designIds = (designs ?? []).map((d) => d.id)
-  const { data: openEntries } = designIds.length
+  // The open (not-yet-completed) revision per design — a design has exactly
+  // one of these once started, and none at all while it's still a Draft, so
+  // presence here doubles as the Draft/started signal everywhere below.
+  const allDesignIds = (allDesigns ?? []).map((d) => d.id)
+  const { data: openEntries } = allDesignIds.length
     ? await supabase
         .from('design_revisions')
         .select('id, design_id, started_at, pic_pertamina')
-        .in('design_id', designIds)
+        .in('design_id', allDesignIds)
         .eq('status', 'Active')
         .is('completed_at', null)
     : { data: [] }
@@ -89,20 +96,26 @@ export default async function DesignQueuePage({
   )
 
   const perStage = new Map(DESIGN_STAGES.map((s) => [s, 0]))
-  const taken = new Set<string>()
+  const draftPerPhase = { siteplan: 0, finalisasi: 0 }
+  const takenSiteplan = new Set<string>()
   for (const design of allDesigns ?? []) {
-    perStage.set(design.current_stage, (perStage.get(design.current_stage) ?? 0) + 1)
-    taken.add(design.spk_id)
+    if (design.phase === 'siteplan') takenSiteplan.add(design.spk_id)
+    if (currentByDesign[design.id]) {
+      perStage.set(design.current_stage, (perStage.get(design.current_stage) ?? 0) + 1)
+    } else {
+      draftPerPhase[design.phase]++
+    }
   }
 
-  // Only SPK without an active design record can start one.
-  const openSpks = (spks ?? []).filter((s) => !taken.has(s.id))
+  // Only SPK without a Desain Siteplan record (draft or started) can open one
+  // manually — Finalisasi Desain is never opened by hand, only auto-opened.
+  const openSpks = (spks ?? []).filter((s) => !takenSiteplan.has(s.id))
 
   return (
     <>
       <PageHeader
         title="Design Queue"
-        description="Desain Siteplan (Pembuatan Desain Awal → Review → Revisi → Peta Inventaris/Stake Out → Finish), lalu Finalisasi Desain (Pembuatan → Review internal → Sinkronisasi → Submit Peta). Tanpa penyimpanan file — hanya tahap, PIC, tanggal, dan catatan."
+        description="Desain Siteplan (Pembuatan Desain Awal → Review → Revisi → Peta Inventaris/Stake Out → Finish), lalu Finalisasi Desain (Pembuatan → Review internal → Sinkronisasi → Submit Peta). Kedua fase membuka dirinya sendiri sebagai Draft — Siteplan begitu Pengolahan Data Topo 100%, Finalisasi begitu Siteplan Finish."
         actions={
           mayEdit && (
             <AddDesignButton
@@ -126,27 +139,40 @@ export default async function DesignQueuePage({
           Finalisasi Desain are different phases with different owners
           within the design team, so their counts stay next to each other's
           own phase, never blended into one row. */}
-      {PHASE_GROUPS.map((phase) => (
-        <div key={phase.key} className="mb-5">
-          <h2 className="mb-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
-            {phase.label}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {(phase.stages ?? []).map((s) => (
-              <Card key={s}>
+      {PHASE_GROUPS.map((filter) => {
+        const phase = filter.phase!
+        return (
+          <div key={filter.key} className="mb-5">
+            <h2 className="mb-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
+              {filter.label}
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              <Card className="border-dashed">
                 <CardContent className="p-4">
                   <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                    {s}
+                    Draft
                   </div>
                   <div className="tnum mt-1 text-2xl font-black text-slate-900">
-                    {perStage.get(s) ?? 0}
+                    {draftPerPhase[phase]}
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              {PHASE_STAGES[phase].map((s) => (
+                <Card key={s}>
+                  <CardContent className="p-4">
+                    <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                      {s}
+                    </div>
+                    <div className="tnum mt-1 text-2xl font-black text-slate-900">
+                      {perStage.get(s) ?? 0}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
         {STAGE_FILTERS.map((filter) => {
@@ -179,16 +205,15 @@ export default async function DesignQueuePage({
           />
         ) : (
           <EmptyState
-            title={wanted ? 'Tidak ada desain di tahap ini' : 'Belum ada record desain'}
+            title={wantedPhase ? 'Tidak ada desain di fase ini' : 'Belum ada record desain'}
             description={
-              wanted
-                ? 'Coba filter tahap yang lain.'
-                : 'Buka record desain untuk SPK yang membutuhkan siteplan.'
+              wantedPhase
+                ? 'Coba filter fase yang lain.'
+                : 'Desain Siteplan membuka dirinya sendiri begitu Pengolahan Data Topo mencapai 100%.'
             }
           />
         )}
       </Card>
-
     </>
   )
 }

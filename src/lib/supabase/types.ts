@@ -342,11 +342,16 @@ export type DailyProgressRow = Timestamps & {
   submitted_at: string
 }
 
+/** migration 0020 — a design never crosses phases; reaching Finish auto-opens
+ *  a separate finalisasi record instead. */
+export type DesignPhase = 'siteplan' | 'finalisasi'
+
 export type DesignRow = Timestamps & {
   id: string
   spk_id: string
   title: string | null
-  /** Maintained by the trigger in migration 0006 from the newest revision. */
+  phase: DesignPhase
+  /** Maintained by the trigger in migration 0006/0020 from the newest revision. */
   current_stage: DesignStage
   pic_id: string | null
   target_date: string | null
@@ -948,6 +953,7 @@ export type Database = {
         | 'created_at'
         | 'updated_at'
         | 'status'
+        | 'phase'
         | 'current_stage'
         | 'title'
         | 'pic_id'

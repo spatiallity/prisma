@@ -9,11 +9,13 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { STAGE_ORDER, STAGE_TONE, STAGE_FILTERS, daysInStage } from '@/lib/design'
-import { DeleteRevisionEntryButton, EditRevisionEntryButton, StageReviewForm } from '../forms'
-
-/** The two design-team phases, kept visually separate — see STAGE_FILTERS. */
-const PHASE_GROUPS = STAGE_FILTERS.slice(1)
+import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
+import {
+  DeleteRevisionEntryButton,
+  EditRevisionEntryButton,
+  StageReviewForm,
+  StartDesignForm,
+} from '../forms'
 
 export const metadata: Metadata = { title: 'Detail desain' }
 
@@ -44,7 +46,9 @@ export default async function DesignDetailPage({
 
   if (!design) notFound()
 
-  const [{ data: spk }, { data: revisions }, { data: pics }] = await Promise.all([
+  const siblingPhase = design.phase === 'siteplan' ? 'finalisasi' : 'siteplan'
+
+  const [{ data: spk }, { data: revisions }, { data: pics }, { data: sibling }] = await Promise.all([
     supabase
       .from('spks')
       .select('id, spk_number, site_code, work_name')
@@ -58,7 +62,16 @@ export default async function DesignDetailPage({
       .order('revision_no', { ascending: true })
       .order('created_at', { ascending: true }),
     supabase.from('design_pics').select('id, full_name').order('full_name'),
+    supabase
+      .from('designs')
+      .select('id')
+      .eq('spk_id', design.spk_id)
+      .eq('phase', siblingPhase)
+      .eq('status', 'Active')
+      .maybeSingle(),
   ])
+
+  const isDraft = (revisions?.length ?? 0) === 0
 
   const entryIds = (revisions ?? []).map((r) => r.id)
   const { data: rounds } = entryIds.length
@@ -110,11 +123,28 @@ export default async function DesignDetailPage({
       <PageHeader
         title={design.title ?? spk?.work_name ?? 'Desain'}
         description={
-          spk ? `${spk.spk_number}${spk.site_code ? ` · ${spk.site_code}` : ''}` : undefined
+          [
+            PHASE_LABEL[design.phase],
+            spk ? `${spk.spk_number}${spk.site_code ? ` · ${spk.site_code}` : ''}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined
         }
         actions={
           <div className="flex items-center gap-2">
-            <Badge tone={STAGE_TONE[design.current_stage]}>{design.current_stage}</Badge>
+            {isDraft ? (
+              <Badge tone="neutral">Draft</Badge>
+            ) : (
+              <Badge tone={STAGE_TONE[design.current_stage]}>{design.current_stage}</Badge>
+            )}
+            {sibling && (
+              <Link
+                href={`/design/${sibling.id}`}
+                className="text-sm font-bold text-primary hover:underline"
+              >
+                {PHASE_LABEL[siblingPhase]} →
+              </Link>
+            )}
             {spk && (
               <Link
                 href={`/spk/${spk.id}`}
@@ -127,6 +157,31 @@ export default async function DesignDetailPage({
         }
       />
 
+      {isDraft ? (
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Belum dimulai</CardTitle>
+              <CardDescription>
+                {PHASE_LABEL[design.phase]} terbuka otomatis, menunggu tahap{' '}
+                {design.current_stage} dimulai.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {mayEdit ? (
+              <StartDesignForm
+                designId={design.id}
+                currentStage={design.current_stage}
+                pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
+              />
+            ) : (
+              <EmptyState title="Belum ada yang mengerjakan" />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
@@ -164,66 +219,62 @@ export default async function DesignDetailPage({
         </Card>
       </div>
 
-      {/* Section 21 — two separate rails, one per phase, so a design mid-way
-          through Desain Siteplan never reads as "half done overall" — the
-          two phases' progress is never blended into one bar. */}
+      {/* Section 21 — one rail, this record's own phase. A design never
+          crosses phases itself, so there's nothing to blend into one bar —
+          the sibling phase (if it exists yet) is its own separate record,
+          linked above. */}
       <Card className="mb-5">
         <CardContent className="grid gap-5 p-5">
-          {PHASE_GROUPS.map((phase) => {
-            const stages = phase.stages ?? []
-            return (
-              <div key={phase.key}>
-                <div className="mb-2 text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">
-                  {phase.label}
-                </div>
-                <ol className="flex flex-wrap items-center gap-y-3">
-                  {stages.map((stage, index) => {
-                    const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-                    const now = stage === design.current_stage
-                    return (
-                      <li key={stage} className="flex items-center">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[10px] font-extrabold',
-                              now
-                                ? 'border-primary bg-primary text-white'
-                                : done
-                                  ? 'border-success bg-success text-white'
-                                  : 'border-slate-200 bg-white text-slate-400',
-                            )}
-                          >
-                            {done ? <Check size={12} aria-hidden /> : index + 1}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-xs font-bold whitespace-nowrap',
-                              now
-                                ? 'text-primary'
-                                : done
-                                  ? 'text-slate-700'
-                                  : 'text-slate-400',
-                            )}
-                          >
-                            {stage}
-                          </span>
-                        </div>
-                        {index < stages.length - 1 && (
-                          <span
-                            className={cn(
-                              'mx-3 h-0.5 w-6 rounded-full',
-                              done ? 'bg-success' : 'bg-slate-200',
-                            )}
-                            aria-hidden
-                          />
+          <div>
+            <div className="mb-2 text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">
+              {PHASE_LABEL[design.phase]}
+            </div>
+            <ol className="flex flex-wrap items-center gap-y-3">
+              {PHASE_STAGES[design.phase].map((stage, index, stages) => {
+                const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
+                const now = stage === design.current_stage
+                return (
+                  <li key={stage} className="flex items-center">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[10px] font-extrabold',
+                          now
+                            ? 'border-primary bg-primary text-white'
+                            : done
+                              ? 'border-success bg-success text-white'
+                              : 'border-slate-200 bg-white text-slate-400',
                         )}
-                      </li>
-                    )
-                  })}
-                </ol>
-              </div>
-            )
-          })}
+                      >
+                        {done ? <Check size={12} aria-hidden /> : index + 1}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-xs font-bold whitespace-nowrap',
+                          now
+                            ? 'text-primary'
+                            : done
+                              ? 'text-slate-700'
+                              : 'text-slate-400',
+                        )}
+                      >
+                        {stage}
+                      </span>
+                    </div>
+                    {index < stages.length - 1 && (
+                      <span
+                        className={cn(
+                          'mx-3 h-0.5 w-6 rounded-full',
+                          done ? 'bg-success' : 'bg-slate-200',
+                        )}
+                        aria-hidden
+                      />
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
         </CardContent>
       </Card>
 
@@ -381,6 +432,7 @@ export default async function DesignDetailPage({
                 <StageReviewForm
                   designId={design.id}
                   entryId={currentEntry?.id ?? null}
+                  phase={design.phase}
                   currentStage={design.current_stage}
                   pics={picOptions}
                   defaultPicPertamina={picPertamina}
@@ -390,6 +442,8 @@ export default async function DesignDetailPage({
           )}
         </div>
       </div>
+      </>
+      )}
     </>
   )
 }

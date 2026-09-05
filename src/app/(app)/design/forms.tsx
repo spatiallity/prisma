@@ -9,12 +9,14 @@ import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
-import { DESIGN_STAGES, type DesignStage } from '@/lib/supabase/types'
+import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
+import { PHASE_STAGES } from '@/lib/design'
 import {
   addDesignRevision,
   advanceStage,
   createDesign,
   deleteRevisionEntry,
+  startDesign,
   updateRevisionEntry,
   type DesignState,
 } from './actions'
@@ -182,6 +184,7 @@ export function AddDesignButton({
 export function StageReviewForm({
   designId,
   entryId,
+  phase,
   currentStage,
   pics,
   defaultPicPertamina,
@@ -189,6 +192,8 @@ export function StageReviewForm({
   designId: string
   /** The open design_revisions row — what a Revisi round attaches to. */
   entryId: string | null
+  /** Which stages Lanjut may pick from — a design never crosses phases. */
+  phase: DesignPhase
   currentStage: DesignStage
   pics: PicOption[]
   defaultPicPertamina: string | null
@@ -198,7 +203,7 @@ export function StageReviewForm({
   const [revisionState, revisionAction] = useActionState(addDesignRevision, initialState)
   useActionToast(advanceState)
   useActionToast(revisionState)
-  const options = DESIGN_STAGES.filter((stage) => stage !== currentStage)
+  const options = PHASE_STAGES[phase].filter((stage) => stage !== currentStage)
   const today = new Date().toISOString().slice(0, 10)
 
   return (
@@ -272,6 +277,51 @@ export function StageReviewForm({
         </form>
       )}
     </div>
+  )
+}
+
+/**
+ * Section 21 — an auto-opened Draft has no revision history yet, so it gets
+ * a plain "Mulai" form instead of the Lanjut/Revisi review: there's nothing
+ * to review until someone actually starts the stage it opened at.
+ */
+export function StartDesignForm({
+  designId,
+  currentStage,
+  pics,
+}: {
+  designId: string
+  currentStage: DesignStage
+  pics: PicOption[]
+}) {
+  const [state, formAction] = useActionState(startDesign, initialState)
+  useActionToast(state)
+  const today = new Date().toISOString().slice(0, 10)
+
+  return (
+    <form action={formAction} className="grid gap-3">
+      <Feedback state={state} />
+      <input type="hidden" name="design_id" value={designId} />
+
+      <div>
+        <div className="text-sm font-semibold text-slate-700">Tahap</div>
+        <div className="mt-1 text-sm font-bold text-slate-900">{currentStage}</div>
+      </div>
+
+      <Field label="Tanggal" htmlFor="s_date" required>
+        <Input id="s_date" name="tanggal" type="date" defaultValue={today} required />
+      </Field>
+
+      <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
+
+      <Field label="PIC Pertamina" htmlFor="s_pic_pertamina">
+        <Input id="s_pic_pertamina" name="pic_pertamina" placeholder="Reviewer Pertamina" />
+      </Field>
+
+      <div>
+        <Submit label="Mulai pengerjaan" icon={<Plus size={16} aria-hidden />} />
+      </div>
+    </form>
   )
 }
 

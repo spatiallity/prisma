@@ -1,4 +1,4 @@
-import type { DesignStage } from '@/lib/supabase/types'
+import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 
 /**
  * Section 21 — the design workflow. Files are deliberately out of scope: this
@@ -33,30 +33,49 @@ export const STAGE_ORDER: Record<DesignStage, number> = {
   'Submit Peta': 9,
 }
 
-/** `?stage=` shortcuts behind the Section 7 Design submenu — the two phases
- *  the design team owns. */
-export const STAGE_FILTERS = [
-  { key: 'all', label: 'Semua', stages: null },
-  {
-    key: 'siteplan',
-    label: 'Desain Siteplan',
-    stages: [
-      'Pembuatan Desain Awal',
-      'Review Desain Awal',
-      'Revisi Desain Awal',
-      'Pembuatan Peta Inventaris dan Stake Out',
-      'Finish',
-    ] as DesignStage[],
-  },
-  {
-    key: 'finalisasi',
-    label: 'Finalisasi Desain',
-    stages: ['Pembuatan', 'Review internal', 'Sinkronisasi', 'Submit Peta'] as DesignStage[],
-  },
+/**
+ * migration 0020 — a design record belongs to exactly one of these phases
+ * for its whole life; reaching the end of one auto-opens the other as a
+ * fresh Draft rather than the same record sliding across the boundary.
+ */
+export const PHASE_LABEL: Record<DesignPhase, string> = {
+  siteplan: 'Desain Siteplan',
+  finalisasi: 'Finalisasi Desain',
+}
+
+export const PHASE_STAGES: Record<DesignPhase, DesignStage[]> = {
+  siteplan: [
+    'Pembuatan Desain Awal',
+    'Review Desain Awal',
+    'Revisi Desain Awal',
+    'Pembuatan Peta Inventaris dan Stake Out',
+    'Finish',
+  ],
+  finalisasi: ['Pembuatan', 'Review internal', 'Sinkronisasi', 'Submit Peta'],
+}
+
+/** The stage a freshly auto-opened (or manually opened) design of this phase
+ *  starts at — matches the default the DB trigger falls back to. */
+export const PHASE_FIRST_STAGE: Record<DesignPhase, DesignStage> = {
+  siteplan: 'Pembuatan Desain Awal',
+  finalisasi: 'Pembuatan',
+}
+
+/** `?stage=` shortcuts behind the Section 7 Design submenu. */
+export const STAGE_FILTERS: { key: string; label: string; phase: DesignPhase | null }[] = [
+  { key: 'all', label: 'Semua', phase: null },
+  { key: 'siteplan', label: PHASE_LABEL.siteplan, phase: 'siteplan' },
+  { key: 'finalisasi', label: PHASE_LABEL.finalisasi, phase: 'finalisasi' },
 ]
 
-export function stagesFromFilterKey(key: string | undefined): DesignStage[] | null {
-  return STAGE_FILTERS.find((f) => f.key === key)?.stages ?? null
+export function phaseFromFilterKey(key: string | undefined): DesignPhase | null {
+  return STAGE_FILTERS.find((f) => f.key === key)?.phase ?? null
+}
+
+/** A record with no revisions yet — auto-opened and waiting for someone to
+ *  mark it started (see startDesign). */
+export function isDraft(revisionCount: number) {
+  return revisionCount === 0
 }
 
 /** Whole days a design has sat where it is — the Section 9 bottleneck signal. */
