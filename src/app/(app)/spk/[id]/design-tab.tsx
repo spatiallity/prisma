@@ -31,7 +31,6 @@ export async function DesignTab({ spkId }: { spkId: string }) {
         <CardContent className="p-0">
           <EmptyState
             title="Belum ada record desain"
-            description="Desain Siteplan terbuka otomatis begitu Pengolahan Data Topo mencapai 100%, atau buka dari Design Queue."
             action={
               <Link
                 href="/design"

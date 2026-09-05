@@ -115,7 +115,6 @@ export default async function DesignQueuePage({
     <>
       <PageHeader
         title="Design Queue"
-        description="Desain Siteplan (Pembuatan Desain Awal → Review → Revisi → Peta Inventaris/Stake Out → Finish), lalu Finalisasi Desain (Pembuatan → Review internal → Sinkronisasi → Submit Peta). Kedua fase membuka dirinya sendiri sebagai Draft — Siteplan begitu Pengolahan Data Topo 100%, Finalisasi begitu Siteplan Finish."
         actions={
           mayEdit && (
             <AddDesignButton
