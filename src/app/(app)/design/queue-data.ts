@@ -1,15 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
+import { PHASE_TERMINAL_STAGE } from '@/lib/design'
 import type { DesignPhase } from '@/lib/supabase/types'
 
 /** Shared data loading for the Desain Siteplan and Finalisasi Desain list
- *  pages — same shape, only the phase filter differs. */
+ *  pages — same shape, only the phase filter differs. A design that's
+ *  reached its phase's terminal stage (Finish / Submit Peta) drops off this
+ *  list — it's done, and its history still lives on the SPK's Design tab. */
 export async function loadDesignQueue(
   supabase: Awaited<ReturnType<typeof createClient>>,
   phase: DesignPhase,
 ) {
   const [{ data: designs, error }, { data: allDesigns }, { data: spks }, { data: pics }] =
     await Promise.all([
-      supabase.from('designs').select('*').eq('status', 'Active').eq('phase', phase).order('updated_at', { ascending: true }),
+      supabase
+        .from('designs')
+        .select('*')
+        .eq('status', 'Active')
+        .eq('phase', phase)
+        .neq('current_stage', PHASE_TERMINAL_STAGE[phase])
+        .order('updated_at', { ascending: true }),
       supabase.from('designs').select('id, phase, spk_id').eq('status', 'Active'),
       supabase
         .from('spks')
