@@ -172,6 +172,7 @@ export default async function DesignDetailPage({
             {mayEdit ? (
               <StartDesignForm
                 designId={design.id}
+                phase={design.phase}
                 currentStage={design.current_stage}
                 pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
               />
@@ -393,6 +394,12 @@ export default async function DesignDetailPage({
                   )}
                 >
                   {held === null ? '—' : `${held} hari`}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Data topografi masuk</span>
+                <span className="tnum font-bold text-slate-900">
+                  {design.topo_data_received_at ? formatDate(design.topo_data_received_at) : '—'}
                 </span>
               </div>
               <div className="flex justify-between gap-3">

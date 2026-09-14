@@ -7,10 +7,11 @@ import { OpnamePadRow } from './opname-pad-mark'
 
 /**
  * Section 12 — the Financial tab of Detail SPK: the Section 26.1 revenue chain
- * (Contract → Invoice → Payment) plus the Opname/PAD marks. Opname and PAD
- * used to be routed documents with their own value/number (Section 25.2/25.3);
- * migration 0018 turned them into a plain mark — usually opname happens once
- * Desain Awal is done, and PAD once opname is marked.
+ * (Contract → Invoice — Payment is hidden project-wide) plus the Opname/PAD
+ * marks. Opname and PAD used to be routed documents with their own
+ * value/number (Section 25.2/25.3); migration 0018 turned them into a plain
+ * mark — usually opname happens once Desain Awal is done, and PAD once
+ * opname is marked.
  */
 export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
   const supabase = await createClient()
@@ -36,7 +37,6 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   const chain = [
     { label: 'Contract', value: Number(financial?.contract_total ?? 0) },
     { label: 'Invoice', value: Number(financial?.invoice_total ?? 0) },
-    { label: 'Payment', value: Number(financial?.payment_total ?? 0) },
   ]
   const peak = Math.max(1, ...chain.map((step) => step.value))
 
@@ -45,7 +45,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       <Card>
         <CardHeader>
           <div>
-            <CardTitle>Contract → Payment</CardTitle>
+            <CardTitle>Contract → Invoice</CardTitle>
             <CardDescription>
               Selisih antar tahap inilah yang jadi bahan bottleneck financial.
             </CardDescription>

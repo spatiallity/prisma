@@ -144,6 +144,7 @@ export async function createDesign(
       spk_id: spkId,
       phase: 'siteplan',
       pic_id: picId,
+      topo_data_received_at: nullable(formData, 'topo_data_received_at'),
       notes: nullable(formData, 'notes'),
       created_by: user.id,
     })
@@ -223,8 +224,15 @@ export async function startDesign(
   })
   if (error) return { error: error.message }
 
-  if (picId) {
-    await supabase.from('designs').update({ pic_id: picId }).eq('id', designId)
+  const topoDataReceivedAt = nullable(formData, 'topo_data_received_at')
+  if (picId || topoDataReceivedAt) {
+    await supabase
+      .from('designs')
+      .update({
+        ...(picId ? { pic_id: picId } : {}),
+        ...(topoDataReceivedAt ? { topo_data_received_at: topoDataReceivedAt } : {}),
+      })
+      .eq('id', designId)
   }
 
   await syncSpkActivityStage(

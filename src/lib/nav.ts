@@ -4,16 +4,11 @@ import {
   AlertTriangle,
   Banknote,
   Briefcase,
-  Building2,
   Calculator,
   ClipboardCheck,
   Database,
-  FileBarChart,
-  FileClock,
   FileSignature,
-  FileSpreadsheet,
   FileStack,
-  FileText,
   FolderKanban,
   Gauge,
   HandCoins,
@@ -27,7 +22,6 @@ import {
   MapPin,
   Package,
   PencilRuler,
-  PieChart,
   Plane,
   Receipt,
   ReceiptText,
@@ -127,7 +121,6 @@ export const NAV: NavGroup[] = [
     icon: FileStack,
     items: [
       { label: 'Routing Monitor', href: '/routing', icon: Route, module: 'routing', ready: true, phase: 6 },
-      { label: 'Pending Approval', href: '/routing/pending', icon: FileClock, module: 'routing', ready: true, phase: 6 },
       { label: 'Routing History', href: '/routing/history', icon: History, module: 'routing', ready: true, phase: 6 },
     ],
   },
@@ -149,22 +142,14 @@ export const NAV: NavGroup[] = [
     // receivable side), separate from Financial's spending side. PAD is
     // still just a mark on the SPK itself (Financial tab of Detail SPK),
     // not a routed document — this is a read-only list of who's been
-    // marked. Payment was dropped from this chain.
+    // marked. Payment was dropped from this chain. Financial Report lives
+    // here too now that the standalone Reports menu is gone.
     label: 'Pembayaran Klien',
     icon: Receipt,
     items: [
       { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
       { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
       { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
-    ],
-  },
-  {
-    label: 'Reports',
-    icon: FileText,
-    items: [
-      { label: 'Project Report', href: '/reports/project', icon: FileBarChart, module: 'report', ready: true, phase: 8 },
-      { label: 'SPK Report', href: '/reports/spk', icon: FileSpreadsheet, module: 'report', ready: true, phase: 8 },
-      { label: 'Progress Report', href: '/reports/progress', icon: PieChart, module: 'report', ready: true, phase: 8 },
       { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
@@ -174,7 +159,6 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'User', href: '/admin/users', icon: UserCog, module: 'user_management', ready: true, phase: 1 },
       { label: 'Role & Permission', href: '/admin/roles', icon: KeyRound, module: 'user_management', ready: true, phase: 1 },
-      { label: 'Master Vendor', href: '/admin/vendors', icon: Building2, module: 'master_data', ready: true, phase: 2 },
       { label: 'Master Personnel', href: '/admin/personnel', icon: IdCard, module: 'master_data', ready: true, phase: 2 },
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
       { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', ready: true, phase: 6 },

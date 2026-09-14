@@ -115,6 +115,12 @@ export function RevenueForm({
           </Field>
         )}
 
+        {kind === 'contract' && (
+          <Field label="Denda (Rp)" htmlFor="f_denda" hint="Kosongkan kalau tidak ada denda.">
+            <Input id="f_denda" name="denda_value" inputMode="numeric" placeholder="0" />
+          </Field>
+        )}
+
         {kind === 'invoice' && (
           <Field label="Jatuh tempo" htmlFor="f_due">
             <Input id="f_due" name="due_date" type="date" />

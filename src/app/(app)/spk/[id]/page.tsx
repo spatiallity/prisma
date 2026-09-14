@@ -60,46 +60,47 @@ export default async function SpkDetailPage({
   const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
   if (!spk) notFound()
 
-  const [{ data: progress }, { data: vendor }, { data: assignments }, { data: audit }] =
-    await Promise.all([
-      supabase
-        .from('v_spk_progress')
-        .select('*')
-        .eq('spk_id', id)
-        .maybeSingle(),
-      spk.vendor_id
-        ? supabase.from('vendors').select('id, name, code, contact_person, phone').eq('id', spk.vendor_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      supabase.from('spk_assignments').select('*').eq('spk_id', id).order('created_at'),
-      supabase
-        .from('audit_logs')
-        .select('id, action, table_name, changed_at, changed_by, changed_fields')
-        .eq('spk_id', id)
-        .order('changed_at', { ascending: false })
-        .limit(8),
-    ])
+  const [{ data: progress }, { data: routingDocs }, { data: audit }] = await Promise.all([
+    supabase
+      .from('v_spk_progress')
+      .select('*')
+      .eq('spk_id', id)
+      .maybeSingle(),
+    supabase.from('spk_routing').select('id, status').eq('spk_id', id),
+    supabase
+      .from('audit_logs')
+      .select('id, action, table_name, changed_at, changed_by, changed_fields')
+      .eq('spk_id', id)
+      .order('changed_at', { ascending: false })
+      .limit(8),
+  ])
 
-  const teamIds = (assignments ?? []).map((a) => a.team_id).filter(Boolean) as string[]
-  const vendorIds = [...new Set((assignments ?? []).map((a) => a.vendor_id))]
   const actorIds = [
     ...new Set((audit ?? []).map((entry) => entry.changed_by).filter(Boolean)),
   ] as string[]
 
-  const [{ data: teams }, { data: assignmentVendors }, { data: actors }] = await Promise.all([
-    teamIds.length
-      ? supabase.from('vendor_teams').select('id, name').in('id', teamIds)
-      : Promise.resolve({ data: [] }),
-    vendorIds.length
-      ? supabase.from('vendors').select('id, name').in('id', vendorIds)
-      : Promise.resolve({ data: [] }),
-    actorIds.length
-      ? supabase.from('users').select('id, full_name').in('id', actorIds)
-      : Promise.resolve({ data: [] }),
-  ])
+  const { data: actors } = actorIds.length
+    ? await supabase.from('users').select('id, full_name').in('id', actorIds)
+    : { data: [] }
 
-  const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]))
-  const assignmentVendorName = new Map((assignmentVendors ?? []).map((v) => [v.id, v.name]))
   const actorName = new Map((actors ?? []).map((a) => [a.id, a.full_name]))
+
+  // Once a document is routing, "sisa waktu" stops being the interesting
+  // number — where the document is sitting matters more than the deadline.
+  const hasRoutingStarted = (routingDocs ?? []).length > 0
+  const openRoutingIds = (routingDocs ?? [])
+    .filter((d) => d.status !== 'Completed' && d.status !== 'Rejected')
+    .map((d) => d.id)
+  let currentStepName: string | null = null
+  if (openRoutingIds.length) {
+    const { data: steps } = await supabase
+      .from('v_routing_lead_time')
+      .select('step_name, sequence, status, spk_routing_id')
+      .in('spk_routing_id', openRoutingIds)
+      .neq('status', 'Completed')
+      .order('sequence')
+    currentStepName = steps?.[0]?.step_name ?? null
+  }
 
   const remaining = daysLeft(spk.end_date)
   const overall = progress?.overall_progress ?? 0
@@ -162,7 +163,6 @@ export default async function SpkDetailPage({
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-600">
                 <span>{formatArea(spk.area_ha)}</span>
                 <span>{formatRupiah(spk.contract_value)}</span>
-                <span>{vendor?.name ?? 'Vendor belum ditentukan'}</span>
                 <span className="tnum">
                   {formatDate(spk.start_date)} – {formatDate(spk.end_date)}
                 </span>
@@ -256,9 +256,11 @@ export default async function SpkDetailPage({
               <Fact label="Tanggal mulai" value={formatDate(spk.start_date)} />
               <Fact label="Tanggal selesai" value={formatDate(spk.end_date)} />
               <Fact
-                label="Sisa waktu"
+                label={hasRoutingStarted ? 'Posisi dokumen' : 'Sisa waktu'}
                 value={
-                  remaining === null ? (
+                  hasRoutingStarted ? (
+                    (currentStepName ?? 'Selesai')
+                  ) : remaining === null ? (
                     '—'
                   ) : remaining < 0 ? (
                     <span className="text-danger">Lewat {Math.abs(remaining)} hari</span>
@@ -266,10 +268,6 @@ export default async function SpkDetailPage({
                     `${remaining} hari`
                   )
                 }
-              />
-              <Fact
-                label="Vendor Jasa Survey"
-                value={vendor ? `${vendor.name} (${vendor.code})` : 'Belum ditentukan'}
               />
               <Fact
                 label="Aktivitas"
@@ -295,57 +293,6 @@ export default async function SpkDetailPage({
         </Card>
 
         <div className="grid content-start gap-5">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assignment</CardTitle>
-              {can(user.permissions, 'vendor', 'edit') && (
-                <Link
-                  href="/vendor/assignment"
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  Kelola
-                </Link>
-              )}
-            </CardHeader>
-            <CardContent className="p-0">
-              {assignments && assignments.length > 0 ? (
-                <ul className="divide-y divide-slate-100">
-                  {assignments.map((assignment) => (
-                    <li key={assignment.id} className="px-5 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold text-slate-900">
-                          {assignmentVendorName.get(assignment.vendor_id) ?? '—'}
-                        </span>
-                        <Badge
-                          tone={assignment.status === 'Active' ? 'success' : 'neutral'}
-                        >
-                          {assignment.status}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {assignment.team_id
-                          ? (teamName.get(assignment.team_id) ?? 'Team')
-                          : 'Seluruh vendor'}
-                        {assignment.assigned_from && (
-                          <>
-                            {' · '}
-                            {formatDate(assignment.assigned_from)} –{' '}
-                            {formatDate(assignment.assigned_to)}
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState
-                  title="Belum ada assignment"
-                  description="Tugaskan vendor atau team agar mereka bisa mengisi Daily Progress."
-                />
-              )}
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Latest activity</CardTitle>

@@ -30,7 +30,7 @@ export function RoutingTable({
   currentByDoc: Record<string, CurrentStage>
   picByStage: Record<string, string | null>
   revisionCountByStep: Record<string, number>
-  mode: 'open' | 'pending' | 'history'
+  mode: 'open' | 'history'
 }) {
   const columns: DataTableColumn<RoutingDoc>[] = [
     {

@@ -11,8 +11,6 @@ import { SPK_STATUSES, type SpkRow } from '@/lib/supabase/types'
 import { WORK_TYPE_OPTIONS } from '@/lib/spk'
 import type { SpkFormState } from './actions'
 
-export type Option = { id: string; label: string }
-
 const initialState: SpkFormState = { error: null }
 
 function Submit({ label }: { label: string }) {
@@ -32,13 +30,11 @@ export function SpkForm({
   action,
   submitLabel,
   spk,
-  vendors,
   stakeOutTarget,
 }: {
   action: (state: SpkFormState, formData: FormData) => Promise<SpkFormState>
   submitLabel: string
   spk?: SpkRow
-  vendors: Option[]
   /** Current "Stake Out" activity target (jumlah titik), when editing one. */
   stakeOutTarget?: number | null
 }) {
@@ -203,21 +199,10 @@ export function SpkForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Vendor</CardTitle>
+          <CardTitle>Catatan</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Field label="Vendor Jasa Survey" htmlFor="vendor_id">
-            <Select id="vendor_id" name="vendor_id" defaultValue={spk?.vendor_id ?? ''}>
-              <option value="">— belum ditentukan —</option>
-              {vendors.map((vendor) => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Keterangan" htmlFor="notes" className="sm:col-span-2">
+        <CardContent>
+          <Field label="Keterangan" htmlFor="notes">
             <Textarea id="notes" name="notes" defaultValue={spk?.notes ?? ''} />
           </Field>
         </CardContent>

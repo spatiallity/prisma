@@ -71,6 +71,7 @@ export async function saveRevenueDoc(
         contract_value: value,
         contract_date: date,
         amendment_no: amendment,
+        denda_value: money(formData, 'denda_value'),
         status,
         notes,
         created_by: user.id,

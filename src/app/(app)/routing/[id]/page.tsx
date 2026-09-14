@@ -205,7 +205,7 @@ export default async function RoutingDetailPage({
                         {step.pic_name ?? 'PIC belum ditentukan'}
                         {step.started_at && ` · mulai ${formatDateTime(step.started_at)}`}
                         {step.completed_at && ` → ${formatDateTime(step.completed_at)}`}
-                        {!step.started_at && ' · belum mulai'}
+                        {!step.started_at && step.status === 'Pending' && ' · belum mulai'}
                       </div>
                       {step.note && (
                         <p className="mt-1 text-sm text-slate-700">{step.note}</p>

@@ -3,18 +3,13 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { requirePermission } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
 import { createSpk } from '../actions'
 import { SpkForm } from '../spk-form'
-import { loadSpkFormOptions } from '../options'
 
 export const metadata: Metadata = { title: 'Buat SPK Baru' }
 
 export default async function NewSpkPage() {
   await requirePermission('spk', 'create')
-
-  const supabase = await createClient()
-  const options = await loadSpkFormOptions(supabase)
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -31,7 +26,7 @@ export default async function NewSpkPage() {
         description="Data dasar SPK. Aktivitas dan progress bisa diisi setelah SPK dibuat."
       />
 
-      <SpkForm action={createSpk} submitLabel="Simpan SPK" {...options} />
+      <SpkForm action={createSpk} submitLabel="Simpan SPK" />
     </div>
   )
 }

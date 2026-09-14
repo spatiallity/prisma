@@ -138,16 +138,18 @@ export function StepReviewForm({
   routingId,
   stepId,
   defaultPic,
+  onSaved,
 }: {
   routingId: string
   stepId: string
   defaultPic: string | null
+  onSaved?: () => void
 }) {
   const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
   const [advanceState, advanceAction] = useActionState(advanceStep, initialState)
   const [revisionState, revisionAction] = useActionState(addRoutingRevision, initialState)
-  useActionToast(advanceState)
-  useActionToast(revisionState)
+  useActionToast(advanceState, onSaved)
+  useActionToast(revisionState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
 
   return (

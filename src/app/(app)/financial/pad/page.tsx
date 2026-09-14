@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
@@ -61,7 +61,7 @@ export default async function PadPage() {
             <thead>
               <tr>
                 <Th>SPK</Th>
-                <Th>Site</Th>
+                <Th>Pekerjaan</Th>
                 <Th>Opname</Th>
                 <Th>PAD</Th>
                 <Th>Tanggal PAD</Th>
@@ -71,15 +71,14 @@ export default async function PadPage() {
               {rows.map((s) => (
                 <Tr key={s.id}>
                   <Td>
-                    <Link
+                    <SpkCell
+                      id={s.id}
+                      spkNumber={s.spk_number}
+                      siteCode={s.site_code}
                       href={`/spk/${s.id}?tab=financial`}
-                      className="font-bold text-primary hover:underline"
-                    >
-                      {s.spk_number}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">{s.work_name}</div>
+                    />
                   </Td>
-                  <Td>{s.site_code ?? '—'}</Td>
+                  <Td className="text-xs text-muted-foreground">{s.work_name}</Td>
                   <Td>
                     <Badge tone={s.opname_marked_at ? 'success' : 'neutral'}>
                       {s.opname_marked_at ? 'Sudah' : 'Belum'}

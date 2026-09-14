@@ -6,13 +6,13 @@ import {
   FileStack,
   FileCheck2,
   Receipt,
-  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
@@ -131,7 +131,6 @@ export default async function DashboardPage() {
     { label: 'Masuk Routing', value: kpi?.spk_routing ?? 0, foot: 'punya dokumen dirutekan', href: '/routing', icon: FileStack, accent: 'navy' },
     { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah ditandai PAD', href: '/spk', icon: FileCheck2, accent: 'gold' },
     { label: 'Invoice', value: kpi?.spk_invoice ?? 0, foot: 'sudah ditagihkan', href: '/financial/invoice', icon: Receipt, accent: 'orange' },
-    { label: 'Payment', value: kpi?.spk_payment ?? 0, foot: 'sudah dibayar', href: '/financial/payment', icon: Wallet, accent: 'primary' },
   ]
 
   const ACCENT_CLASS: Record<(typeof tiles)[number]['accent'], string> = {
@@ -146,7 +145,7 @@ export default async function DashboardPage() {
     <>
       <PageHeader title={`Selamat datang, ${user.fullName.split(' ')[0]}`} />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href}>
             <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
@@ -211,12 +210,7 @@ export default async function DashboardPage() {
                     return (
                       <Tr key={row.spk_id}>
                         <Td>
-                          <Link
-                            href={`/spk/${row.spk_id}`}
-                            className="font-bold text-primary hover:underline"
-                          >
-                            {row.site_code ?? row.spk_number}
-                          </Link>
+                          <SpkCell id={row.spk_id} spkNumber={row.spk_number} siteCode={row.site_code} />
                         </Td>
                         <Td className="max-w-xs">
                           <span className="line-clamp-1 font-bold text-slate-900">

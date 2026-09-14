@@ -58,7 +58,19 @@ export default async function DesignQueuePage({
       supabase.from('design_pics').select('id, full_name').order('full_name'),
     ])
 
-  const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
+  // Display needs every SPK a design record points at, not just the ones
+  // still open for a *new* record (that narrower list is `spks`, below,
+  // reused for openSpks) — a design for an SPK that's since gone Selesai
+  // was falling out of this map entirely and rendering as a blank "SPK" row.
+  const referencedSpkIds = [...new Set((allDesigns ?? []).map((d) => d.spk_id))]
+  const { data: referencedSpks } = referencedSpkIds.length
+    ? await supabase
+        .from('spks')
+        .select('id, spk_number, site_code, work_name')
+        .in('id', referencedSpkIds)
+    : { data: [] }
+
+  const spkById = Object.fromEntries((referencedSpks ?? []).map((s) => [s.id, s]))
   const picName = Object.fromEntries((pics ?? []).map((p) => [p.id, p.full_name]))
 
   // The open (not-yet-completed) revision per design — a design has exactly

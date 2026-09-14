@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
@@ -19,7 +20,6 @@ export const metadata: Metadata = { title: 'Bottleneck' }
 
 /** Where each area's problems are dealt with. */
 const AREA_LINK: Record<string, string> = {
-  operational: '/schedule/daily-progress',
   design: '/design',
   routing: '/routing',
   financial: '/financial/invoice',
@@ -48,7 +48,7 @@ export default async function BottleneckPage() {
     perArea.set(row.area, (perArea.get(row.area) ?? 0) + 1)
   }
 
-  const areas = ['operational', 'design', 'routing', 'financial']
+  const areas = ['design', 'routing', 'financial']
 
   return (
     <>
@@ -122,12 +122,11 @@ export default async function BottleneckPage() {
                   <Td className="font-bold text-slate-900">{row.reason}</Td>
                   <Td>
                     {row.spk_id ? (
-                      <Link
-                        href={`/spk/${row.spk_id}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {row.site_code ?? row.spk_number ?? 'SPK'}
-                      </Link>
+                      <SpkCell
+                        id={row.spk_id}
+                        spkNumber={row.spk_number ?? 'SPK'}
+                        siteCode={row.site_code}
+                      />
                     ) : (
                       <span className="text-muted-foreground">Seluruh project</span>
                     )}

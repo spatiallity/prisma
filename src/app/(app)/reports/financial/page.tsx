@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { cn, formatRupiah } from '@/lib/utils'
@@ -39,24 +39,24 @@ export default async function FinancialReportPage() {
       opname: acc.opname + Number(f.opname_total),
       pad: acc.pad + Number(f.pad_total),
       invoice: acc.invoice + Number(f.invoice_total),
-      payment: acc.payment + Number(f.payment_total),
+      denda: acc.denda + Number(f.denda_total),
       outstanding: acc.outstanding + Number(f.outstanding_payment),
     }),
-    { contract: 0, opname: 0, pad: 0, invoice: 0, payment: 0, outstanding: 0 },
+    { contract: 0, opname: 0, pad: 0, invoice: 0, denda: 0, outstanding: 0 },
   )
 
   return (
     <>
       <PageHeader
         title="Financial Report"
-        description="Rantai Contract sampai Payment per SPK dan sisa tagihan."
+        description="Rantai Contract sampai Invoice per SPK dan sisa tagihan."
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Contract" value={formatRupiah(totals.contract)} />
         <Stat label="Opname" value={formatRupiah(totals.opname)} />
         <Stat label="Invoice" value={formatRupiah(totals.invoice)} />
-        <Stat label="Payment" value={formatRupiah(totals.payment)} />
+        <Stat label="Denda" value={formatRupiah(totals.denda)} />
         <Stat
           label="Outstanding"
           value={formatRupiah(totals.outstanding)}
@@ -83,7 +83,7 @@ export default async function FinancialReportPage() {
                 <Th className="text-right">Opname</Th>
                 <Th className="text-right">PAD</Th>
                 <Th className="text-right">Invoice</Th>
-                <Th className="text-right">Payment</Th>
+                <Th className="text-right">Denda</Th>
                 <Th className="text-right">Outstanding</Th>
               </tr>
             </thead>
@@ -95,12 +95,12 @@ export default async function FinancialReportPage() {
                 return (
                   <Tr key={row.spk_id}>
                     <Td>
-                      <Link
+                      <SpkCell
+                        id={row.spk_id}
+                        spkNumber={row.spk_number}
+                        siteCode={spk?.site_code ?? null}
                         href={`/spk/${row.spk_id}?tab=financial`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {spk?.site_code ?? row.spk_number}
-                      </Link>
+                      />
                       {spk && (
                         <div className="text-xs text-muted-foreground">{spk.status}</div>
                       )}
@@ -109,7 +109,9 @@ export default async function FinancialReportPage() {
                     <Td className="tnum text-right">{formatRupiah(row.opname_total)}</Td>
                     <Td className="tnum text-right">{formatRupiah(row.pad_total)}</Td>
                     <Td className="tnum text-right">{formatRupiah(row.invoice_total)}</Td>
-                    <Td className="tnum text-right">{formatRupiah(row.payment_total)}</Td>
+                    <Td className="tnum text-right">
+                      {Number(row.denda_total) > 0 ? formatRupiah(row.denda_total) : '—'}
+                    </Td>
                     <Td
                       className={cn(
                         'tnum text-right',
@@ -129,7 +131,7 @@ export default async function FinancialReportPage() {
                 <Td className="tnum text-right">{formatRupiah(totals.opname)}</Td>
                 <Td className="tnum text-right">{formatRupiah(totals.pad)}</Td>
                 <Td className="tnum text-right">{formatRupiah(totals.invoice)}</Td>
-                <Td className="tnum text-right">{formatRupiah(totals.payment)}</Td>
+                <Td className="tnum text-right">{formatRupiah(totals.denda)}</Td>
                 <Td className="tnum text-right text-danger">
                   {formatRupiah(totals.outstanding)}
                 </Td>

@@ -54,7 +54,6 @@ type SpkFields = {
   contract_value: number | null
   start_date: string | null
   end_date: string | null
-  vendor_id: string | null
   status: SpkStatus
   notes: string | null
 }
@@ -85,7 +84,6 @@ function readFields(formData: FormData): SpkFields | string {
     contract_value: numeric(formData, 'contract_value'),
     start_date: startDate,
     end_date: endDate,
-    vendor_id: nullable(formData, 'vendor_id'),
     status: (text(formData, 'status') || 'Draft') as SpkStatus,
     notes: nullable(formData, 'notes'),
   }

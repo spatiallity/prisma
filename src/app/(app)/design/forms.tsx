@@ -189,6 +189,14 @@ export function NewDesignForm({
           <Input id="d_start" name="tanggal" type="date" defaultValue={today} required />
         </Field>
 
+        <Field
+          label="Data topografi masuk"
+          htmlFor="d_topo"
+          hint="Kosongkan kalau belum diketahui."
+        >
+          <Input id="d_topo" name="topo_data_received_at" type="date" />
+        </Field>
+
         <Field label="Catatan" htmlFor="d_notes" className="sm:col-span-2">
           <Input id="d_notes" name="notes" />
         </Field>
@@ -339,10 +347,12 @@ export function StageReviewForm({
  */
 export function StartDesignForm({
   designId,
+  phase,
   currentStage,
   pics,
 }: {
   designId: string
+  phase: DesignPhase
   currentStage: DesignStage
   pics: PicOption[]
 }) {
@@ -363,6 +373,16 @@ export function StartDesignForm({
       <Field label="Tanggal" htmlFor="s_date" required>
         <Input id="s_date" name="tanggal" type="date" defaultValue={today} required />
       </Field>
+
+      {phase === 'siteplan' && (
+        <Field
+          label="Data topografi masuk"
+          htmlFor="s_topo"
+          hint="Kosongkan kalau belum diketahui."
+        >
+          <Input id="s_topo" name="topo_data_received_at" type="date" />
+        </Field>
+      )}
 
       <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
 

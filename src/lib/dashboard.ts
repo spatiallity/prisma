@@ -18,7 +18,6 @@ export const SEVERITY_RANK: Record<NotificationSeverity, number> = {
 
 /** Section 9 groups bottlenecks by where in the project they occur. */
 export const AREA_LABEL: Record<string, string> = {
-  operational: 'Operational',
   design: 'Design',
   routing: 'Routing',
   financial: 'Financial',

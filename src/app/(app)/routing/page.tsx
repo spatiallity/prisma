@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
@@ -7,10 +8,12 @@ import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import type { RoutingLeadTimeView } from '@/lib/supabase/types'
+import { cn } from '@/lib/utils'
+import type { Database, RoutingLeadTimeView } from '@/lib/supabase/types'
 import { formatDays } from '@/lib/routing'
 import { AddRoutingButton } from './forms'
 import { RoutingTable } from './routing-table'
+import { RoutingMatrix } from './routing-matrix'
 
 export const metadata: Metadata = { title: 'Routing Monitor' }
 
@@ -21,19 +24,22 @@ export const metadata: Metadata = { title: 'Routing Monitor' }
  */
 export async function RoutingMonitor({
   mode = 'open',
+  step,
 }: {
-  mode?: 'open' | 'pending' | 'history'
+  mode?: 'open' | 'history'
+  /** Narrows the open list to documents currently sitting at this step —
+   *  set by clicking one of the summary cards. */
+  step?: string
 }) {
   const user = await requirePermission('routing', 'view')
   const mayEdit = can(user.permissions, 'routing', 'edit')
 
   const supabase = await createClient()
 
-  const [{ data: documents, error }, { data: lead }, { data: stages }, { data: spks }, { data: templates }] =
+  const [{ data: documents, error }, { data: lead }, { data: spks }, { data: templates }] =
     await Promise.all([
       supabase.from('spk_routing').select('*').order('created_at', { ascending: false }),
       supabase.from('v_routing_lead_time').select('*'),
-      supabase.from('routing_history').select('id, pic_name'),
       supabase
         .from('spks')
         .select('id, spk_number, site_code, work_name, status')
@@ -42,7 +48,6 @@ export async function RoutingMonitor({
     ])
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
-  const picByStage = Object.fromEntries((stages ?? []).map((s) => [s.id, s.pic_name]))
 
   // The stage a document is actually sitting in: the first one not finished.
   const currentByDoc = new Map<string, RoutingLeadTimeView>()
@@ -55,46 +60,42 @@ export async function RoutingMonitor({
   }
   const currentByDocPlain = Object.fromEntries(currentByDoc)
 
-  // How many revision rounds the current stage has already been through —
-  // "Submission pertama" vs "Revisi ke-N" in the table's Keterangan column.
-  const currentStepIds = [...currentByDoc.values()].map((v) => v.routing_history_id)
-  const { data: revisions } = currentStepIds.length
-    ? await supabase
-        .from('routing_step_revisions')
-        .select('routing_history_id')
-        .in('routing_history_id', currentStepIds)
-    : { data: [] }
-  const revisionCountByStep: Record<string, number> = {}
-  for (const r of revisions ?? []) {
-    revisionCountByStep[r.routing_history_id] = (revisionCountByStep[r.routing_history_id] ?? 0) + 1
-  }
-
   const defaultTemplateId = templates?.[0]?.id ?? null
 
   const filtered = (documents ?? []).filter((doc) => {
     if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
-    if (mode === 'pending') {
-      const current = currentByDoc.get(doc.id)
-      return doc.status !== 'Completed' && doc.status !== 'Rejected' && !!current
-    }
-    return doc.status !== 'Completed' && doc.status !== 'Rejected'
+    if (doc.status === 'Completed' || doc.status === 'Rejected') return false
+    if (step && currentByDoc.get(doc.id)?.step_name !== step) return false
+    return true
   })
 
   const overdueCount = filtered.filter((doc) => overdueByDoc.get(doc.id)).length
 
-  const title =
-    mode === 'pending'
-      ? 'Pending Approval'
-      : mode === 'history'
-        ? 'Routing History'
-        : 'Routing Monitor'
+  // History's table still shows PIC + revision count per current-at-the-time
+  // step — only needed here, the matrix shows every step's own state instead.
+  let picByStage: Record<string, string | null> = {}
+  const revisionCountByStep: Record<string, number> = {}
+  if (mode === 'history') {
+    const { data: stages } = await supabase.from('routing_history').select('id, pic_name')
+    picByStage = Object.fromEntries((stages ?? []).map((s) => [s.id, s.pic_name]))
 
+    const currentStepIds = [...currentByDoc.values()].map((v) => v.routing_history_id)
+    const { data: revisions } = currentStepIds.length
+      ? await supabase
+          .from('routing_step_revisions')
+          .select('routing_history_id')
+          .in('routing_history_id', currentStepIds)
+      : { data: [] }
+    for (const r of revisions ?? []) {
+      revisionCountByStep[r.routing_history_id] = (revisionCountByStep[r.routing_history_id] ?? 0) + 1
+    }
+  }
+
+  const title = mode === 'history' ? 'Routing History' : 'Routing Monitor'
   const description =
-    mode === 'pending'
-      ? 'Dokumen yang sedang menunggu tindakan pada satu tahap.'
-      : mode === 'history'
-        ? 'Dokumen yang sudah selesai atau ditolak, beserta lead time totalnya.'
-        : 'Posisi setiap dokumen dan berapa lama tertahan di tahap sekarang.'
+    mode === 'history'
+      ? 'Dokumen yang sudah selesai atau ditolak, beserta lead time totalnya.'
+      : 'Posisi setiap dokumen dan berapa lama tertahan di tahap sekarang.'
 
   return (
     <>
@@ -120,12 +121,29 @@ export async function RoutingMonitor({
         </Alert>
       )}
 
+      {mode === 'open' && (
+        <StepSummaryCards
+          templateId={defaultTemplateId}
+          currentByDoc={currentByDocPlain}
+          activeStep={step}
+        />
+      )}
+
       <Card className="mb-5 overflow-hidden">
         <CardHeader>
           <div>
             <CardTitle>{filtered.length} dokumen</CardTitle>
             <CardDescription>
-              Merah berarti tahap sekarang sudah melewati SLA-nya.
+              {step ? (
+                <>
+                  Difilter ke tahap <strong className="text-slate-700">{step}</strong> —{' '}
+                  <Link href="/routing" className="font-bold text-primary hover:underline">
+                    hapus filter
+                  </Link>
+                </>
+              ) : (
+                'Merah berarti tahap sekarang sudah melewati SLA-nya.'
+              )}
             </CardDescription>
           </div>
           {overdueCount > 0 && (
@@ -133,16 +151,7 @@ export async function RoutingMonitor({
           )}
         </CardHeader>
 
-        {filtered.length > 0 ? (
-          <RoutingTable
-            docs={filtered}
-            spkById={spkById}
-            currentByDoc={currentByDocPlain}
-            picByStage={picByStage}
-            revisionCountByStep={revisionCountByStep}
-            mode={mode}
-          />
-        ) : (
+        {filtered.length === 0 ? (
           <EmptyState
             title={
               mode === 'history'
@@ -155,11 +164,152 @@ export async function RoutingMonitor({
                 : 'Rutekan dokumen agar posisinya bisa dipantau.'
             }
           />
+        ) : mode === 'open' ? (
+          <RoutingMatrixSection
+            docs={filtered}
+            spkById={spkById}
+            templateId={defaultTemplateId}
+            currentByDoc={currentByDocPlain}
+            overdueByDoc={Object.fromEntries(overdueByDoc)}
+            mayEdit={mayEdit}
+          />
+        ) : (
+          <RoutingTable
+            docs={filtered}
+            spkById={spkById}
+            currentByDoc={currentByDocPlain}
+            picByStage={picByStage}
+            revisionCountByStep={revisionCountByStep}
+            mode={mode}
+          />
         )}
       </Card>
 
       {mode === 'history' && <StageAverages />}
     </>
+  )
+}
+
+/** Section 6-column overview — how many open documents are sitting at each
+ *  step right now. Same shape as the matrix's own columns, so the two never
+ *  disagree about what a "step" is. */
+async function StepSummaryCards({
+  templateId,
+  currentByDoc,
+  activeStep,
+}: {
+  templateId: string | null
+  currentByDoc: Record<string, RoutingLeadTimeView>
+  activeStep?: string
+}) {
+  const supabase = await createClient()
+  const { data: steps } = templateId
+    ? await supabase
+        .from('routing_template_steps')
+        .select('id, name, sequence')
+        .eq('template_id', templateId)
+        .order('sequence')
+    : { data: [] }
+
+  const countByStep = new Map<string, number>()
+  for (const current of Object.values(currentByDoc)) {
+    countByStep.set(current.step_name, (countByStep.get(current.step_name) ?? 0) + 1)
+  }
+
+  if (!steps || steps.length === 0) return null
+
+  return (
+    <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {steps.map((step) => {
+        const active = activeStep === step.name
+        return (
+          <Link
+            key={step.id}
+            href={active ? '/routing' : `/routing?step=${encodeURIComponent(step.name)}`}
+            className={cn(
+              'block rounded-xl border p-4 transition-colors',
+              active
+                ? 'border-primary bg-primary-soft'
+                : 'border-slate-200 bg-surface hover:border-primary/40',
+            )}
+          >
+            <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+              {step.name}
+            </div>
+            <div className="tnum mt-1 text-2xl font-black text-slate-900">
+              {countByStep.get(step.name) ?? 0}
+            </div>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
+type HistoryCell = {
+  id: string
+  status: Database['public']['Tables']['routing_history']['Row']['status']
+  started_at: string | null
+  completed_at: string | null
+  pic_name: string | null
+}
+
+/** Fetches the full step history for the filtered docs and shapes it into
+ *  the matrix's per-doc, per-sequence lookup. */
+async function RoutingMatrixSection({
+  docs,
+  spkById,
+  templateId,
+  currentByDoc,
+  overdueByDoc,
+  mayEdit,
+}: {
+  docs: RoutingDoc[]
+  spkById: Record<string, { id: string; spk_number: string; site_code: string | null }>
+  templateId: string | null
+  currentByDoc: Record<string, RoutingLeadTimeView>
+  overdueByDoc: Record<string, boolean>
+  mayEdit: boolean
+}) {
+  const supabase = await createClient()
+  const docIds = docs.map((d) => d.id)
+
+  const [{ data: steps }, { data: history }] = await Promise.all([
+    templateId
+      ? supabase
+          .from('routing_template_steps')
+          .select('id, name, sequence')
+          .eq('template_id', templateId)
+          .order('sequence')
+      : Promise.resolve({ data: [] }),
+    docIds.length
+      ? supabase
+          .from('routing_history')
+          .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name')
+          .in('spk_routing_id', docIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const historyByDoc: Record<string, Record<number, HistoryCell>> = {}
+  for (const row of history ?? []) {
+    ;(historyByDoc[row.spk_routing_id] ??= {})[row.sequence] = row
+  }
+
+  const currentSequenceByDoc = Object.fromEntries(
+    Object.entries(currentByDoc).map(([docId, current]) => [docId, current.sequence]),
+  )
+
+  return (
+    <RoutingMatrix
+      docs={docs}
+      spkById={spkById}
+      steps={steps ?? []}
+      historyByDoc={historyByDoc}
+      currentSequenceByDoc={currentSequenceByDoc}
+      overdueByDoc={overdueByDoc}
+      mayEdit={mayEdit}
+    />
   )
 }
 
@@ -211,6 +361,11 @@ async function StageAverages() {
   )
 }
 
-export default async function RoutingPage() {
-  return <RoutingMonitor mode="open" />
+export default async function RoutingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ step?: string }>
+}) {
+  const { step } = await searchParams
+  return <RoutingMonitor mode="open" step={step} />
 }

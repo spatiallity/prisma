@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { DOC_STATUS_TONE, type REVENUE_META } from '@/lib/financial'
 import type { FinancialDocStatus } from '@/lib/supabase/types'
@@ -46,9 +46,7 @@ export function RevenueTable({
       render: (row) => {
         const spk = spkById[row.spkId]
         return (
-          <Link href={`/spk/${row.spkId}`} className="font-bold text-primary hover:underline">
-            {spk?.site_code ?? spk?.spk_number ?? 'SPK'}
-          </Link>
+          <SpkCell id={row.spkId} spkNumber={spk?.spk_number ?? 'SPK'} siteCode={spk?.site_code ?? null} />
         )
       },
     },
@@ -120,6 +118,7 @@ export function RevenueTable({
       searchPlaceholder={`Cari nomor, SPK, atau catatan…`}
       emptyTitle={`Belum ada ${meta.label}`}
       emptyDescription={meta.description}
+      pageSize={100}
     />
   )
 }

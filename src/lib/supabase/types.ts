@@ -357,6 +357,9 @@ export type DesignRow = Timestamps & {
   target_date: string | null
   approved_at: string | null
   approved_by: string | null
+  /** When the field survey's topographic data actually arrived — the design
+   *  team's own tracking, separate from the spk_activities ledger. */
+  topo_data_received_at: string | null
   status: RecordStatus
   notes: string | null
   created_by: string | null
@@ -457,6 +460,9 @@ export type ContractRow = Timestamps & {
   contract_date: string | null
   amendment_no: number
   parent_contract_id: string | null
+  /** Contract penalty, if any — replaces Payment in the Financial Report now
+   *  that Payment is hidden project-wide. */
+  denda_value: number | null
   status: FinancialDocStatus
   notes: string | null
   created_by: string | null
@@ -667,7 +673,10 @@ export type SpkFinancialView = {
   payment_total: number
   contract_vs_opname: number
   opname_vs_invoice: number
+  /** contract_total - invoice_total — Payment is out of this reconciliation
+   *  now that the Payment column/module is hidden project-wide. */
   outstanding_payment: number
+  denda_total: number
 }
 
 /** migrations/20260830000100 — RAB monitoring: realisasi per kode_akun per bulan. */
@@ -869,7 +878,7 @@ export type Database = {
       contracts: Table<
         ContractRow,
         | 'id' | 'created_at' | 'updated_at' | 'status' | 'amendment_no'
-        | 'contract_date' | 'parent_contract_id' | 'notes' | 'created_by'
+        | 'contract_date' | 'parent_contract_id' | 'denda_value' | 'notes' | 'created_by'
       >
       opnames: Table<
         OpnameRow,
@@ -960,6 +969,7 @@ export type Database = {
         | 'target_date'
         | 'approved_at'
         | 'approved_by'
+        | 'topo_data_received_at'
         | 'notes'
         | 'created_by'
       >

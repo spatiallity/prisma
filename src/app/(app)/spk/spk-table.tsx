@@ -1,15 +1,16 @@
 'use client'
 
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { formatDate, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea, formatPercent } from '@/lib/spk'
+import { SpkCell } from '@/components/ui/spk-cell'
+import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
+import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
 import { deleteSpk } from './actions'
 
 type SpkRow = Database['public']['Tables']['spks']['Row']
+export type SpkStage = { label: string; date: string | null }
 
 /**
  * Sorting only — search and status already live in SpkFilters (server-side,
@@ -17,30 +18,19 @@ type SpkRow = Database['public']['Tables']['spks']['Row']
  */
 export function SpkTable({
   spks,
-  vendorName,
-  progressBySpk,
+  stageBySpk,
   mayEdit,
 }: {
   spks: SpkRow[]
-  vendorName: Record<string, string>
-  progressBySpk: Record<string, number>
+  stageBySpk: Record<string, SpkStage>
   mayEdit: boolean
 }) {
   const columns: DataTableColumn<SpkRow>[] = [
     {
       key: 'spk_number',
       label: 'SPK',
-      sortAccessor: (row) => row.spk_number,
-      render: (row) => (
-        <>
-          <Link href={`/spk/${row.id}`} className="font-bold text-primary hover:underline">
-            {row.spk_number}
-          </Link>
-          {row.site_code && (
-            <div className="text-xs font-semibold text-slate-500">{row.site_code}</div>
-          )}
-        </>
-      ),
+      sortAccessor: (row) => row.site_code ?? row.spk_number,
+      render: (row) => <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />,
     },
     {
       key: 'work_name',
@@ -83,13 +73,6 @@ export function SpkTable({
       render: (row) => formatRupiah(row.contract_value),
     },
     {
-      key: 'vendor',
-      label: 'Vendor',
-      className: 'text-muted-foreground',
-      sortAccessor: (row) => (row.vendor_id ? (vendorName[row.vendor_id] ?? null) : null),
-      render: (row) => (row.vendor_id ? (vendorName[row.vendor_id] ?? '—') : '—'),
-    },
-    {
       key: 'periode',
       label: 'Periode',
       className: 'whitespace-nowrap tnum text-muted-foreground',
@@ -110,10 +93,20 @@ export function SpkTable({
     {
       key: 'progress',
       label: 'Progress',
-      align: 'right',
-      className: 'font-bold',
-      sortAccessor: (row) => progressBySpk[row.id] ?? 0,
-      render: (row) => formatPercent(progressBySpk[row.id] ?? 0),
+      className: 'text-muted-foreground',
+      sortAccessor: (row) => stageBySpk[row.id]?.label ?? null,
+      render: (row) => {
+        const stage = stageBySpk[row.id]
+        if (!stage) return '—'
+        return (
+          <>
+            <span className="font-bold text-slate-900">{stage.label}</span>
+            {stage.date && (
+              <div className="tnum text-xs text-muted-foreground">{formatDateTime(stage.date)}</div>
+            )}
+          </>
+        )
+      },
     },
     {
       key: 'status',
@@ -145,6 +138,7 @@ export function SpkTable({
       rows={spks}
       rowKey={(row) => row.id}
       emptyTitle="Belum ada SPK"
+      pageSize={100}
     />
   )
 }

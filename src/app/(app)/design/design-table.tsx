@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
 import type { Database } from '@/lib/supabase/types'
@@ -37,9 +37,12 @@ export function DesignTable({
       render: (row) => {
         const spk = spkById[row.spk_id]
         return (
-          <Link href={`/design/${row.id}`} className="font-bold text-primary hover:underline">
-            {spk?.site_code ?? spk?.spk_number ?? 'SPK'}
-          </Link>
+          <SpkCell
+            id={row.id}
+            spkNumber={spk?.spk_number ?? 'SPK'}
+            siteCode={spk?.site_code ?? null}
+            href={`/design/${row.id}`}
+          />
         )
       },
     },
@@ -78,6 +81,13 @@ export function DesignTable({
       className: 'text-muted-foreground',
       sortAccessor: (row) => currentByDesign[row.id]?.picPertamina ?? null,
       render: (row) => currentByDesign[row.id]?.picPertamina ?? '—',
+    },
+    {
+      key: 'topo',
+      label: 'Data topografi masuk',
+      className: 'tnum text-muted-foreground',
+      sortAccessor: (row) => row.topo_data_received_at,
+      render: (row) => (row.topo_data_received_at ? formatDate(row.topo_data_received_at) : '—'),
     },
     {
       key: 'keterangan',
@@ -125,6 +135,7 @@ export function DesignTable({
       }}
       searchPlaceholder="Cari judul atau SPK…"
       emptyTitle="Belum ada record desain"
+      pageSize={100}
     />
   )
 }

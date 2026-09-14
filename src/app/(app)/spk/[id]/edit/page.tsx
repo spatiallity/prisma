@@ -7,7 +7,6 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { updateSpk } from '../../actions'
 import { SpkForm } from '../../spk-form'
-import { loadSpkFormOptions } from '../../options'
 
 export const metadata: Metadata = { title: 'Edit SPK' }
 
@@ -20,10 +19,7 @@ export default async function EditSpkPage({
   const { id } = await params
 
   const supabase = await createClient()
-  const [{ data: spk }, options] = await Promise.all([
-    supabase.from('spks').select('*').eq('id', id).maybeSingle(),
-    loadSpkFormOptions(supabase),
-  ])
+  const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
 
   if (!spk) notFound()
 
@@ -54,7 +50,6 @@ export default async function EditSpkPage({
         submitLabel="Simpan perubahan"
         spk={spk}
         stakeOutTarget={stakeOutActivity?.target_value ?? null}
-        {...options}
       />
     </div>
   )
