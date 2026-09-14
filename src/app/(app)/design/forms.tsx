@@ -11,6 +11,7 @@ import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import { PHASE_STAGES } from '@/lib/design'
+import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import {
   addDesignRevision,
   advanceStage,
@@ -81,6 +82,38 @@ function PicField({
       <datalist id={listId}>
         {pics.map((pic) => (
           <option key={pic.id} value={pic.label} />
+        ))}
+      </datalist>
+    </Field>
+  )
+}
+
+/** Free-typed PIC Pertamina name, suggested from PIC_PERTAMINA_SUGGESTIONS —
+ *  anyone not on that list can still just type their own name. */
+function PicPertaminaField({
+  label,
+  defaultValue,
+  placeholder,
+}: {
+  label: string
+  defaultValue?: string
+  placeholder?: string
+}) {
+  const id = useId()
+  const listId = `${id}-pic-pertamina`
+  return (
+    <Field label={label} htmlFor={id}>
+      <Input
+        id={id}
+        name="pic_pertamina"
+        list={listId}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+      <datalist id={listId}>
+        {PIC_PERTAMINA_SUGGESTIONS.map((name) => (
+          <option key={name} value={name} />
         ))}
       </datalist>
     </Field>
@@ -181,9 +214,7 @@ export function NewDesignForm({
 
         <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
 
-        <Field label="PIC Pertamina" htmlFor="d_pic_pertamina">
-          <Input id="d_pic_pertamina" name="pic_pertamina" placeholder="Reviewer Pertamina" />
-        </Field>
+        <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
         <Field label="Tanggal mulai" htmlFor="d_start" required>
           <Input id="d_start" name="tanggal" type="date" defaultValue={today} required />
@@ -301,14 +332,11 @@ export function StageReviewForm({
 
           <PicField label="PIC tahap ini" pics={pics} placeholder="Sama seperti sebelumnya" />
 
-          <Field label="PIC Pertamina" htmlFor="a_pic_pertamina">
-            <Input
-              id="a_pic_pertamina"
-              name="pic_pertamina"
-              defaultValue={defaultPicPertamina ?? ''}
-              placeholder="Sama seperti sebelumnya"
-            />
-          </Field>
+          <PicPertaminaField
+            label="PIC Pertamina"
+            defaultValue={defaultPicPertamina ?? ''}
+            placeholder="Sama seperti sebelumnya"
+          />
 
           <Field label="Catatan" htmlFor="a_notes">
             <Input id="a_notes" name="notes" placeholder="Hasil review…" />
@@ -386,9 +414,7 @@ export function StartDesignForm({
 
       <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
 
-      <Field label="PIC Pertamina" htmlFor="s_pic_pertamina">
-        <Input id="s_pic_pertamina" name="pic_pertamina" placeholder="Reviewer Pertamina" />
-      </Field>
+      <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
       <div>
         <Submit label="Mulai pengerjaan" icon={<Plus size={16} aria-hidden />} />
@@ -450,14 +476,11 @@ export function EditRevisionEntryButton({
 
         <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
 
-        <Field label="PIC Pertamina" htmlFor="e_pic_pertamina">
-          <Input
-            id="e_pic_pertamina"
-            name="pic_pertamina"
-            defaultValue={entry.pic_pertamina ?? ''}
-            placeholder="Reviewer Pertamina"
-          />
-        </Field>
+        <PicPertaminaField
+          label="PIC Pertamina"
+          defaultValue={entry.pic_pertamina ?? ''}
+          placeholder="Reviewer Pertamina"
+        />
 
         <Field label="Catatan" htmlFor="e_notes">
           <Input id="e_notes" name="notes" defaultValue={entry.notes ?? ''} />

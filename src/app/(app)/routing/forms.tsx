@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useId, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { ArrowRight, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { Combobox } from '@/components/ui/combobox'
 import { useActionToast } from '@/components/ui/toast'
+import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import { advanceStep, addRoutingRevision, createRouting, type RoutingState } from './actions'
 
 const initialState: RoutingState = { error: null }
@@ -145,6 +146,7 @@ export function StepReviewForm({
   useActionToast(advanceState, onSaved)
   useActionToast(revisionState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
+  const picListId = useId()
 
   return (
     <div className="grid gap-3">
@@ -168,8 +170,13 @@ export function StepReviewForm({
           <Field label="Tanggal" htmlFor="adv_date" required>
             <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
           </Field>
-          <Field label="PIC tahap ini" htmlFor="adv_pic">
-            <Input id="adv_pic" name="pic_name" defaultValue={defaultPic ?? ''} />
+          <Field label="PIC Pertamina" htmlFor="adv_pic">
+            <Input id="adv_pic" name="pic_name" list={picListId} defaultValue={defaultPic ?? ''} autoComplete="off" />
+            <datalist id={picListId}>
+              {PIC_PERTAMINA_SUGGESTIONS.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Catatan" htmlFor="adv_note">
             <Input id="adv_note" name="note" placeholder="Hasil pemeriksaan…" />

@@ -318,23 +318,53 @@ export async function advanceStage(
   const nextRevisionNo =
     stage === 'Revisi Desain Awal' ? (current?.revision_no ?? 0) + 1 : (current?.revision_no ?? 0)
 
-  const { error: insertError } = await supabase.from('design_revisions').insert({
-    design_id: designId,
-    revision_no: nextRevisionNo,
-    stage,
-    pic_id: picId,
-    // Blank carries the previous stage's reviewer forward, same as PIC.
-    pic_pertamina: nullable(formData, 'pic_pertamina') ?? current?.pic_pertamina ?? null,
-    started_at: now,
-    notes: nullable(formData, 'notes'),
-    created_by: user.id,
-  })
+  // Moving to a stage the design has already been through this round (e.g.
+  // stepping back to fix something, then forward again) would otherwise hit
+  // the (design_id, stage, revision_no) unique constraint — reopen that same
+  // row instead of trying to insert a duplicate of it.
+  const { data: existing } = await supabase
+    .from('design_revisions')
+    .select('id')
+    .eq('design_id', designId)
+    .eq('stage', stage)
+    .eq('revision_no', nextRevisionNo)
+    .eq('status', 'Active')
+    .maybeSingle()
 
-  if (insertError) {
+  const pertaminaValue = nullable(formData, 'pic_pertamina') ?? current?.pic_pertamina ?? null
+
+  const { error: writeError } = existing
+    ? await supabase
+        .from('design_revisions')
+        .update({
+          pic_id: picId,
+          pic_pertamina: pertaminaValue,
+          started_at: now,
+          completed_at: null,
+          notes: nullable(formData, 'notes'),
+          // The refresh_design_current_stage trigger picks the row with the
+          // latest created_at as the current stage — bump it so reopening
+          // this stage actually wins over whatever was visited after it.
+          created_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+    : await supabase.from('design_revisions').insert({
+        design_id: designId,
+        revision_no: nextRevisionNo,
+        stage,
+        pic_id: picId,
+        // Blank carries the previous stage's reviewer forward, same as PIC.
+        pic_pertamina: pertaminaValue,
+        started_at: now,
+        notes: nullable(formData, 'notes'),
+        created_by: user.id,
+      })
+
+  if (writeError) {
     return {
-      error: insertError.code === '23505'
+      error: writeError.code === '23505'
         ? `Tahap ${stage} pada revisi ${nextRevisionNo} sudah pernah dicatat.`
-        : insertError.message,
+        : writeError.message,
     }
   }
 
