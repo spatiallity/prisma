@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
 import { OpnamePadRow } from './opname-pad-mark'
 import { JointCheckDateRow } from './joint-check-date'
@@ -29,20 +29,21 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       label: 'Survei Terestris',
       state: surveyDone ? 'done' : 'current',
       badge: chainBadge(surveyDone ? 'done' : 'current', surveyDone ? 'Selesai' : 'On Going'),
-      sub: mayEdit ? (
+      sub: surveyDone ? (
+        <>
+          {formatDateTime(spk!.terrain_survey_completed_at)}
+          {marker?.full_name && ` · ${marker.full_name}`}
+        </>
+      ) : undefined,
+      action: mayEdit ? (
         <OpnamePadRow
           label="Survei Terestris"
           spkId={spkId}
           markedAt={spk?.terrain_survey_completed_at ?? null}
-          markedByName={marker?.full_name ?? null}
           markAction={markTerrainSurvey}
           unmarkAction={unmarkTerrainSurvey}
-          doneLabel="Selesai"
-          pendingLabel="On Going"
         />
-      ) : (
-        marker?.full_name ?? undefined
-      ),
+      ) : undefined,
     },
     {
       key: 'joint_check',
@@ -52,9 +53,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
         spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
         spk?.joint_check_date ? formatDate(spk.joint_check_date) : 'Belum dijadwalkan',
       ),
-      sub: mayEdit ? (
-        <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} />
-      ) : undefined,
+      action: mayEdit ? <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} /> : undefined,
     },
   ]
 

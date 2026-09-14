@@ -1,29 +1,22 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/page-header'
+import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
-import { cn, formatDateTime } from '@/lib/utils'
-import type { RoutingLeadTimeView } from '@/lib/supabase/types'
-import { ROUTING_TONE, formatDays } from '@/lib/routing'
+import { formatDateTime } from '@/lib/utils'
+import { RoutingStepEdit } from '../../routing/routing-step-edit'
 
-/**
- * Section 12 — the Routing tab of Detail SPK: which documents this SPK has in
- * flight and where each one sits. Read-only; /routing owns the workflow.
- */
-export async function RoutingTab({ spkId }: { spkId: string }) {
+/** The Routing tab of Detail SPK: every document this SPK has in flight,
+ *  shown as its own chain — the same view as clicking it from Routing
+ *  Monitor, without leaving the SPK. */
+export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
   const supabase = await createClient()
 
-  const [{ data: documents }, { data: lead }, { data: stages }] = await Promise.all([
-    supabase
-      .from('spk_routing')
-      .select('*')
-      .eq('spk_id', spkId)
-      .order('created_at', { ascending: false }),
-    supabase.from('v_routing_lead_time').select('*').eq('spk_id', spkId),
-    supabase.from('routing_history').select('id, spk_routing_id, pic_name'),
-  ])
+  const { data: documents } = await supabase
+    .from('spk_routing')
+    .select('*')
+    .eq('spk_id', spkId)
+    .order('created_at', { ascending: false })
 
   if (!documents || documents.length === 0) {
     return (
@@ -33,10 +26,7 @@ export async function RoutingTab({ spkId }: { spkId: string }) {
             title="Belum ada dokumen dirutekan"
             description="Rutekan Berita Acara, PAD, atau Invoice dari Routing Monitor."
             action={
-              <Link
-                href="/routing"
-                className="text-sm font-bold text-primary hover:underline"
-              >
+              <Link href="/routing" className="text-sm font-bold text-primary hover:underline">
                 Buka Routing Monitor
               </Link>
             }
@@ -46,86 +36,100 @@ export async function RoutingTab({ spkId }: { spkId: string }) {
     )
   }
 
-  const picByStage = new Map((stages ?? []).map((s) => [s.id, s.pic_name]))
+  const templateIds = [...new Set(documents.map((d) => d.template_id).filter((id): id is string => !!id))]
+  const docIds = documents.map((d) => d.id)
 
-  const currentByDoc = new Map<string, RoutingLeadTimeView>()
-  const totalByDoc = new Map<string, number>()
-  for (const row of lead ?? []) {
-    totalByDoc.set(
-      row.spk_routing_id,
-      (totalByDoc.get(row.spk_routing_id) ?? 0) + Number(row.duration_days ?? 0),
-    )
-    if (row.status === 'Completed') continue
-    const held = currentByDoc.get(row.spk_routing_id)
-    if (!held || row.sequence < held.sequence) currentByDoc.set(row.spk_routing_id, row)
+  const [{ data: allSteps }, { data: history }] = await Promise.all([
+    templateIds.length
+      ? supabase
+          .from('routing_template_steps')
+          .select('id, template_id, name, sequence')
+          .in('template_id', templateIds)
+          .order('sequence')
+      : Promise.resolve({ data: [] }),
+    docIds.length
+      ? supabase
+          .from('routing_history')
+          .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name, note')
+          .in('spk_routing_id', docIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  type HistoryCell = {
+    id: string
+    status: string
+    started_at: string | null
+    completed_at: string | null
+    pic_name: string | null
+    note: string | null
+  }
+
+  const stepsByTemplate = new Map<string, { id: string; name: string; sequence: number }[]>()
+  for (const step of allSteps ?? []) {
+    const list = stepsByTemplate.get(step.template_id) ?? []
+    list.push(step)
+    stepsByTemplate.set(step.template_id, list)
+  }
+
+  const historyByDoc = new Map<string, Map<number, HistoryCell>>()
+  for (const row of history ?? []) {
+    const map = historyByDoc.get(row.spk_routing_id) ?? new Map<number, HistoryCell>()
+    map.set(row.sequence, row)
+    historyByDoc.set(row.spk_routing_id, map)
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader>
-        <div>
-          <CardTitle>Dokumen SPK ini</CardTitle>
-        </div>
-        <Link href="/routing" className="text-xs font-bold text-primary hover:underline">
-          Kelola
-        </Link>
-      </CardHeader>
+    <div className="grid gap-5">
+      {documents.map((doc) => {
+        const templateSteps = doc.template_id ? (stepsByTemplate.get(doc.template_id) ?? []) : []
+        const docHistory = historyByDoc.get(doc.id) ?? new Map()
+        const current = templateSteps.find((s) => {
+          const cell = docHistory.get(s.sequence)
+          return cell && cell.status !== 'Completed'
+        })
 
-      <Table>
-        <thead>
-          <tr>
-            <Th>Dokumen</Th>
-            <Th>Posisi sekarang</Th>
-            <Th>PIC</Th>
-            <Th className="text-right">Di tahap ini</Th>
-            <Th className="text-right">Total lead time</Th>
-            <Th>Status</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((doc) => {
-            const current = currentByDoc.get(doc.id)
-            const late = current?.is_overdue ?? false
-            return (
-              <Tr key={doc.id}>
-                <Td>
-                  <Link
-                    href={`/routing/${doc.id}`}
-                    className="font-bold text-primary hover:underline"
-                  >
-                    {doc.document_type}
-                  </Link>
-                  {doc.document_number && (
-                    <div className="text-xs text-muted-foreground">
-                      {doc.document_number}
-                    </div>
-                  )}
-                </Td>
-                <Td className="text-muted-foreground">
-                  {current?.step_name ?? 'Selesai'}
-                  {current?.started_at && (
-                    <div className="text-xs">{formatDateTime(current.started_at)}</div>
-                  )}
-                </Td>
-                <Td className="text-muted-foreground">
-                  {current ? (picByStage.get(current.routing_history_id) ?? '—') : '—'}
-                </Td>
-                <Td className={cn('tnum text-right', late && 'font-bold text-danger')}>
-                  {formatDays(current?.elapsed_days ?? null)}
-                </Td>
-                <Td className="tnum text-right">
-                  {formatDays(totalByDoc.get(doc.id) ?? 0)}
-                </Td>
-                <Td>
-                  <Badge tone={late ? 'danger' : ROUTING_TONE[doc.status]}>
-                    {late ? 'Lewat SLA' : doc.status}
-                  </Badge>
-                </Td>
-              </Tr>
-            )
-          })}
-        </tbody>
-      </Table>
-    </Card>
+        const chainSteps: ChainStep[] = templateSteps.map((step) => {
+          const cell = docHistory.get(step.sequence)
+          const isCurrent = current?.id === step.id
+          const finished = cell?.status === 'Completed'
+          const rejected = cell?.status === 'Rejected'
+          const state = finished ? 'done' : rejected ? 'rejected' : isCurrent ? 'current' : 'pending'
+          return {
+            key: step.id,
+            label: step.name,
+            state,
+            badge: cell && chainBadge(state, cell.status),
+            sub: cell && (
+              <>
+                {cell.pic_name ?? 'PIC belum ditentukan'}
+                {cell.started_at && ` · mulai ${formatDateTime(cell.started_at)}`}
+                {cell.completed_at && ` → ${formatDateTime(cell.completed_at)}`}
+                {cell.note && <div className="mt-0.5 text-slate-700">{cell.note}</div>}
+              </>
+            ),
+            action:
+              mayEdit && isCurrent && cell ? (
+                <RoutingStepEdit routingId={doc.id} stepId={cell.id} stepName={step.name} defaultPic={cell.pic_name} />
+              ) : undefined,
+          }
+        })
+
+        return (
+          <Card key={doc.id}>
+            <CardHeader>
+              <div>
+                <CardTitle>{doc.document_type}</CardTitle>
+              </div>
+              {doc.document_number && (
+                <span className="text-xs font-semibold text-muted-foreground">{doc.document_number}</span>
+              )}
+            </CardHeader>
+            <CardContent>
+              <StepChain steps={chainSteps} />
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
   )
 }

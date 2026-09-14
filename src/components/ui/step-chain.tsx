@@ -11,6 +11,9 @@ export type ChainStep = {
   badge?: React.ReactNode
   /** Right-aligned, under the badge — e.g. elapsed days. */
   meta?: React.ReactNode
+  /** Right-aligned, next to the badge — an edit icon/button, kept out of the
+   *  label column so a long form under `sub` never pushes it sideways. */
+  action?: React.ReactNode
 }
 
 /** The chain-of-circles look used everywhere a document or SPK moves through
@@ -58,9 +61,12 @@ export function StepChain({ steps }: { steps: ChainStep[] }) {
               {step.sub && <div className="text-xs text-muted-foreground">{step.sub}</div>}
             </div>
 
-            <div className="flex flex-col items-end gap-1 pb-5">
-              {step.badge}
-              {step.meta}
+            <div className="flex items-start gap-2 pb-5">
+              <div className="flex flex-col items-end gap-1">
+                {step.badge}
+                {step.meta}
+              </div>
+              {step.action}
             </div>
           </li>
         )

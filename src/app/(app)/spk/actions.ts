@@ -33,6 +33,14 @@ function numeric(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** A picked date (YYYY-MM-DD) becomes noon that day — avoids the previous
+ *  day showing up in a timezone west of UTC. Falls back to right now only
+ *  when the form genuinely omitted it (the UI always sends one). */
+function pickedOrNow(formData: FormData, key: string) {
+  const raw = text(formData, key)
+  return raw ? new Date(`${raw}T12:00:00`).toISOString() : new Date().toISOString()
+}
+
 /** Ha is typed with a decimal dot/comma (12.06), never an Indonesian
  *  thousands dot — 9.6 must stay 9.6, not become 96. */
 function decimal(formData: FormData, key: string) {
@@ -262,7 +270,7 @@ export async function markOpname(
   const { error } = await supabase
     .from('spks')
     .update({
-      opname_marked_at: new Date().toISOString(),
+      opname_marked_at: pickedOrNow(formData, 'tanggal'),
       opname_marked_by: user.id,
       opname_value: numeric(formData, 'value'),
     })
@@ -322,7 +330,7 @@ export async function markPad(
   const { error } = await supabase
     .from('spks')
     .update({
-      pad_marked_at: new Date().toISOString(),
+      pad_marked_at: pickedOrNow(formData, 'tanggal'),
       pad_marked_by: user.id,
       pad_value: numeric(formData, 'value'),
     })
@@ -372,7 +380,7 @@ export async function markTerrainSurvey(
   const supabase = await createClient()
   const { error } = await supabase
     .from('spks')
-    .update({ terrain_survey_completed_at: new Date().toISOString(), terrain_survey_marked_by: user.id })
+    .update({ terrain_survey_completed_at: pickedOrNow(formData, 'tanggal'), terrain_survey_marked_by: user.id })
     .eq('id', id)
 
   if (error) return { error: error.message }

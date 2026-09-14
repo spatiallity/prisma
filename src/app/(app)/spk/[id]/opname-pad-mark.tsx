@@ -1,96 +1,113 @@
 'use client'
 
+import { useState } from 'react'
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Check, Undo2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { Pencil, Undo2 } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { Field, Input } from '@/components/ui/field'
+import { Button } from '@/components/ui/button'
 import { useActionToast } from '@/components/ui/toast'
-import { formatDateTime, formatRupiah } from '@/lib/utils'
 import { markOpname, unmarkOpname, type SpkFormState } from '../actions'
 
 const initialState: SpkFormState = { error: null }
 
-function MarkSubmit({ mark, disabled }: { mark: boolean; disabled?: boolean }) {
+function Submit({ label }: { label: string }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? 'Menyimpan…' : label}
+    </Button>
+  )
+}
+
+function UnmarkButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
     <button
       type="submit"
-      disabled={pending || disabled}
-      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={pending}
+      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
     >
-      {mark ? <Check size={14} aria-hidden /> : <Undo2 size={14} aria-hidden />}
-      {pending ? 'Menyimpan…' : mark ? 'Tandai' : 'Batalkan'}
+      <Undo2 size={14} aria-hidden />
+      {pending ? '…' : label}
     </button>
   )
 }
 
-/** Section 25.2/25.3 — Opname and PAD are a mark on the SPK, not a document. */
+/** Edit icon → a popup with an explicit date (never "now") and, when marked,
+ *  a way to undo — used for Survei Terestris, Opname, and PAD, each a plain
+ *  mark on the SPK rather than a routed document. */
 export function OpnamePadRow({
   label,
   spkId,
   markedAt,
-  markedByName,
   disabled,
   disabledHint,
   markAction,
   unmarkAction,
-  doneLabel = 'Sudah',
-  pendingLabel = 'Belum',
   valueLabel,
   value,
 }: {
   label: string
   spkId: string
   markedAt: string | null
-  markedByName: string | null
+  markedByName?: string | null
   disabled?: boolean
   disabledHint?: string
   markAction: typeof markOpname
   unmarkAction: typeof unmarkOpname
-  doneLabel?: string
-  pendingLabel?: string
   /** When set, shows a "Nilai" number input alongside marking, e.g. Nilai Opname. */
   valueLabel?: string
   value?: number | null
 }) {
-  const [state, formAction] = useActionState(
-    markedAt ? unmarkAction : markAction,
-    initialState,
-  )
-  useActionToast(state)
+  const [open, setOpen] = useState(false)
+  const [markState, markFormAction] = useActionState(markAction, initialState)
+  const [unmarkState, unmarkFormAction] = useActionState(unmarkAction, initialState)
+  useActionToast(markState, () => setOpen(false))
+  useActionToast(unmarkState, () => setOpen(false))
+
+  const defaultDate = markedAt ? markedAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+
+  if (disabled && !markedAt) {
+    return disabledHint ? <span className="text-xs text-muted-foreground">{disabledHint}</span> : null
+  }
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-slate-900">{label}</span>
-          <Badge tone={markedAt ? 'success' : 'neutral'}>
-            {markedAt ? doneLabel : pendingLabel}
-          </Badge>
-        </div>
-        {markedAt ? (
-          <div className="text-xs text-muted-foreground">
-            {formatDateTime(markedAt)}
-            {markedByName && ` · ${markedByName}`}
-            {valueLabel && value != null && ` · ${valueLabel} ${formatRupiah(value)}`}
-          </div>
-        ) : (
-          disabled &&
-          disabledHint && <div className="text-xs text-muted-foreground">{disabledHint}</div>
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title={label}
+      trigger={
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+          aria-label={`Edit ${label}`}
+        >
+          <Pencil size={14} aria-hidden />
+        </button>
+      }
+    >
+      <div className="grid gap-3">
+        <form action={markFormAction} className="grid gap-4">
+          <input type="hidden" name="id" value={spkId} />
+          <Field label="Tanggal" htmlFor={`${label}_tanggal`} required>
+            <Input id={`${label}_tanggal`} name="tanggal" type="date" defaultValue={defaultDate} required />
+          </Field>
+          {valueLabel && (
+            <Field label={valueLabel} htmlFor={`${label}_value`}>
+              <Input id={`${label}_value`} name="value" inputMode="numeric" defaultValue={value ?? ''} />
+            </Field>
+          )}
+          <Submit label={markedAt ? 'Simpan perubahan' : 'Tandai selesai'} />
+        </form>
+        {markedAt && (
+          <form action={unmarkFormAction}>
+            <input type="hidden" name="id" value={spkId} />
+            <UnmarkButton label="Batalkan" />
+          </form>
         )}
       </div>
-      <form action={formAction} className="flex items-center gap-2">
-        <input type="hidden" name="id" value={spkId} />
-        {valueLabel && !markedAt && (
-          <input
-            type="number"
-            name="value"
-            placeholder={valueLabel}
-            className="h-8 w-32 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700"
-          />
-        )}
-        <MarkSubmit mark={!markedAt} disabled={!markedAt && disabled} />
-      </form>
-    </div>
+    </Modal>
   )
 }

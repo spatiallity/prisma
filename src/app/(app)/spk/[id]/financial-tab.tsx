@@ -55,12 +55,18 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       label: 'Opname',
       state: opnameDone ? 'done' : 'current',
       badge: chainBadge(opnameDone ? 'done' : 'current', opnameDone ? 'Sudah' : 'Belum'),
-      sub: mayEdit ? (
+      sub: opnameDone ? (
+        <>
+          {formatDate(spk!.opname_marked_at)}
+          {spk?.opname_marked_by && ` · ${markerName.get(spk.opname_marked_by) ?? ''}`}
+          {spk?.opname_value != null && ` · ${formatRupiah(spk.opname_value)}`}
+        </>
+      ) : undefined,
+      action: mayEdit ? (
         <OpnamePadRow
           label="Opname"
           spkId={spkId}
           markedAt={spk?.opname_marked_at ?? null}
-          markedByName={spk?.opname_marked_by ? (markerName.get(spk.opname_marked_by) ?? null) : null}
           markAction={markOpname}
           unmarkAction={unmarkOpname}
           valueLabel="Nilai Opname"
@@ -73,14 +79,21 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       label: 'PAD',
       state: padDone ? 'done' : opnameDone ? 'current' : 'pending',
       badge: chainBadge(padDone ? 'done' : opnameDone ? 'current' : 'pending', padDone ? 'Sudah' : 'Belum'),
-      sub: mayEdit ? (
+      sub: padDone ? (
+        <>
+          {formatDate(spk!.pad_marked_at)}
+          {spk?.pad_marked_by && ` · ${markerName.get(spk.pad_marked_by) ?? ''}`}
+          {spk?.pad_value != null && ` · ${formatRupiah(spk.pad_value)}`}
+        </>
+      ) : !opnameDone ? (
+        'Tandai opname selesai dulu.'
+      ) : undefined,
+      action: mayEdit ? (
         <OpnamePadRow
           label="PAD"
           spkId={spkId}
           markedAt={spk?.pad_marked_at ?? null}
-          markedByName={spk?.pad_marked_by ? (markerName.get(spk.pad_marked_by) ?? null) : null}
           disabled={!opnameDone}
-          disabledHint="Tandai opname selesai dulu."
           markAction={markPad}
           unmarkAction={unmarkPad}
           valueLabel="Nilai PAD"

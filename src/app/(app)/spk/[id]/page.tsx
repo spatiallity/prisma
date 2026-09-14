@@ -181,7 +181,7 @@ export default async function SpkDetailPage({
 
       {activeTab === 'design' && <DesignTab spkId={spk.id} />}
 
-      {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
+      {activeTab === 'routing' && <RoutingTab spkId={spk.id} mayEdit={mayEdit} />}
 
       {activeTab === 'financial' && <FinancialTab spkId={spk.id} mayEdit={mayEdit} />}
 
