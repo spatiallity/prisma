@@ -7,10 +7,11 @@ import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
+import type { SpkStage } from '@/lib/spk-stage'
 import { deleteSpk } from './actions'
 
 type SpkRow = Database['public']['Tables']['spks']['Row']
-export type SpkStage = { label: string; date: string | null }
+export type { SpkStage }
 
 /**
  * Sorting only — search and status already live in SpkFilters (server-side,

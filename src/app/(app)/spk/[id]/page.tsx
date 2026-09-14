@@ -11,18 +11,23 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea, formatPercent } from '@/lib/spk'
-import { ProgressTab } from './progress-tab'
+import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
+import { loadStageBySpk } from '@/lib/spk-stage'
+import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
+import { OpnamePadRow } from './opname-pad-mark'
+import { JointCheckDateRow } from './joint-check-date'
 import { DesignTab } from './design-tab'
 import { RoutingTab } from './routing-tab'
 import { FinancialTab } from './financial-tab'
 
 export const metadata: Metadata = { title: 'Detail SPK' }
 
-/** Section 12 — the tabs of Detail SPK. `ready` tracks what actually exists. */
+/** Section 12 — the tabs of Detail SPK. `ready` tracks what actually exists.
+ *  Progress (the weighted activity/% tracker) is kept in the codebase but not
+ *  surfaced — we don't use it now (see Survei Terestris/Pengecekan Bersama
+ *  below for the field-survey stage that replaces it). */
 const TABS = [
   { key: 'overview', label: 'Overview', phase: 2, ready: true },
-  { key: 'progress', label: 'Progress', phase: 3, ready: true },
   { key: 'map', label: 'Map', phase: 3, ready: false },
   { key: 'design', label: 'Design', phase: 5, ready: true },
   { key: 'routing', label: 'Routing', phase: 6, ready: true },
@@ -60,13 +65,7 @@ export default async function SpkDetailPage({
   const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
   if (!spk) notFound()
 
-  const [{ data: progress }, { data: routingDocs }, { data: audit }] = await Promise.all([
-    supabase
-      .from('v_spk_progress')
-      .select('*')
-      .eq('spk_id', id)
-      .maybeSingle(),
-    supabase.from('spk_routing').select('id, status').eq('spk_id', id),
+  const [{ data: audit }] = await Promise.all([
     supabase
       .from('audit_logs')
       .select('id, action, table_name, changed_at, changed_by, changed_fields')
@@ -85,49 +84,11 @@ export default async function SpkDetailPage({
 
   const actorName = new Map((actors ?? []).map((a) => [a.id, a.full_name]))
 
-  // Once a document is routing, "sisa waktu" stops being the interesting
-  // number — where the document is sitting matters more than the deadline.
-  const hasRoutingStarted = (routingDocs ?? []).length > 0
-  const openRoutingIds = (routingDocs ?? [])
-    .filter((d) => d.status !== 'Completed' && d.status !== 'Rejected')
-    .map((d) => d.id)
-  let currentStepName: string | null = null
-  if (openRoutingIds.length) {
-    const { data: steps } = await supabase
-      .from('v_routing_lead_time')
-      .select('step_name, sequence, status, spk_routing_id')
-      .in('spk_routing_id', openRoutingIds)
-      .neq('status', 'Completed')
-      .order('sequence')
-    currentStepName = steps?.[0]?.step_name ?? null
-  }
+  const stageBySpk = await loadStageBySpk(supabase, [spk])
+  const stage = stageBySpk[spk.id]
+  const hasRoutingStarted = stage?.label.startsWith('Routing') || stage?.label === 'Invoice terbit'
 
   const remaining = daysLeft(spk.end_date)
-  const overall = progress?.overall_progress ?? 0
-
-  // A vendor's progress-edit window closes once Desain Siteplan starts —
-  // the design team takes over from there (spk_progress_editable() enforces
-  // the same cutoff at the database level).
-  let mayEditProgress = can(user.permissions, 'progress', 'edit')
-  if (mayEditProgress && user.vendorId) {
-    const { data: designActivities } = await supabase
-      .from('spk_activities')
-      .select('current_stage')
-      .eq('spk_id', spk.id)
-      .in('name', [
-        // Legacy single-row activity, still on SPKs created before the
-        // two-phase restructure.
-        'Desain Siteplan',
-        // Desain Siteplan's own sub-activities on SPKs created after it.
-        'Pembuatan Desain Awal',
-        'Review Desain Awal',
-        'Revisi Desain Awal',
-        'Pembuatan Peta Inventaris dan Stake Out',
-      ])
-    if (designActivities?.some((a) => a.current_stage !== 'Belum Mulai')) {
-      mayEditProgress = false
-    }
-  }
 
   return (
     <>
@@ -172,10 +133,10 @@ export default async function SpkDetailPage({
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                  Progress
+                  Tahapan
                 </div>
-                <div className="tnum text-3xl font-black text-primary">
-                  {formatPercent(overall)}
+                <div className="text-sm font-black text-primary">
+                  {stage?.label ?? '—'}
                 </div>
               </div>
               {mayEdit && (
@@ -188,13 +149,6 @@ export default async function SpkDetailPage({
                 </Link>
               )}
             </div>
-          </div>
-
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${Math.min(Math.max(overall, 0), 100)}%` }}
-            />
           </div>
         </CardContent>
       </Card>
@@ -225,14 +179,6 @@ export default async function SpkDetailPage({
         })}
       </div>
 
-      {activeTab === 'progress' && (
-        <ProgressTab
-          spkId={spk.id}
-          activityTemplateId={spk.activity_template_id}
-          mayEdit={mayEditProgress}
-        />
-      )}
-
       {activeTab === 'design' && <DesignTab spkId={spk.id} />}
 
       {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
@@ -259,7 +205,7 @@ export default async function SpkDetailPage({
                 label={hasRoutingStarted ? 'Posisi dokumen' : 'Sisa waktu'}
                 value={
                   hasRoutingStarted ? (
-                    (currentStepName ?? 'Selesai')
+                    (stage?.label ?? 'Selesai')
                   ) : remaining === null ? (
                     '—'
                   ) : remaining < 0 ? (
@@ -269,15 +215,40 @@ export default async function SpkDetailPage({
                   )
                 }
               />
-              <Fact
-                label="Aktivitas"
-                value={
-                  progress
-                    ? `${progress.activity_completed}/${progress.activity_count} selesai`
-                    : 'Belum ada aktivitas'
-                }
-              />
             </dl>
+
+            <div className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200 px-3">
+              {mayEdit ? (
+                <>
+                  <OpnamePadRow
+                    label="Survei Terestris"
+                    spkId={spk.id}
+                    markedAt={spk.terrain_survey_completed_at}
+                    markedByName={null}
+                    markAction={markTerrainSurvey}
+                    unmarkAction={unmarkTerrainSurvey}
+                    doneLabel="Selesai"
+                    pendingLabel="On Going"
+                  />
+                  <JointCheckDateRow spkId={spk.id} date={spk.joint_check_date} />
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-sm font-bold text-slate-900">Survei Terestris</span>
+                    <Badge tone={spk.terrain_survey_completed_at ? 'success' : 'neutral'}>
+                      {spk.terrain_survey_completed_at ? 'Selesai' : 'On Going'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-sm font-bold text-slate-900">Pengecekan Bersama</span>
+                    <span className="tnum text-sm text-muted-foreground">
+                      {spk.joint_check_date ? formatDate(spk.joint_check_date) : '—'}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
 
             {spk.notes && (
               <div className="mt-5 rounded-lg border border-slate-200 bg-surface-muted p-3">

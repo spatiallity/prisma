@@ -16,9 +16,9 @@ import { SpkCell } from '@/components/ui/spk-cell'
 import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatRupiah, formatRupiahCompact } from '@/lib/utils'
-import { daysLeft, formatPercent } from '@/lib/spk'
-import { UPDATE_STATUS_TONE } from '@/lib/schedule'
+import { cn, formatDate, formatDateTime, formatRupiah, formatRupiahCompact } from '@/lib/utils'
+import { daysLeft } from '@/lib/spk'
+import { loadStageBySpk } from '@/lib/spk-stage'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { RabDonutChart, SpkStatusChart, TopCategoriesChart } from './dashboard-charts'
@@ -41,22 +41,18 @@ export default async function DashboardPage() {
   const [
     { data: kpi },
     { data: bottlenecks },
-    { data: today },
-    { data: progress },
+    { data: onGoing },
     { data: akunSummary },
     { data: spkStatuses },
     { data: monthTx },
   ] = await Promise.all([
     supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
     supabase.from('v_bottleneck').select('*'),
-    can(user.permissions, 'schedule', 'view')
-      ? supabase.from('v_today_schedule').select('*')
-      : Promise.resolve({ data: [] }),
     supabase
-      .from('v_spk_progress')
+      .from('spks')
       .select('*')
       .eq('status', 'On Going')
-      .order('overall_progress', { ascending: false })
+      .order('start_date', { ascending: false })
       .limit(6),
     seeFinance
       ? supabase.from('v_finance_akun_summary').select('*')
@@ -70,6 +66,8 @@ export default async function DashboardPage() {
           .eq('bulan', currentBulan)
       : Promise.resolve({ data: [] }),
   ])
+
+  const stageBySpk = await loadStageBySpk(supabase, onGoing ?? [])
 
   const statusCounts = new Map<string, number>()
   for (const row of spkStatuses ?? []) {
@@ -110,10 +108,6 @@ export default async function DashboardPage() {
     (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   )
   const critical = ranked.filter((b) => b.severity === 'critical').length
-
-  const updatedToday = (today ?? []).filter(
-    (row) => row.update_status === 'Updated Today',
-  ).length
 
   // Section 8.1 — the six headline counts, all derived. Icon-badge accent
   // rotates through the brand palette so the tile row reads with some
@@ -180,37 +174,33 @@ export default async function DashboardPage() {
           <Card className="overflow-hidden">
             <CardHeader>
               <div>
-                <CardTitle>Progress SPK On Going</CardTitle>
-                <CardDescription>Overall Progress = Σ (progress aktivitas × bobot)</CardDescription>
+                <CardTitle>SPK On Going</CardTitle>
+                <CardDescription>Tahapan terakhir yang dicapai tiap SPK.</CardDescription>
               </div>
               <Link href="/spk" className="text-xs font-bold text-primary hover:underline">
                 Semua SPK
               </Link>
             </CardHeader>
 
-            {progress && progress.length > 0 ? (
+            {onGoing && onGoing.length > 0 ? (
               <Table>
                 <thead>
                   <tr>
                     <Th>SPK</Th>
                     <Th>Pekerjaan</Th>
                     <Th>Periode</Th>
-                    <Th className="text-right">Aktivitas</Th>
-                    <Th className="text-right">Progress</Th>
+                    <Th>Tahapan</Th>
                   </tr>
                 </thead>
                 <tbody>
-                  {progress.map((row) => {
+                  {onGoing.map((row) => {
                     const remaining = daysLeft(row.end_date)
                     const overdue = remaining !== null && remaining < 0
-                    const value = Math.min(
-                      Math.max(Number(row.overall_progress), 0),
-                      100,
-                    )
+                    const stage = stageBySpk[row.id]
                     return (
-                      <Tr key={row.spk_id}>
+                      <Tr key={row.id}>
                         <Td>
-                          <SpkCell id={row.spk_id} spkNumber={row.spk_number} siteCode={row.site_code} />
+                          <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />
                         </Td>
                         <Td className="max-w-xs">
                           <span className="line-clamp-1 font-bold text-slate-900">
@@ -225,21 +215,17 @@ export default async function DashboardPage() {
                             </div>
                           )}
                         </Td>
-                        <Td className="tnum text-right text-muted-foreground">
-                          {row.activity_completed}/{row.activity_count}
-                        </Td>
-                        <Td className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                              <div
-                                className="h-full rounded-full bg-primary"
-                                style={{ width: `${value}%` }}
-                              />
-                            </div>
-                            <span className="tnum w-14 text-right font-bold">
-                              {formatPercent(row.overall_progress)}
-                            </span>
-                          </div>
+                        <Td className="text-muted-foreground">
+                          {stage ? (
+                            <>
+                              <span className="font-bold text-slate-900">{stage.label}</span>
+                              {stage.date && (
+                                <div className="tnum text-xs">{formatDateTime(stage.date)}</div>
+                              )}
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </Td>
                       </Tr>
                     )
@@ -253,58 +239,6 @@ export default async function DashboardPage() {
               />
             )}
           </Card>
-
-          {(today ?? []).length > 0 && (
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <div>
-                  <CardTitle>Hari ini</CardTitle>
-                </div>
-                <Badge tone={updatedToday === (today ?? []).length ? 'success' : 'warning'}>
-                  {updatedToday}/{(today ?? []).length} sudah update
-                </Badge>
-              </CardHeader>
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>Vendor</Th>
-                    <Th>Team</Th>
-                    <Th>SPK</Th>
-                    <Th>Aktivitas</Th>
-                    <Th className="text-right">Target</Th>
-                    <Th>Status</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(today ?? []).slice(0, 8).map((row) => (
-                    <Tr key={row.daily_plan_id}>
-                      <Td className="font-bold text-slate-900">{row.vendor_name ?? '—'}</Td>
-                      <Td className="text-muted-foreground">{row.team_name ?? '—'}</Td>
-                      <Td>
-                        <Link
-                          href={`/spk/${row.spk_id}`}
-                          className="font-bold text-primary hover:underline"
-                        >
-                          {row.site_code ?? row.spk_number}
-                        </Link>
-                      </Td>
-                      <Td className="text-muted-foreground">{row.activity_name ?? '—'}</Td>
-                      <Td className="tnum text-right">
-                        {row.target_value !== null
-                          ? `${row.target_value}${row.unit ? ` ${row.unit}` : ''}`
-                          : '—'}
-                      </Td>
-                      <Td>
-                        <Badge tone={UPDATE_STATUS_TONE[row.update_status]}>
-                          {row.update_status}
-                        </Badge>
-                      </Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card>
-          )}
         </div>
 
         <div className="grid content-start gap-5">

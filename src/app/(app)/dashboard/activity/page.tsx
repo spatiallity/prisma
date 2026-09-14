@@ -74,7 +74,7 @@ function describe(entry: AuditEntry): string | null {
 
   switch (entry.table_name) {
     case 'routing_history': {
-      const step = (after.step_name as string | undefined) ?? 'Tahap'
+      const step = (after.step_name as string | undefined) ?? 'tahap'
       if (fields.includes('status')) {
         const status = after.status as string
         if (status === 'Completed') return `${step} ditandai selesai`
@@ -85,41 +85,42 @@ function describe(entry: AuditEntry): string | null {
       return entry.action === 'INSERT' ? `${step} ditambahkan ke routing` : null
     }
     case 'design_revisions': {
-      const stage = (after.stage as string | undefined) ?? (before.stage as string | undefined) ?? 'Tahap desain'
-      if (entry.action === 'INSERT') return `Desain masuk tahap "${stage}"`
-      if (fields.includes('completed_at') && after.completed_at) return `Tahap desain "${stage}" selesai`
-      if (fields.includes('notes')) return `Catatan tahap desain "${stage}" diperbarui`
-      return `Tahap desain "${stage}" diperbarui`
+      const stage = (after.stage as string | undefined) ?? (before.stage as string | undefined) ?? 'tahap desain'
+      if (entry.action === 'INSERT') return `desainnya masuk tahap "${stage}"`
+      if (fields.includes('completed_at') && after.completed_at) return `tahap desain "${stage}" selesai`
+      if (fields.includes('notes')) return `catatan tahap desain "${stage}" diperbarui`
+      return `tahap desain "${stage}" diperbarui`
     }
     case 'designs':
-      if (fields.includes('current_stage')) return `Desain pindah ke tahap "${after.current_stage}"`
-      if (fields.includes('topo_data_received_at')) return 'Tanggal data topografi masuk diisi'
+      if (fields.includes('current_stage'))
+        return `progresnya berubah dari "${before.current_stage ?? '—'}" ke "${after.current_stage}"`
+      if (fields.includes('topo_data_received_at')) return 'tanggal data topografi masuk diisi'
       return null
     case 'spk_routing':
-      if (fields.includes('status')) return `Dokumen routing → ${after.status}`
+      if (fields.includes('status')) return `dokumen routing berubah dari ${before.status ?? '—'} ke ${after.status}`
       return null
     case 'spks':
-      if (fields.includes('status')) return `Status SPK diubah dari ${before.status ?? '—'} ke ${after.status}`
+      if (fields.includes('status')) return `statusnya berubah dari ${before.status ?? '—'} ke ${after.status}`
+      if (fields.includes('terrain_survey_completed_at') && after.terrain_survey_completed_at && !before.terrain_survey_completed_at)
+        return 'Survei Terestris ditandai selesai'
+      if (fields.includes('joint_check_date')) return `tanggal Pengecekan Bersama diisi ${after.joint_check_date ?? '—'}`
       if (fields.includes('opname_marked_at') && after.opname_marked_at && !before.opname_marked_at)
-        return 'Opname ditandai selesai'
+        return 'opname ditandai selesai'
       if (fields.includes('pad_marked_at') && after.pad_marked_at && !before.pad_marked_at)
         return 'PAD ditandai'
-      if (fields.includes('vendor_id')) return 'Vendor SPK diubah'
-      if (fields.includes('site_code')) return `Kode lokasi diubah ke ${after.site_code}`
-      if (fields.includes('work_name')) return 'Nama pekerjaan diubah'
-      if (entry.action === 'INSERT') return 'SPK dibuat'
+      if (fields.includes('vendor_id')) return 'vendornya diubah'
+      if (fields.includes('site_code')) return `kode lokasinya diubah ke ${after.site_code}`
+      if (fields.includes('work_name')) return 'nama pekerjaannya diubah'
+      if (entry.action === 'INSERT') return 'baru dibuat'
       if (fields.length === 0) return null
-      return `${tableLabel} diperbarui (${fields.join(', ')})`
-    case 'spk_activities':
-      if (fields.includes('current_value') || fields.includes('current_stage')) return 'Progress aktivitas diperbarui'
-      return null
+      return `datanya diperbarui (${fields.join(', ')})`
     case 'contracts':
     case 'invoices':
     case 'opnames':
     case 'pad':
-      if (entry.action === 'INSERT') return `${tableLabel} baru dicatat`
-      if (fields.includes('status')) return `${tableLabel} → ${after.status}`
-      return `${tableLabel} diperbarui`
+      if (entry.action === 'INSERT') return `${tableLabel.toLowerCase()} baru dicatat`
+      if (fields.includes('status')) return `${tableLabel.toLowerCase()} → ${after.status}`
+      return `${tableLabel.toLowerCase()} diperbarui`
     default:
       if (fields.length === 0) return null
       return entry.action === 'INSERT'
@@ -207,31 +208,29 @@ export default async function RecentActivityPage() {
               return (
                 <li key={entry.id} className="flex items-start gap-3 px-5 py-3.5">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-extrabold text-primary">
-                    {(actorName.get(entry.changed_by!) ?? '?').slice(0, 1).toUpperCase()}
+                    {(spk?.site_code ?? spk?.spk_number ?? '#').slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-700">
-                      <span className="font-bold text-slate-900">
-                        {actorName.get(entry.changed_by!) ?? 'Tidak dikenal'}
-                      </span>{' '}
-                      {description}
                       {spk && (
                         <>
-                          {' — '}
+                          SPK{' '}
                           <Link
                             href={`/spk/${spk.id}`}
                             className="font-bold text-primary hover:underline"
                           >
                             {spk.site_code ?? spk.spk_number}
-                          </Link>
+                          </Link>{' '}
                         </>
                       )}
+                      {spk ? description : description.charAt(0).toUpperCase() + description.slice(1)}
                     </p>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <Badge tone={ACTION_TONE[entry.action]} className="py-0">
                         {entry.action}
                       </Badge>
-                      <span className="tnum">{formatDateTime(entry.changed_at)}</span>
+                      <span>{actorName.get(entry.changed_by!) ?? 'Tidak dikenal'}</span>
+                      <span className="tnum">· {formatDateTime(entry.changed_at)}</span>
                     </div>
                   </div>
                 </li>

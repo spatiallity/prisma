@@ -339,6 +339,80 @@ export async function unmarkPad(
 }
 
 /**
+ * Terrain survey collapses the old Survei Pendahuluan..Pengolahan Data Topo
+ * activity chain into one On Going/Selesai mark — those sub-steps were never
+ * actually tracked day to day, so a percentage there was noise.
+ */
+export async function markTerrainSurvey(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  const user = await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ terrain_survey_completed_at: new Date().toISOString(), terrain_survey_marked_by: user.id })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk')
+  revalidatePath('/dashboard')
+  return { error: null, success: 'Survei Terestris ditandai selesai.' }
+}
+
+export async function unmarkTerrainSurvey(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ terrain_survey_completed_at: null, terrain_survey_marked_by: null })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk')
+  revalidatePath('/dashboard')
+  return { error: null, success: 'Survei Terestris dikembalikan ke On Going.' }
+}
+
+/** Pengecekan Bersama — just a date on the SPK, same as Opname/PAD. */
+export async function setJointCheckDate(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const date = nullable(formData, 'joint_check_date')
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('spks').update({ joint_check_date: date }).eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk')
+  revalidatePath('/dashboard')
+  return { error: null, success: date ? 'Tanggal Pengecekan Bersama disimpan.' : 'Tanggal Pengecekan Bersama dihapus.' }
+}
+
+/**
  * Hard delete — migration 0017. Cascades everything owned by this SPK
  * (activities, progress, schedule, design, routing, revenue documents);
  * cross-cutting rows (audit log, files, finance_transactions) just lose the

@@ -234,6 +234,11 @@ export type SpkRow = Timestamps & {
   /** Set once PAD is made — after opname is marked done. */
   pad_marked_at: string | null
   pad_marked_by: string | null
+  /** Set once terrain survey (Survei Pendahuluan..Pengolahan Data Topo, shown as one stage) is done. */
+  terrain_survey_completed_at: string | null
+  terrain_survey_marked_by: string | null
+  /** Pengecekan Bersama execution date — the stage kept from the old field-survey checklist. */
+  joint_check_date: string | null
 }
 
 export type SpkAssignmentRow = Timestamps & {
@@ -801,6 +806,9 @@ export type Database = {
         | 'opname_marked_by'
         | 'pad_marked_at'
         | 'pad_marked_by'
+        | 'terrain_survey_completed_at'
+        | 'terrain_survey_marked_by'
+        | 'joint_check_date'
       >
       spk_assignments: Table<
         SpkAssignmentRow,

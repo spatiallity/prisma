@@ -34,6 +34,8 @@ export function OpnamePadRow({
   disabledHint,
   markAction,
   unmarkAction,
+  doneLabel = 'Sudah',
+  pendingLabel = 'Belum',
 }: {
   label: string
   spkId: string
@@ -43,6 +45,8 @@ export function OpnamePadRow({
   disabledHint?: string
   markAction: typeof markOpname
   unmarkAction: typeof unmarkOpname
+  doneLabel?: string
+  pendingLabel?: string
 }) {
   const [state, formAction] = useActionState(
     markedAt ? unmarkAction : markAction,
@@ -56,7 +60,7 @@ export function OpnamePadRow({
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-slate-900">{label}</span>
           <Badge tone={markedAt ? 'success' : 'neutral'}>
-            {markedAt ? 'Sudah' : 'Belum'}
+            {markedAt ? doneLabel : pendingLabel}
           </Badge>
         </div>
         {markedAt ? (

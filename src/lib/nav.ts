@@ -30,7 +30,6 @@ import {
   Settings2,
   ShieldCheck,
   Stamp,
-  Sun,
   UserCog,
   Wallet,
   Workflow,
@@ -65,7 +64,6 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'Overview', href: '/dashboard', icon: Gauge, module: 'dashboard', ready: true, phase: 1 },
       { label: 'Bottleneck', href: '/dashboard/bottleneck', icon: AlertTriangle, module: 'dashboard', ready: true, phase: 8 },
-      { label: "Today's Schedule", href: '/dashboard/today', icon: Sun, module: 'dashboard', ready: true, phase: 8 },
       { label: 'Recent Activity', href: '/dashboard/activity', icon: Activity, module: 'audit_log', ready: true, phase: 8 },
     ],
   },
