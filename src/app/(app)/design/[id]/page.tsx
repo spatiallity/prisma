@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { linkButtonClass } from '@/components/ui/button'
+import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
@@ -138,19 +140,18 @@ export default async function DesignDetailPage({
               <Badge tone={STAGE_TONE[design.current_stage]}>{design.current_stage}</Badge>
             )}
             {sibling && (
-              <Link
-                href={`/design/${sibling.id}`}
-                className="text-sm font-bold text-primary hover:underline"
-              >
-                {PHASE_LABEL[siblingPhase]} →
+              <Link href={`/design/${sibling.id}`} className={linkButtonClass}>
+                {PHASE_LABEL[siblingPhase]}
+                <ArrowRight size={16} aria-hidden />
               </Link>
             )}
             {spk && (
               <Link
                 href={`/spk/${spk.id}`}
-                className="text-sm font-bold text-primary hover:underline"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-all duration-200 hover:bg-surface-muted hover:border-slate-400"
               >
                 Buka SPK
+                <ExternalLink size={16} aria-hidden />
               </Link>
             )}
           </div>
@@ -225,57 +226,23 @@ export default async function DesignDetailPage({
           the sibling phase (if it exists yet) is its own separate record,
           linked above. */}
       <Card className="mb-5">
-        <CardContent className="grid gap-5 p-5">
-          <div>
-            <div className="mb-2 text-[11px] font-extrabold tracking-wide text-slate-500 uppercase">
-              {PHASE_LABEL[design.phase]}
-            </div>
-            <ol className="flex flex-wrap items-center gap-y-3">
-              {PHASE_STAGES[design.phase].map((stage, index, stages) => {
-                const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-                const now = stage === design.current_stage
-                return (
-                  <li key={stage} className="flex items-center">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[10px] font-extrabold',
-                          now
-                            ? 'border-primary bg-primary text-white'
-                            : done
-                              ? 'border-success bg-success text-white'
-                              : 'border-slate-200 bg-white text-slate-400',
-                        )}
-                      >
-                        {done ? <Check size={12} aria-hidden /> : index + 1}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-xs font-bold whitespace-nowrap',
-                          now
-                            ? 'text-primary'
-                            : done
-                              ? 'text-slate-700'
-                              : 'text-slate-400',
-                        )}
-                      >
-                        {stage}
-                      </span>
-                    </div>
-                    {index < stages.length - 1 && (
-                      <span
-                        className={cn(
-                          'mx-3 h-0.5 w-6 rounded-full',
-                          done ? 'bg-success' : 'bg-slate-200',
-                        )}
-                        aria-hidden
-                      />
-                    )}
-                  </li>
-                )
-              })}
-            </ol>
-          </div>
+        <CardHeader>
+          <CardTitle>{PHASE_LABEL[design.phase]}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StepChain
+            steps={PHASE_STAGES[design.phase].map((stage): ChainStep => {
+              const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
+              const now = stage === design.current_stage
+              const state = now ? 'current' : done ? 'done' : 'pending'
+              return {
+                key: stage,
+                label: stage,
+                state,
+                badge: chainBadge(state, now ? 'Berjalan' : done ? 'Selesai' : 'Belum'),
+              }
+            })}
+          />
         </CardContent>
       </Card>
 
