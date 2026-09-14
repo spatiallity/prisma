@@ -13,6 +13,7 @@ export const STAGE_TONE: Record<
   'Review Desain Awal': 'warning',
   'Revisi Desain Awal': 'warning',
   'Pembuatan Peta Inventaris dan Stake Out': 'info',
+  Finalisasi: 'info',
   Finish: 'success',
   Pembuatan: 'neutral',
   'Review internal': 'warning',
@@ -26,11 +27,12 @@ export const STAGE_ORDER: Record<DesignStage, number> = {
   'Review Desain Awal': 2,
   'Revisi Desain Awal': 3,
   'Pembuatan Peta Inventaris dan Stake Out': 4,
-  Finish: 5,
-  Pembuatan: 6,
-  'Review internal': 7,
-  Sinkronisasi: 8,
-  'Submit Peta': 9,
+  Finalisasi: 5,
+  Finish: 6,
+  Pembuatan: 7,
+  'Review internal': 8,
+  Sinkronisasi: 9,
+  'Submit Peta': 10,
 }
 
 /**
@@ -49,6 +51,7 @@ export const PHASE_STAGES: Record<DesignPhase, DesignStage[]> = {
     'Review Desain Awal',
     'Revisi Desain Awal',
     'Pembuatan Peta Inventaris dan Stake Out',
+    'Finalisasi',
     'Finish',
   ],
   finalisasi: ['Pembuatan', 'Review internal', 'Sinkronisasi', 'Submit Peta'],

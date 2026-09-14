@@ -76,6 +76,7 @@ export type DesignStage =
   | 'Review Desain Awal'
   | 'Revisi Desain Awal'
   | 'Pembuatan Peta Inventaris dan Stake Out'
+  | 'Finalisasi'
   | 'Finish'
   // Finalisasi Desain
   | 'Pembuatan'
@@ -88,6 +89,7 @@ export const DESIGN_STAGES: DesignStage[] = [
   'Review Desain Awal',
   'Revisi Desain Awal',
   'Pembuatan Peta Inventaris dan Stake Out',
+  'Finalisasi',
   'Finish',
   'Pembuatan',
   'Review internal',
