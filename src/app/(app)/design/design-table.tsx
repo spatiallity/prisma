@@ -1,13 +1,14 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
 import type { Database, DesignPhase } from '@/lib/supabase/types'
+import { DesignDetailModal } from './design-detail-modal'
+import type { PicOption } from './forms'
 
 type DesignRow = Database['public']['Tables']['designs']['Row']
 type SpkLite = { id: string; spk_number: string; site_code: string | null; work_name: string }
@@ -16,6 +17,16 @@ type CurrentStage = {
   picPertamina: string | null
   rounds: number
 }
+type Revision = {
+  id: string
+  stage: string
+  revision_no: number
+  pic_id: string | null
+  pic_pertamina: string | null
+  started_at: string | null
+  completed_at: string | null
+  notes: string | null
+}
 
 export function DesignTable({
   phase,
@@ -23,16 +34,25 @@ export function DesignTable({
   spkById,
   picName,
   currentByDesign,
+  revisionsByDesign,
   siteplanApprovedBySpk,
+  pics = [],
+  mayEdit = false,
 }: {
   phase: DesignPhase
   designs: DesignRow[]
   spkById: Record<string, SpkLite>
   picName: Record<string, string>
   currentByDesign: Record<string, CurrentStage>
+  revisionsByDesign?: Record<string, Revision[]>
   /** Finalisasi only: when the sibling Desain Siteplan record was approved. */
   siteplanApprovedBySpk?: Record<string, string | null>
+  pics?: PicOption[]
+  mayEdit?: boolean
 }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+  const openDesign = designs.find((d) => d.id === openId) ?? null
+
   const columns: DataTableColumn<DesignRow>[] = [
     {
       key: 'spk',
@@ -43,13 +63,13 @@ export function DesignTable({
       },
       render: (row) => {
         const spk = spkById[row.spk_id]
+        const label = spk?.site_code ?? spk?.spk_number ?? 'SPK'
+        const sub = spk?.site_code ? spk?.spk_number : null
         return (
-          <SpkCell
-            id={row.id}
-            spkNumber={spk?.spk_number ?? 'SPK'}
-            siteCode={spk?.site_code ?? null}
-            href={`/design/${row.id}`}
-          />
+          <div>
+            <span className="font-bold text-primary">{label}</span>
+            {sub && <div className="text-xs font-semibold text-slate-500">{sub}</div>}
+          </div>
         )
       },
     },
@@ -133,30 +153,45 @@ export function DesignTable({
       key: 'aksi',
       label: 'Aksi',
       align: 'right',
+      stopRowClick: true,
       render: (row) => (
-        <Link
-          href={`/design/${row.id}`}
+        <button
+          type="button"
+          onClick={() => setOpenId(row.id)}
           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-          aria-label="Edit"
+          aria-label="Detail"
         >
           <Pencil size={14} aria-hidden />
-        </Link>
+        </button>
       ),
     },
   ]
 
   return (
-    <DataTable
-      columns={columns}
-      rows={designs}
-      rowKey={(row) => row.id}
-      searchAccessor={(row) => {
-        const spk = spkById[row.spk_id]
-        return [spk?.spk_number, spk?.site_code, spk?.work_name].filter(Boolean).join(' ')
-      }}
-      searchPlaceholder="Cari SPK…"
-      emptyTitle="Belum ada record desain"
-      pageSize={100}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={designs}
+        rowKey={(row) => row.id}
+        onRowClick={(row) => setOpenId(row.id)}
+        searchAccessor={(row) => {
+          const spk = spkById[row.spk_id]
+          return [spk?.spk_number, spk?.site_code, spk?.work_name].filter(Boolean).join(' ')
+        }}
+        searchPlaceholder="Cari SPK…"
+        emptyTitle="Belum ada record desain"
+        pageSize={100}
+      />
+      <DesignDetailModal
+        open={openId !== null}
+        onOpenChange={(v) => !v && setOpenId(null)}
+        design={openDesign}
+        title={openDesign ? (spkById[openDesign.spk_id]?.site_code ?? spkById[openDesign.spk_id]?.spk_number ?? 'Desain') : ''}
+        revisions={openDesign ? (revisionsByDesign?.[openDesign.id] ?? []) : []}
+        picName={picName}
+        pics={pics}
+        mayEdit={mayEdit}
+      />
+    </>
   )
 }

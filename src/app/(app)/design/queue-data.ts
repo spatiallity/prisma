@@ -29,20 +29,39 @@ export async function loadDesignQueue(
   const spkById = Object.fromEntries((referencedSpks ?? []).map((s) => [s.id, s]))
   const picName = Object.fromEntries((pics ?? []).map((p) => [p.id, p.full_name]))
 
+  type Revision = {
+    id: string
+    design_id: string
+    stage: string
+    revision_no: number
+    pic_id: string | null
+    pic_pertamina: string | null
+    started_at: string | null
+    completed_at: string | null
+    notes: string | null
+  }
+
   const allDesignIds = (designs ?? []).map((d) => d.id)
-  const { data: openEntries } = allDesignIds.length
+  const { data: allRevisions } = allDesignIds.length
     ? await supabase
         .from('design_revisions')
-        .select('id, design_id, started_at, pic_pertamina')
+        .select('id, design_id, stage, revision_no, pic_id, pic_pertamina, started_at, completed_at, notes')
         .in('design_id', allDesignIds)
         .eq('status', 'Active')
-        .is('completed_at', null)
-    : { data: [] }
-  const { data: entryRounds } = (openEntries ?? []).length
+        .order('created_at')
+    : { data: [] as Revision[] }
+
+  const revisionsByDesign: Record<string, Revision[]> = {}
+  for (const revision of allRevisions ?? []) {
+    ;(revisionsByDesign[revision.design_id] ??= []).push(revision)
+  }
+
+  const openEntries = (allRevisions ?? []).filter((r) => !r.completed_at)
+  const { data: entryRounds } = openEntries.length
     ? await supabase
         .from('design_stage_revisions')
         .select('design_revision_id')
-        .in('design_revision_id', (openEntries ?? []).map((e) => e.id))
+        .in('design_revision_id', openEntries.map((e) => e.id))
     : { data: [] }
 
   const roundsPerEntry: Record<string, number> = {}
@@ -50,7 +69,7 @@ export async function loadDesignQueue(
     roundsPerEntry[round.design_revision_id] = (roundsPerEntry[round.design_revision_id] ?? 0) + 1
   }
   const currentByDesign = Object.fromEntries(
-    (openEntries ?? []).map((entry) => [
+    openEntries.map((entry) => [
       entry.design_id,
       {
         startedAt: entry.started_at,
@@ -87,6 +106,7 @@ export async function loadDesignQueue(
     spkById,
     picName,
     currentByDesign,
+    revisionsByDesign,
     openSpks,
     pics: pics ?? [],
     siteplanApprovedBySpk,

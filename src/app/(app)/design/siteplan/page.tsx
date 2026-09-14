@@ -16,7 +16,7 @@ export default async function DesignSiteplanPage() {
   const mayEdit = can(user.permissions, 'design', 'edit')
   const supabase = await createClient()
 
-  const { designs, error, spkById, picName, currentByDesign, openSpks, pics } =
+  const { designs, error, spkById, picName, currentByDesign, revisionsByDesign, openSpks, pics } =
     await loadDesignQueue(supabase, 'siteplan')
 
   return (
@@ -47,6 +47,9 @@ export default async function DesignSiteplanPage() {
             spkById={spkById}
             picName={picName}
             currentByDesign={currentByDesign}
+            revisionsByDesign={revisionsByDesign}
+            pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
+            mayEdit={mayEdit}
           />
         ) : (
           <EmptyState title="Belum ada Desain Siteplan" />
