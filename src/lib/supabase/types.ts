@@ -79,10 +79,11 @@ export type DesignStage =
   | 'Finalisasi'
   | 'Finish'
   // Finalisasi Desain
-  | 'Pembuatan'
-  | 'Review internal'
-  | 'Sinkronisasi'
-  | 'Submit Peta'
+  | 'Pembuatan Finalisasi Desain'
+  | 'Review Internal'
+  | 'Sinkronisasi Hasil Finalisasi'
+  | 'Review PIC Pertamina'
+  | 'Acc PIC Pertamina'
 
 export const DESIGN_STAGES: DesignStage[] = [
   'Pembuatan Desain Awal',
@@ -91,10 +92,11 @@ export const DESIGN_STAGES: DesignStage[] = [
   'Pembuatan Peta Inventaris dan Stake Out',
   'Finalisasi',
   'Finish',
-  'Pembuatan',
-  'Review internal',
-  'Sinkronisasi',
-  'Submit Peta',
+  'Pembuatan Finalisasi Desain',
+  'Review Internal',
+  'Sinkronisasi Hasil Finalisasi',
+  'Review PIC Pertamina',
+  'Acc PIC Pertamina',
 ]
 export type DailyUpdateStatus =
   | 'Updated Today'

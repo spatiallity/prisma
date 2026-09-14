@@ -141,7 +141,7 @@ export function DesignTable({
       render: (row) => {
         if (!currentByDesign[row.id]) return <span className="tnum">—</span>
         const held = daysInStage(row.updated_at)
-        const late = held !== null && held > 7 && row.current_stage !== 'Submit Peta'
+        const late = held !== null && held > 7 && row.current_stage !== 'Acc PIC Pertamina'
         return (
           <span className={cn('tnum', late && 'font-bold text-danger')}>
             {held === null ? '—' : `${held} hari`}

@@ -370,7 +370,7 @@ export async function advanceStage(
 
   // Approval is a property of the design itself, not of one revision — set
   // once its phase reaches its own terminal stage (Finish for Desain
-  // Siteplan, Submit Peta for Finalisasi Desain).
+  // Siteplan, Acc PIC Pertamina for Finalisasi Desain).
   if (stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
     await supabase
       .from('designs')
@@ -398,7 +398,7 @@ export async function advanceStage(
     supabase,
     designRow.spk_id,
     stage,
-    stage === 'Submit Peta' ? 'Selesai' : 'Dalam Pengerjaan',
+    stage === 'Acc PIC Pertamina' ? 'Selesai' : 'Dalam Pengerjaan',
     progressDate,
     user.id,
   )
@@ -543,7 +543,7 @@ export async function deleteRevisionEntry(
   await syncSpkActivityStage(supabase, designRow.spk_id, latest.stage, 'Belum Mulai', today10, user.id)
   await syncSpkActivityStage(supabase, designRow.spk_id, previous.stage, 'Dalam Pengerjaan', today10, user.id)
 
-  if (latest.stage === 'Finish' || latest.stage === 'Submit Peta') {
+  if (latest.stage === 'Finish' || latest.stage === 'Acc PIC Pertamina') {
     await supabase
       .from('designs')
       .update({ approved_at: null, approved_by: null })

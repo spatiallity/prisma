@@ -15,10 +15,11 @@ export const STAGE_TONE: Record<
   'Pembuatan Peta Inventaris dan Stake Out': 'info',
   Finalisasi: 'info',
   Finish: 'success',
-  Pembuatan: 'neutral',
-  'Review internal': 'warning',
-  Sinkronisasi: 'info',
-  'Submit Peta': 'success',
+  'Pembuatan Finalisasi Desain': 'neutral',
+  'Review Internal': 'warning',
+  'Sinkronisasi Hasil Finalisasi': 'info',
+  'Review PIC Pertamina': 'warning',
+  'Acc PIC Pertamina': 'success',
 }
 
 /** Position in the chain, used for the progress rail on the detail page. */
@@ -29,10 +30,11 @@ export const STAGE_ORDER: Record<DesignStage, number> = {
   'Pembuatan Peta Inventaris dan Stake Out': 4,
   Finalisasi: 5,
   Finish: 6,
-  Pembuatan: 7,
-  'Review internal': 8,
-  Sinkronisasi: 9,
-  'Submit Peta': 10,
+  'Pembuatan Finalisasi Desain': 7,
+  'Review Internal': 8,
+  'Sinkronisasi Hasil Finalisasi': 9,
+  'Review PIC Pertamina': 10,
+  'Acc PIC Pertamina': 11,
 }
 
 /**
@@ -54,20 +56,26 @@ export const PHASE_STAGES: Record<DesignPhase, DesignStage[]> = {
     'Finalisasi',
     'Finish',
   ],
-  finalisasi: ['Pembuatan', 'Review internal', 'Sinkronisasi', 'Submit Peta'],
+  finalisasi: [
+    'Pembuatan Finalisasi Desain',
+    'Review Internal',
+    'Sinkronisasi Hasil Finalisasi',
+    'Review PIC Pertamina',
+    'Acc PIC Pertamina',
+  ],
 }
 
 /** The stage a freshly auto-opened (or manually opened) design of this phase
  *  starts at — matches the default the DB trigger falls back to. */
 export const PHASE_FIRST_STAGE: Record<DesignPhase, DesignStage> = {
   siteplan: 'Pembuatan Desain Awal',
-  finalisasi: 'Pembuatan',
+  finalisasi: 'Pembuatan Finalisasi Desain',
 }
 
 /** The stage that means "this phase is done" — reaching it sets approved_at. */
 export const PHASE_TERMINAL_STAGE: Record<DesignPhase, DesignStage> = {
   siteplan: 'Finish',
-  finalisasi: 'Submit Peta',
+  finalisasi: 'Acc PIC Pertamina',
 }
 
 /** A record with no revisions yet — auto-opened and waiting for someone to

@@ -4,7 +4,7 @@ import type { DesignPhase } from '@/lib/supabase/types'
 
 /** Shared data loading for the Desain Siteplan and Finalisasi Desain list
  *  pages — same shape, only the phase filter differs. A design that's
- *  reached its phase's terminal stage (Finish / Submit Peta) drops off this
+ *  reached its phase's terminal stage (Finish / Acc PIC Pertamina) drops off this
  *  list — it's done, and its history still lives on the SPK's Design tab. */
 export async function loadDesignQueue(
   supabase: Awaited<ReturnType<typeof createClient>>,

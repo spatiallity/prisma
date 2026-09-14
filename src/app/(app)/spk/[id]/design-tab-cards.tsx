@@ -114,7 +114,7 @@ export function DesignTabCards({
                       <span
                         className={cn(
                           'tnum font-bold',
-                          held !== null && held > 7 && design.current_stage !== 'Submit Peta'
+                          held !== null && held > 7 && design.current_stage !== 'Acc PIC Pertamina'
                             ? 'text-danger'
                             : 'text-slate-900',
                         )}
