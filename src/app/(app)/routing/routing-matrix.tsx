@@ -1,15 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { cn, formatDate } from '@/lib/utils'
+import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { StepReviewForm } from './forms'
 import type { Database } from '@/lib/supabase/types'
 
 type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
-type SpkLite = { id: string; spk_number: string; site_code: string | null }
+type SpkLite = { id: string; spk_number: string; site_code: string | null; work_name?: string }
 type StepColumn = { id: string; name: string; sequence: number }
 type HistoryCell = {
   id: string
@@ -17,26 +19,20 @@ type HistoryCell = {
   started_at: string | null
   completed_at: string | null
   pic_name: string | null
+  note: string | null
 }
+type Revision = { id: string; note: string | null; resubmit_at: string }
 
-/**
- * One cell of the matrix — a step's state for one document. Only the
- * document's current step is ever editable (the workflow is sequential;
- * nothing lets a finished or future step be reopened from here), so that's
- * the only cell that renders as a button.
- */
+/** A step's state for one document, shown without a modal of its own — the
+ *  whole row opens the full chain + edit popup now. */
 function StepCell({
-  routingId,
   cell,
   isCurrent,
   isOverdue,
-  mayEdit,
 }: {
-  routingId: string
   cell: HistoryCell | undefined
   isCurrent: boolean
   isOverdue: boolean
-  mayEdit: boolean
 }) {
   if (!cell) return <span className="text-muted-foreground">—</span>
 
@@ -44,85 +40,107 @@ function StepCell({
     return (
       <div>
         <Badge tone="success">Done</Badge>
-        <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name ?? 'N/A'}</div>
-        <div className="tnum text-xs text-muted-foreground">
-          {cell.completed_at ? formatDate(cell.completed_at) : 'N/A'}
-        </div>
+        {cell.pic_name && <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name}</div>}
+        {cell.completed_at && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.completed_at)}</div>}
       </div>
     )
   }
 
-  if (!isCurrent) {
-    return <Badge tone="neutral">Not Yet</Badge>
-  }
+  if (!isCurrent) return <Badge tone="neutral">Not Yet</Badge>
 
-  const body = (
+  return (
     <div>
       <Badge tone={isOverdue ? 'danger' : cell.status === 'Returned' ? 'warning' : 'primary'}>
         {isOverdue ? 'Lewat SLA' : cell.status}
       </Badge>
-      <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name ?? 'N/A'}</div>
-      <div className={cn('tnum text-xs', isOverdue ? 'font-bold text-danger' : 'text-muted-foreground')}>
-        {cell.started_at ? formatDate(cell.started_at) : 'N/A'}
-      </div>
+      {cell.pic_name && <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name}</div>}
+      {cell.started_at && (
+        <div className={cn('tnum text-xs', isOverdue ? 'font-bold text-danger' : 'text-muted-foreground')}>
+          {formatDate(cell.started_at)}
+        </div>
+      )}
     </div>
-  )
-
-  if (!mayEdit) return body
-
-  return (
-    <Modal
-      title="Review tahap"
-      description={cell.status === 'Returned' ? 'Tahap ini sedang direvisi.' : undefined}
-      trigger={
-        <button type="button" className="text-left hover:opacity-80">
-          {body}
-        </button>
-      }
-    >
-      <StepReviewForm routingId={routingId} stepId={cell.id} defaultPic={cell.pic_name} />
-    </Modal>
   )
 }
 
-/**
- * The SPK column doubles as the edit entry point — clicking it opens the same
- * review popup as its current step's cell instead of leaving the matrix, so
- * a whole document can be worked from one screen.
- */
-function SpkNameCell({
+/** The full chain (like /routing/[id]) plus, when editable, the review form
+ *  for the current step — shown as one popup instead of a separate page. */
+function RoutingDetailModal({
+  open,
+  onOpenChange,
+  doc,
   spk,
-  routingId,
-  currentCell,
+  steps,
+  history,
+  revisionsByStep,
   mayEdit,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  doc: RoutingDoc | null
   spk: SpkLite | undefined
-  routingId: string
-  currentCell: HistoryCell | undefined
+  steps: StepColumn[]
+  history: Record<number, HistoryCell>
+  revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
 }) {
-  const label = spk?.site_code ?? spk?.spk_number ?? 'SPK'
-  const sub = spk?.site_code ? spk?.spk_number : null
-  const text = (
-    <>
-      <span className="font-bold text-primary">{label}</span>
-      {sub && <div className="text-xs font-semibold text-slate-500">{sub}</div>}
-    </>
-  )
+  if (!doc) return null
 
-  if (!mayEdit || !currentCell) return <div>{text}</div>
+  const current = steps.find((s) => history[s.sequence] && history[s.sequence].status !== 'Completed')
+
+  const chainSteps: ChainStep[] = steps.map((step) => {
+    const cell = history[step.sequence]
+    const isCurrent = current?.id === step.id
+    const finished = cell?.status === 'Completed'
+    const rejected = cell?.status === 'Rejected'
+    const revisions = cell ? (revisionsByStep[cell.id] ?? []) : []
+
+    return {
+      key: step.id,
+      label: step.name,
+      state: finished ? 'done' : rejected ? 'rejected' : isCurrent ? 'current' : 'pending',
+      badge: cell && chainBadge(finished ? 'done' : rejected ? 'rejected' : isCurrent ? 'current' : 'pending', cell.status),
+      sub: (
+        <>
+          {cell?.pic_name ?? 'PIC belum ditentukan'}
+          {cell?.started_at && ` · mulai ${formatDateTime(cell.started_at)}`}
+          {cell?.completed_at && ` → ${formatDateTime(cell.completed_at)}`}
+          {cell?.note && <div className="mt-1 text-sm text-slate-700">{cell.note}</div>}
+          {revisions.length > 0 && (
+            <ul className="mt-2 grid gap-1.5 border-l-2 border-warning/40 pl-3">
+              {revisions.map((revision, i) => (
+                <li key={revision.id} className="text-xs">
+                  <span className="font-bold text-warning">Revisi {i + 1}</span>{' '}
+                  <span className="text-slate-700">{revision.note}</span>
+                  <span className="text-muted-foreground"> · disubmit ulang {formatDate(revision.resubmit_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ),
+    }
+  })
+
+  const currentCell = current ? history[current.sequence] : undefined
 
   return (
     <Modal
-      title="Review tahap"
-      description={currentCell.status === 'Returned' ? 'Tahap ini sedang direvisi.' : undefined}
-      trigger={
-        <button type="button" className="text-left hover:opacity-80">
-          {text}
-        </button>
-      }
+      open={open}
+      onOpenChange={onOpenChange}
+      title={spk?.site_code ?? spk?.spk_number ?? 'Routing'}
+      description={spk?.work_name}
+      size="lg"
     >
-      <StepReviewForm routingId={routingId} stepId={currentCell.id} defaultPic={currentCell.pic_name} />
+      <div className="grid gap-5">
+        <StepChain steps={chainSteps} />
+        {mayEdit && current && currentCell && (
+          <div className="border-t border-slate-100 pt-4">
+            <div className="mb-2 text-sm font-bold text-slate-900">Review {current.name}</div>
+            <StepReviewForm routingId={doc.id} stepId={currentCell.id} defaultPic={currentCell.pic_name} />
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }
@@ -134,6 +152,7 @@ export function RoutingMatrix({
   historyByDoc,
   currentSequenceByDoc,
   overdueByDoc,
+  revisionsByStep,
   mayEdit,
   invoiceDraftedBySpk,
 }: {
@@ -144,42 +163,43 @@ export function RoutingMatrix({
   historyByDoc: Record<string, Record<number, HistoryCell>>
   currentSequenceByDoc: Record<string, number | undefined>
   overdueByDoc: Record<string, boolean>
+  revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
-  invoiceDraftedBySpk: Record<string, string | null>
+  invoiceDraftedBySpk: Record<string, boolean>
 }) {
+  const [openDocId, setOpenDocId] = useState<string | null>(null)
+  const openDoc = docs.find((d) => d.id === openDocId) ?? null
+
   const columns: DataTableColumn<RoutingDoc>[] = [
     {
-      key: 'drafting_invoice',
-      label: 'Drafting Invoice',
-      align: 'center',
-      className: 'text-muted-foreground',
-      sortAccessor: (row) => (row.spk_id in invoiceDraftedBySpk ? 1 : 0),
+      key: 'spk',
+      label: 'SPK',
+      sortAccessor: (row) => {
+        const spk = spkById[row.spk_id]
+        return spk?.site_code ?? spk?.spk_number ?? null
+      },
       render: (row) => {
-        const date = invoiceDraftedBySpk[row.spk_id]
-        if (!(row.spk_id in invoiceDraftedBySpk)) return <Badge tone="neutral">Belum</Badge>
+        const spk = spkById[row.spk_id]
+        const label = spk?.site_code ?? spk?.spk_number ?? 'SPK'
+        const sub = spk?.site_code ? spk?.spk_number : null
         return (
           <div>
-            <Badge tone="success">Sudah</Badge>
-            <div className="tnum mt-1 text-xs">{date ? formatDate(date) : 'N/A'}</div>
+            <span className="font-bold text-primary">{label}</span>
+            {sub && <div className="text-xs font-semibold text-slate-500">{sub}</div>}
           </div>
         )
       },
     },
     {
-      key: 'spk',
-      label: 'SPK',
-      stopRowClick: true,
-      sortAccessor: (row) => {
-        const spk = spkById[row.spk_id]
-        return spk?.site_code ?? spk?.spk_number ?? null
-      },
+      key: 'drafting_invoice',
+      label: 'Drafting Invoice',
+      align: 'center',
+      className: 'text-muted-foreground',
+      sortAccessor: (row) => (invoiceDraftedBySpk[row.spk_id] ? 1 : 0),
       render: (row) => (
-        <SpkNameCell
-          spk={spkById[row.spk_id]}
-          routingId={row.id}
-          currentCell={historyByDoc[row.id]?.[currentSequenceByDoc[row.id] ?? -1]}
-          mayEdit={mayEdit}
-        />
+        <Badge tone={invoiceDraftedBySpk[row.spk_id] ? 'success' : 'neutral'}>
+          {invoiceDraftedBySpk[row.spk_id] ? 'Done' : 'Belum'}
+        </Badge>
       ),
     },
     ...steps.map(
@@ -187,64 +207,59 @@ export function RoutingMatrix({
         key: step.id,
         label: step.name,
         align: 'center',
-        stopRowClick: true,
         render: (row) => (
           <StepCell
-            routingId={row.id}
             cell={historyByDoc[row.id]?.[step.sequence]}
             isCurrent={currentSequenceByDoc[row.id] === step.sequence}
             isOverdue={currentSequenceByDoc[row.id] === step.sequence && !!overdueByDoc[row.id]}
-            mayEdit={mayEdit}
           />
         ),
       }),
     ),
-    ...(mayEdit
-      ? [
-          {
-            key: 'aksi',
-            label: 'Aksi',
-            align: 'right' as const,
-            stopRowClick: true,
-            render: (row: RoutingDoc) => {
-              const currentCell = historyByDoc[row.id]?.[currentSequenceByDoc[row.id] ?? -1]
-              if (!currentCell) return <span className="text-muted-foreground">—</span>
-              return (
-                <Modal
-                  title="Review tahap"
-                  description={currentCell.status === 'Returned' ? 'Tahap ini sedang direvisi.' : undefined}
-                  trigger={
-                    <button
-                      type="button"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                      aria-label="Edit"
-                    >
-                      <Pencil size={14} aria-hidden />
-                    </button>
-                  }
-                >
-                  <StepReviewForm routingId={row.id} stepId={currentCell.id} defaultPic={currentCell.pic_name} />
-                </Modal>
-              )
-            },
-          } satisfies DataTableColumn<RoutingDoc>,
-        ]
-      : []),
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      align: 'right',
+      stopRowClick: true,
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setOpenDocId(row.id)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+          aria-label="Detail"
+        >
+          <Pencil size={14} aria-hidden />
+        </button>
+      ),
+    },
   ]
 
   return (
-    <DataTable
-      columns={columns}
-      rows={docs}
-      rowKey={(row) => row.id}
-      searchAccessor={(row) => {
-        const spk = spkById[row.spk_id]
-        return [spk?.spk_number, spk?.site_code].filter(Boolean).join(' ')
-      }}
-      searchPlaceholder="Cari SPK…"
-      emptyTitle="Tidak ada dokumen berjalan"
-      emptyDescription="Rutekan dokumen agar posisinya bisa dipantau."
-      pageSize={100}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={docs}
+        rowKey={(row) => row.id}
+        onRowClick={(row) => setOpenDocId(row.id)}
+        searchAccessor={(row) => {
+          const spk = spkById[row.spk_id]
+          return [spk?.spk_number, spk?.site_code].filter(Boolean).join(' ')
+        }}
+        searchPlaceholder="Cari SPK…"
+        emptyTitle="Tidak ada dokumen berjalan"
+        emptyDescription="Rutekan dokumen agar posisinya bisa dipantau."
+        pageSize={100}
+      />
+      <RoutingDetailModal
+        open={openDocId !== null}
+        onOpenChange={(v) => !v && setOpenDocId(null)}
+        doc={openDoc}
+        spk={openDoc ? spkById[openDoc.spk_id] : undefined}
+        steps={steps}
+        history={openDoc ? (historyByDoc[openDoc.id] ?? {}) : {}}
+        revisionsByStep={revisionsByStep}
+        mayEdit={mayEdit}
+      />
+    </>
   )
 }

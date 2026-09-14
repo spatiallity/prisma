@@ -194,6 +194,7 @@ export default async function SpkDetailPage({
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-3">
               <Fact label="Jenis pekerjaan" value={spk.work_type ?? '—'} />
+              <Fact label="Jenis Lokasi" value={spk.location_type ?? '—'} />
               <Fact label="Lokasi" value={spk.location ?? '—'} />
               <Fact label="Kabupaten/Kota" value={spk.kabupaten ?? '—'} />
               <Fact label="Provinsi" value={spk.provinsi ?? '—'} />

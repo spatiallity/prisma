@@ -243,6 +243,8 @@ export type SpkRow = Timestamps & {
   joint_check_date: string | null
   /** Jumlah patok, only meaningful when work_type is 'Stake Out'. */
   stake_out_patok: number | null
+  /** 'Lokasi Bor' or 'Fasilitas Produksi'. */
+  location_type: string | null
 }
 
 export type SpkAssignmentRow = Timestamps & {
@@ -816,6 +818,7 @@ export type Database = {
         | 'terrain_survey_marked_by'
         | 'joint_check_date'
         | 'stake_out_patok'
+        | 'location_type'
       >
       spk_assignments: Table<
         SpkAssignmentRow,

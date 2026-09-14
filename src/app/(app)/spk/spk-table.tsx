@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { RowActions } from '@/components/ui/row-actions'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
+import { SPK_STATUS_TONE, daysLeft, formatArea, workTypeCategory } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
 import type { SpkStage } from '@/lib/spk-stage'
 import { deleteSpk } from './actions'
@@ -44,9 +44,7 @@ export function SpkTable({
       render: (row) => (
         <>
           <span className="line-clamp-2 font-bold text-slate-900">{row.work_name}</span>
-          {row.work_type && (
-            <div className="text-xs text-muted-foreground">{row.work_type}</div>
-          )}
+          <div className="text-xs text-muted-foreground">{workTypeCategory(row.work_type)}</div>
         </>
       ),
     },
@@ -63,11 +61,16 @@ export function SpkTable({
       ),
     },
     {
-      key: 'area_ha',
-      label: 'Luas',
+      key: 'volume',
+      label: 'Volume Pekerjaan',
       align: 'right',
-      sortAccessor: (row) => row.area_ha,
-      render: (row) => formatArea(row.area_ha),
+      sortAccessor: (row) => (row.work_type === 'Stake Out' ? row.stake_out_patok : row.area_ha),
+      render: (row) =>
+        row.work_type === 'Stake Out'
+          ? row.stake_out_patok != null
+            ? `${row.stake_out_patok} patok`
+            : '—'
+          : formatArea(row.area_ha),
     },
     {
       key: 'contract_value',
@@ -75,14 +78,6 @@ export function SpkTable({
       align: 'right',
       sortAccessor: (row) => Number(row.contract_value ?? 0),
       render: (row) => formatRupiah(row.contract_value),
-    },
-    {
-      key: 'patok',
-      label: 'Jumlah Patok',
-      align: 'right',
-      className: 'tnum text-muted-foreground',
-      sortAccessor: (row) => row.stake_out_patok,
-      render: (row) => (row.work_type === 'Stake Out' ? row.stake_out_patok ?? '—' : '—'),
     },
     {
       key: 'periode',

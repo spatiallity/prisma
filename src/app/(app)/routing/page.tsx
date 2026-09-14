@@ -249,6 +249,7 @@ type HistoryCell = {
   started_at: string | null
   completed_at: string | null
   pic_name: string | null
+  note: string | null
 }
 
 /** Fetches the full step history for the filtered docs and shapes it into
@@ -262,7 +263,7 @@ async function RoutingMatrixSection({
   mayEdit,
 }: {
   docs: RoutingDoc[]
-  spkById: Record<string, { id: string; spk_number: string; site_code: string | null }>
+  spkById: Record<string, { id: string; spk_number: string; site_code: string | null; work_name?: string }>
   templateId: string | null
   currentByDoc: Record<string, RoutingLeadTimeView>
   overdueByDoc: Record<string, boolean>
@@ -270,9 +271,8 @@ async function RoutingMatrixSection({
 }) {
   const supabase = await createClient()
   const docIds = docs.map((d) => d.id)
-  const spkIds = docs.map((d) => d.spk_id)
 
-  const [{ data: steps }, { data: history }, { data: invoices }] = await Promise.all([
+  const [{ data: steps }, { data: history }] = await Promise.all([
     templateId
       ? supabase
           .from('routing_template_steps')
@@ -283,16 +283,8 @@ async function RoutingMatrixSection({
     docIds.length
       ? supabase
           .from('routing_history')
-          .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name')
+          .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name, note')
           .in('spk_routing_id', docIds)
-      : Promise.resolve({ data: [] }),
-    spkIds.length
-      ? supabase
-          .from('invoices')
-          .select('spk_id, invoice_date')
-          .in('spk_id', spkIds)
-          .neq('status', 'Cancelled')
-          .order('invoice_date', { ascending: false, nullsFirst: false })
       : Promise.resolve({ data: [] }),
   ])
 
@@ -301,9 +293,24 @@ async function RoutingMatrixSection({
     ;(historyByDoc[row.spk_routing_id] ??= {})[row.sequence] = row
   }
 
-  const invoiceDraftedBySpk: Record<string, string | null> = {}
-  for (const inv of invoices ?? []) {
-    if (!(inv.spk_id in invoiceDraftedBySpk)) invoiceDraftedBySpk[inv.spk_id] = inv.invoice_date
+  // "Drafting invoice" is done once the document has entered Document
+  // Control (sequence 1) — that's the moment the invoice starts its routing.
+  const invoiceDraftedBySpk: Record<string, boolean> = {}
+  for (const doc of docs) {
+    invoiceDraftedBySpk[doc.spk_id] = !!historyByDoc[doc.id]?.[1]
+  }
+
+  const stepIds = (history ?? []).map((h) => h.id)
+  const { data: revisions } = stepIds.length
+    ? await supabase
+        .from('routing_step_revisions')
+        .select('id, routing_history_id, note, resubmit_at')
+        .in('routing_history_id', stepIds)
+        .order('created_at')
+    : { data: [] }
+  const revisionsByStep: Record<string, { id: string; note: string | null; resubmit_at: string }[]> = {}
+  for (const r of revisions ?? []) {
+    ;(revisionsByStep[r.routing_history_id] ??= []).push(r)
   }
 
   const currentSequenceByDoc = Object.fromEntries(
@@ -316,6 +323,7 @@ async function RoutingMatrixSection({
       spkById={spkById}
       steps={steps ?? []}
       historyByDoc={historyByDoc}
+      revisionsByStep={revisionsByStep}
       currentSequenceByDoc={currentSequenceByDoc}
       overdueByDoc={overdueByDoc}
       mayEdit={mayEdit}

@@ -14,7 +14,6 @@ import {
   HandCoins,
   HeartPulse,
   History,
-  IdCard,
   KeyRound,
   LayoutDashboard,
   Layers,
@@ -123,7 +122,7 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'Financial',
+    label: 'Expense',
     icon: Wallet,
     items: [
       { label: 'Monitoring RAB', href: '/financial/rab', icon: Calculator, module: 'spending', ready: true, phase: 8 },
@@ -142,7 +141,7 @@ export const NAV: NavGroup[] = [
     // not a routed document — this is a read-only list of who's been
     // marked. Payment was dropped from this chain. Financial Report lives
     // here too now that the standalone Reports menu is gone.
-    label: 'Pembayaran Klien',
+    label: 'Client Payment',
     icon: Receipt,
     items: [
       { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
@@ -157,7 +156,6 @@ export const NAV: NavGroup[] = [
     items: [
       { label: 'User', href: '/admin/users', icon: UserCog, module: 'user_management', ready: true, phase: 1 },
       { label: 'Role & Permission', href: '/admin/roles', icon: KeyRound, module: 'user_management', ready: true, phase: 1 },
-      { label: 'Master Personnel', href: '/admin/personnel', icon: IdCard, module: 'master_data', ready: true, phase: 2 },
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
       { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', ready: true, phase: 6 },
       { label: 'Audit Log', href: '/admin/audit-log', icon: ScrollText, module: 'audit_log', ready: true, phase: 1 },

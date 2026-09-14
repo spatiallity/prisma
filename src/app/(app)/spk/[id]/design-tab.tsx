@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/page-header'
+import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { cn, formatDateTime } from '@/lib/utils'
-import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
+import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, daysInStage } from '@/lib/design'
 import type { DesignPhase } from '@/lib/supabase/types'
 
 /**
@@ -69,12 +69,37 @@ export async function DesignTab({ spkId }: { spkId: string }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       {designs.map((design) => {
-        const designRevisions = (revisionsByDesign.get(design.id) ?? []).slice(0, 6)
-        const isDraft = !(revisionsByDesign.get(design.id)?.length)
-        const reached = new Set(designRevisions.map((r) => r.stage))
+        const designRevisions = revisionsByDesign.get(design.id) ?? []
+        const isDraft = designRevisions.length === 0
         const currentOrder = STAGE_ORDER[design.current_stage]
         const held = daysInStage(design.updated_at)
         const stages = PHASE_STAGES[design.phase as DesignPhase]
+
+        const chainSteps: ChainStep[] = stages.map((stage) => {
+          const now = stage === design.current_stage
+          const done = STAGE_ORDER[stage] < currentOrder
+          const stageRevisions = designRevisions.filter((r) => r.stage === stage)
+          return {
+            key: stage,
+            label: stage,
+            state: now ? 'current' : done ? 'done' : 'pending',
+            badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? design.current_stage : done ? 'Selesai' : 'Belum'),
+            sub:
+              stageRevisions.length > 0 ? (
+                <ul className="grid gap-1">
+                  {stageRevisions.map((revision) => (
+                    <li key={revision.id}>
+                      Revisi {revision.revision_no} · {formatDateTime(revision.started_at)}
+                      <br />
+                      {revision.pic_id ? (picName.get(revision.pic_id) ?? '—') : 'PIC belum ditentukan'}
+                      {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
+                      {revision.notes && ` · ${revision.notes}`}
+                    </li>
+                  ))}
+                </ul>
+              ) : undefined,
+          }
+        })
 
         return (
           <Card key={design.id}>
@@ -98,64 +123,9 @@ export async function DesignTab({ spkId }: { spkId: string }) {
                 />
               ) : (
                 <>
-                  <ol className="mb-5 flex flex-wrap items-center gap-y-2">
-                    {stages.map((stage, index) => {
-                      const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-                      const now = stage === design.current_stage
-                      return (
-                        <li key={stage} className="flex items-center">
-                          <span
-                            className={cn(
-                              'rounded-lg px-2 py-0.5 text-[11px] font-bold whitespace-nowrap',
-                              now
-                                ? 'bg-primary text-white'
-                                : done
-                                  ? 'bg-green-50 text-success'
-                                  : 'text-slate-400',
-                            )}
-                          >
-                            {stage}
-                          </span>
-                          {index < stages.length - 1 && (
-                            <span className="mx-1 text-slate-300" aria-hidden>
-                              ›
-                            </span>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ol>
+                  <StepChain steps={chainSteps} />
 
-                  {designRevisions.length > 0 ? (
-                    <ul className="divide-y divide-slate-100">
-                      {designRevisions.map((revision) => (
-                        <li key={revision.id} className="py-2.5 first:pt-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <Badge tone={STAGE_TONE[revision.stage]}>{revision.stage}</Badge>
-                              <span className="text-xs font-bold text-slate-500">
-                                Revisi {revision.revision_no}
-                              </span>
-                            </div>
-                            <span className="tnum text-xs text-muted-foreground">
-                              {formatDateTime(revision.started_at)}
-                            </span>
-                          </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {revision.pic_id
-                              ? (picName.get(revision.pic_id) ?? '—')
-                              : 'PIC belum ditentukan'}
-                            {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
-                            {revision.notes && ` · ${revision.notes}`}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <EmptyState title="Belum ada riwayat tahap" />
-                  )}
-
-                  <div className="mt-4 flex justify-between gap-3 border-t border-slate-100 pt-3 text-sm">
+                  <div className="mt-2 flex justify-between gap-3 border-t border-slate-100 pt-3 text-sm">
                     <span className="text-muted-foreground">Di tahap ini</span>
                     <span
                       className={cn(

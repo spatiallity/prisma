@@ -47,6 +47,7 @@ type SpkFields = {
   site_code: string
   work_name: string
   work_type: string | null
+  location_type: string | null
   location: string
   kabupaten: string | null
   provinsi: string | null
@@ -81,6 +82,7 @@ function readFields(formData: FormData): SpkFields | string {
     site_code: siteCode,
     work_name: workName,
     work_type: nullable(formData, 'work_type'),
+    location_type: nullable(formData, 'location_type'),
     location,
     kabupaten: nullable(formData, 'kabupaten'),
     provinsi: nullable(formData, 'provinsi'),

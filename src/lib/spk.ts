@@ -53,6 +53,20 @@ export const WORK_TYPE_TEMPLATE_CODE: Record<string, string> = {
  *  no activity template of its own. */
 export const WORK_TYPE_OPTIONS = [...Object.keys(WORK_TYPE_TEMPLATE_CODE), 'Hanya Desain Siteplan']
 
+export const LOCATION_TYPE_OPTIONS = ['Lokasi Bor', 'Fasilitas Produksi']
+
+/** Jenis pekerjaan, collapsed to the three categories that actually matter
+ *  for planning: is it a stake-out job, design-only, or full survey+design?
+ *  Historical SPKs carry older free-form values ('Topografi', 'Survey &
+ *  Desain') from before this dropdown existed — those are field survey work
+ *  too, so they fall into the same "Survey dan Desain" bucket. */
+export function workTypeCategory(workType: string | null) {
+  if (workType === 'Stake Out') return 'Stake Out'
+  if (workType === 'Hanya Desain Siteplan') return 'Desain Siteplan Only'
+  if (!workType) return '—'
+  return 'Survey dan Desain'
+}
+
 /** Days between today and the SPK end date; negative once it is overdue. */
 export function daysLeft(endDate: string | null) {
   if (!endDate) return null

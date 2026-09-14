@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useActionToast } from '@/components/ui/toast'
 import { SPK_STATUSES, type SpkRow } from '@/lib/supabase/types'
-import { WORK_TYPE_OPTIONS } from '@/lib/spk'
+import { LOCATION_TYPE_OPTIONS, WORK_TYPE_OPTIONS } from '@/lib/spk'
 import type { SpkFormState } from './actions'
 
 const initialState: SpkFormState = { error: null }
@@ -124,6 +124,17 @@ export function SpkForm({
               />
             </Field>
           )}
+
+          <Field label="Jenis Lokasi" htmlFor="location_type">
+            <Select id="location_type" name="location_type" defaultValue={spk?.location_type ?? ''}>
+              <option value="">— pilih jenis lokasi —</option>
+              {LOCATION_TYPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
           <Field label="Status" htmlFor="status">
             <Select id="status" name="status" defaultValue={spk?.status ?? 'Draft'}>

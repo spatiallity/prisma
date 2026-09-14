@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
@@ -21,42 +21,50 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
     ? await supabase.from('users').select('full_name').eq('id', spk.terrain_survey_marked_by).maybeSingle()
     : { data: null }
 
+  const surveyDone = !!spk?.terrain_survey_completed_at
+
+  const steps: ChainStep[] = [
+    {
+      key: 'terrain',
+      label: 'Survei Terestris',
+      state: surveyDone ? 'done' : 'current',
+      badge: chainBadge(surveyDone ? 'done' : 'current', surveyDone ? 'Selesai' : 'On Going'),
+      sub: mayEdit ? (
+        <OpnamePadRow
+          label="Survei Terestris"
+          spkId={spkId}
+          markedAt={spk?.terrain_survey_completed_at ?? null}
+          markedByName={marker?.full_name ?? null}
+          markAction={markTerrainSurvey}
+          unmarkAction={unmarkTerrainSurvey}
+          doneLabel="Selesai"
+          pendingLabel="On Going"
+        />
+      ) : (
+        marker?.full_name ?? undefined
+      ),
+    },
+    {
+      key: 'joint_check',
+      label: 'Pengecekan Bersama',
+      state: spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
+      badge: chainBadge(
+        spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
+        spk?.joint_check_date ? formatDate(spk.joint_check_date) : 'Belum dijadwalkan',
+      ),
+      sub: mayEdit ? (
+        <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} />
+      ) : undefined,
+    },
+  ]
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Survei Lapangan</CardTitle>
       </CardHeader>
-      <CardContent className="divide-y divide-slate-100 py-0">
-        {mayEdit ? (
-          <>
-            <OpnamePadRow
-              label="Survei Terestris"
-              spkId={spkId}
-              markedAt={spk?.terrain_survey_completed_at ?? null}
-              markedByName={marker?.full_name ?? null}
-              markAction={markTerrainSurvey}
-              unmarkAction={unmarkTerrainSurvey}
-              doneLabel="Selesai"
-              pendingLabel="On Going"
-            />
-            <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} />
-          </>
-        ) : (
-          <>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-sm font-bold text-slate-900">Survei Terestris</span>
-              <Badge tone={spk?.terrain_survey_completed_at ? 'success' : 'neutral'}>
-                {spk?.terrain_survey_completed_at ? 'Selesai' : 'On Going'}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-sm font-bold text-slate-900">Pengecekan Bersama</span>
-              <span className="tnum text-sm text-muted-foreground">
-                {spk?.joint_check_date ? formatDate(spk.joint_check_date) : '—'}
-              </span>
-            </div>
-          </>
-        )}
+      <CardContent>
+        <StepChain steps={steps} />
       </CardContent>
     </Card>
   )
