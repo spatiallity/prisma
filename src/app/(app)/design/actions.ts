@@ -143,7 +143,6 @@ export async function createDesign(
     .insert({
       spk_id: spkId,
       phase: 'siteplan',
-      title: nullable(formData, 'title'),
       pic_id: picId,
       notes: nullable(formData, 'notes'),
       created_by: user.id,

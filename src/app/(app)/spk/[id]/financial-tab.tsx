@@ -50,11 +50,6 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
               Selisih antar tahap inilah yang jadi bahan bottleneck financial.
             </CardDescription>
           </div>
-          {Number(financial?.outstanding_payment ?? 0) > 0 && (
-            <Badge tone="danger">
-              Outstanding {formatRupiah(financial?.outstanding_payment)}
-            </Badge>
-          )}
         </CardHeader>
         <CardContent className="grid gap-3">
           {chain.map((step) => (

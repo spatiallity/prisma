@@ -60,7 +60,7 @@ export default async function SpkDetailPage({
   const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
   if (!spk) notFound()
 
-  const [{ data: progress }, { data: vendor }, { data: manager }, { data: assignments }, { data: audit }] =
+  const [{ data: progress }, { data: vendor }, { data: assignments }, { data: audit }] =
     await Promise.all([
       supabase
         .from('v_spk_progress')
@@ -69,9 +69,6 @@ export default async function SpkDetailPage({
         .maybeSingle(),
       spk.vendor_id
         ? supabase.from('vendors').select('id, name, code, contact_person, phone').eq('id', spk.vendor_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      spk.project_manager_id
-        ? supabase.from('users').select('id, full_name, email').eq('id', spk.project_manager_id).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.from('spk_assignments').select('*').eq('spk_id', id).order('created_at'),
       supabase
@@ -154,9 +151,9 @@ export default async function SpkDetailPage({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-                  {spk.spk_number}
+                  {spk.site_code ?? spk.spk_number}
                 </h1>
-                {spk.site_code && <Badge tone="info">{spk.site_code}</Badge>}
+                <Badge tone="info">{spk.spk_number}</Badge>
                 <Badge tone={SPK_STATUS_TONE[spk.status]}>{spk.status}</Badge>
               </div>
               <p className="mt-1 text-sm font-medium text-muted-foreground">
@@ -269,10 +266,6 @@ export default async function SpkDetailPage({
                     `${remaining} hari`
                   )
                 }
-              />
-              <Fact
-                label="Project Manager"
-                value={manager?.full_name ?? 'Belum ditentukan'}
               />
               <Fact
                 label="Vendor Jasa Survey"

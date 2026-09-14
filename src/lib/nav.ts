@@ -6,12 +6,7 @@ import {
   Briefcase,
   Building2,
   Calculator,
-  CalendarCheck,
-  CalendarDays,
-  CalendarRange,
   ClipboardCheck,
-  Contact,
-  CreditCard,
   Database,
   FileBarChart,
   FileClock,
@@ -22,7 +17,6 @@ import {
   FolderKanban,
   Gauge,
   HandCoins,
-  HardHat,
   HeartPulse,
   History,
   IdCard,
@@ -30,8 +24,6 @@ import {
   LayoutDashboard,
   Layers,
   LineChart,
-  ListChecks,
-  Map,
   MapPin,
   Package,
   PencilRuler,
@@ -43,11 +35,9 @@ import {
   ScrollText,
   Settings2,
   ShieldCheck,
+  Stamp,
   Sun,
-  TrendingUp,
   UserCog,
-  Users,
-  UsersRound,
   Wallet,
   Workflow,
 } from 'lucide-react'
@@ -99,26 +89,30 @@ export const NAV: NavGroup[] = [
       },
     ],
   },
-  {
-    label: 'Schedule',
-    icon: CalendarDays,
-    items: [
-      { label: 'Calendar', href: '/schedule', icon: CalendarRange, module: 'schedule', ready: true, phase: 4 },
-      { label: 'Daily Plan', href: '/schedule/daily-plan', icon: ListChecks, module: 'daily_plan', ready: true, phase: 4 },
-      { label: 'Daily Progress', href: '/schedule/daily-progress', icon: CalendarCheck, module: 'daily_progress', ready: true, phase: 4 },
-      { label: 'Team Schedule', href: '/schedule/team', icon: UsersRound, module: 'schedule', ready: true, phase: 4 },
-    ],
-  },
-  {
-    label: 'Vendor Jasa Survey',
-    icon: HardHat,
-    items: [
-      { label: 'Daftar Vendor', href: '/vendor', icon: Contact, module: 'vendor', ready: true, phase: 2 },
-      { label: 'Team', href: '/vendor/team', icon: Users, module: 'vendor', ready: true, phase: 2 },
-      { label: 'Assignment', href: '/vendor/assignment', icon: Map, module: 'vendor', ready: true, phase: 2 },
-      { label: 'Productivity', href: '/vendor/productivity', icon: TrendingUp, module: 'vendor', ready: true, phase: 4 },
-    ],
-  },
+  // Schedule and Vendor Jasa Survey are hidden from the menu for now (asked
+  // to temporarily hide both) — routes, permissions and data are untouched,
+  // so this is just re-adding these two groups back into NAV to bring them
+  // back.
+  // {
+  //   label: 'Schedule',
+  //   icon: CalendarDays,
+  //   items: [
+  //     { label: 'Calendar', href: '/schedule', icon: CalendarRange, module: 'schedule', ready: true, phase: 4 },
+  //     { label: 'Daily Plan', href: '/schedule/daily-plan', icon: ListChecks, module: 'daily_plan', ready: true, phase: 4 },
+  //     { label: 'Daily Progress', href: '/schedule/daily-progress', icon: CalendarCheck, module: 'daily_progress', ready: true, phase: 4 },
+  //     { label: 'Team Schedule', href: '/schedule/team', icon: UsersRound, module: 'schedule', ready: true, phase: 4 },
+  //   ],
+  // },
+  // {
+  //   label: 'Vendor Jasa Survey',
+  //   icon: HardHat,
+  //   items: [
+  //     { label: 'Daftar Vendor', href: '/vendor', icon: Contact, module: 'vendor', ready: true, phase: 2 },
+  //     { label: 'Team', href: '/vendor/team', icon: Users, module: 'vendor', ready: true, phase: 2 },
+  //     { label: 'Assignment', href: '/vendor/assignment', icon: Map, module: 'vendor', ready: true, phase: 2 },
+  //     { label: 'Productivity', href: '/vendor/productivity', icon: TrendingUp, module: 'vendor', ready: true, phase: 4 },
+  //   ],
+  // },
   {
     label: 'Design',
     icon: PencilRuler,
@@ -151,16 +145,17 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    // Contract → Invoice → Payment: the client-payment chain (SUCOFINDO's
-    // receivable side), separate from Financial's spending side. Opname/PAD
-    // used to sit between Contract and Invoice here; they're now just a mark
-    // on the SPK itself (Financial tab of Detail SPK), not a routed document.
+    // Contract → PAD → Invoice: the client-payment chain (SUCOFINDO's
+    // receivable side), separate from Financial's spending side. PAD is
+    // still just a mark on the SPK itself (Financial tab of Detail SPK),
+    // not a routed document — this is a read-only list of who's been
+    // marked. Payment was dropped from this chain.
     label: 'Pembayaran Klien',
     icon: Receipt,
     items: [
       { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
+      { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
       { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
-      { label: 'Payment', href: '/financial/payment', icon: CreditCard, module: 'payment', ready: true, phase: 7 },
     ],
   },
   {

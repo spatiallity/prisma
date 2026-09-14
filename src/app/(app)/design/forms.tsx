@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useId, useState } from 'react'
+import { useActionState, useId, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { ArrowRight, Pencil, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -87,6 +87,68 @@ function PicField({
   )
 }
 
+/** Type-to-filter SPK picker — 113+ SPKs is too many to scan in a plain select. */
+function SpkCombobox({
+  id,
+  spks,
+  defaultValue,
+}: {
+  id?: string
+  spks: SpkOption[]
+  defaultValue?: string
+}) {
+  const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<SpkOption | null>(
+    () => spks.find((s) => s.id === defaultValue) ?? null,
+  )
+  const [open, setOpen] = useState(false)
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return spks
+    return spks.filter((s) => s.label.toLowerCase().includes(q))
+  }, [spks, query])
+
+  return (
+    <div className="relative">
+      <input type="hidden" name="spk_id" value={selected?.id ?? ''} required />
+      <Input
+        id={id}
+        value={selected ? selected.label : query}
+        onChange={(event) => {
+          setSelected(null)
+          setQuery(event.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Cari nomor SPK atau nama pekerjaan…"
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-surface shadow-lg">
+          {filtered.map((spk) => (
+            <li key={spk.id}>
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setSelected(spk)
+                  setQuery('')
+                  setOpen(false)
+                }}
+              >
+                {spk.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function NewDesignForm({
   spks,
   pics,
@@ -114,17 +176,7 @@ export function NewDesignForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="SPK" htmlFor="d_spk" required className="sm:col-span-2">
-          <Select id="d_spk" name="spk_id" required>
-            {spks.map((spk) => (
-              <option key={spk.id} value={spk.id}>
-                {spk.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Field label="Judul desain" htmlFor="d_title">
-          <Input id="d_title" name="title" placeholder="Siteplan Lokasi Bor" />
+          <SpkCombobox id="d_spk" spks={spks} />
         </Field>
 
         <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
