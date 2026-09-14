@@ -5,7 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { Check, Undo2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useActionToast } from '@/components/ui/toast'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, formatRupiah } from '@/lib/utils'
 import { markOpname, unmarkOpname, type SpkFormState } from '../actions'
 
 const initialState: SpkFormState = { error: null }
@@ -36,6 +36,8 @@ export function OpnamePadRow({
   unmarkAction,
   doneLabel = 'Sudah',
   pendingLabel = 'Belum',
+  valueLabel,
+  value,
 }: {
   label: string
   spkId: string
@@ -47,6 +49,9 @@ export function OpnamePadRow({
   unmarkAction: typeof unmarkOpname
   doneLabel?: string
   pendingLabel?: string
+  /** When set, shows a "Nilai" number input alongside marking, e.g. Nilai Opname. */
+  valueLabel?: string
+  value?: number | null
 }) {
   const [state, formAction] = useActionState(
     markedAt ? unmarkAction : markAction,
@@ -67,14 +72,23 @@ export function OpnamePadRow({
           <div className="text-xs text-muted-foreground">
             {formatDateTime(markedAt)}
             {markedByName && ` · ${markedByName}`}
+            {valueLabel && value != null && ` · ${valueLabel} ${formatRupiah(value)}`}
           </div>
         ) : (
           disabled &&
           disabledHint && <div className="text-xs text-muted-foreground">{disabledHint}</div>
         )}
       </div>
-      <form action={formAction}>
+      <form action={formAction} className="flex items-center gap-2">
         <input type="hidden" name="id" value={spkId} />
+        {valueLabel && !markedAt && (
+          <input
+            type="number"
+            name="value"
+            placeholder={valueLabel}
+            className="h-8 w-32 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700"
+          />
+        )}
         <MarkSubmit mark={!markedAt} disabled={!markedAt && disabled} />
       </form>
     </div>

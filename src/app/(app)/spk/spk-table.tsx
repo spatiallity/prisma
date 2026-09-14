@@ -1,8 +1,11 @@
 'use client'
 
+import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { RowActions } from '@/components/ui/row-actions'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
@@ -74,6 +77,14 @@ export function SpkTable({
       render: (row) => formatRupiah(row.contract_value),
     },
     {
+      key: 'patok',
+      label: 'Jumlah Patok',
+      align: 'right',
+      className: 'tnum text-muted-foreground',
+      sortAccessor: (row) => row.stake_out_patok,
+      render: (row) => (row.work_type === 'Stake Out' ? row.stake_out_patok ?? '—' : '—'),
+    },
+    {
       key: 'periode',
       label: 'Periode',
       className: 'whitespace-nowrap tnum text-muted-foreground',
@@ -122,11 +133,20 @@ export function SpkTable({
             label: 'Aksi',
             align: 'right' as const,
             render: (row: SpkRow) => (
-              <DeleteButton
-                action={deleteSpk}
-                hiddenFields={{ id: row.id }}
-                confirmText="SPK ini beserta seluruh activities, progress, jadwal, desain, routing, dan dokumen revenue-nya akan dihapus permanen."
-              />
+              <RowActions>
+                <Link
+                  href={`/spk/${row.id}/edit`}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <Pencil size={14} aria-hidden />
+                  Edit
+                </Link>
+                <DeleteButton
+                  action={deleteSpk}
+                  hiddenFields={{ id: row.id }}
+                  confirmText="SPK ini beserta seluruh activities, progress, jadwal, desain, routing, dan dokumen revenue-nya akan dihapus permanen."
+                />
+              </RowActions>
             ),
           } satisfies DataTableColumn<SpkRow>,
         ]

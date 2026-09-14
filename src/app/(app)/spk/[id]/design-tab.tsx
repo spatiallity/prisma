@@ -81,9 +81,7 @@ export async function DesignTab({ spkId }: { spkId: string }) {
             <CardHeader>
               <div>
                 <CardTitle>{PHASE_LABEL[design.phase as DesignPhase]}</CardTitle>
-                <CardDescription>
-                  {design.title ?? 'Tanpa penyimpanan file — yang dilacak tahap, PIC, dan lamanya.'}
-                </CardDescription>
+                {design.title && <CardDescription>{design.title}</CardDescription>}
               </div>
               <Link
                 href={`/design/${design.id}`}

@@ -49,7 +49,9 @@ export const WORK_TYPE_TEMPLATE_CODE: Record<string, string> = {
   'Stake Out': 'TPL-C',
 }
 
-export const WORK_TYPE_OPTIONS = Object.keys(WORK_TYPE_TEMPLATE_CODE)
+/** No field survey — this SPK only goes through Desain Siteplan, so it has
+ *  no activity template of its own. */
+export const WORK_TYPE_OPTIONS = [...Object.keys(WORK_TYPE_TEMPLATE_CODE), 'Hanya Desain Siteplan']
 
 /** Days between today and the SPK end date; negative once it is overdue. */
 export function daysLeft(endDate: string | null) {

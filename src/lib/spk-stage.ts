@@ -117,7 +117,7 @@ export async function loadStageBySpk(
       continue
     }
 
-    stageBySpk[spk.id] = { label: 'Survei Terestris: On Going', date: spk.start_date }
+    stageBySpk[spk.id] = { label: 'Survei Terestris: On Going', date: null }
   }
 
   return stageBySpk

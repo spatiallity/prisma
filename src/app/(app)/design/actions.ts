@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { DesignStage, StageStatus } from '@/lib/supabase/types'
-import { PHASE_STAGES } from '@/lib/design'
+import { PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
 
 export type DesignState = { error: string | null; success?: string }
 
@@ -338,9 +338,10 @@ export async function advanceStage(
     }
   }
 
-  // Approval is a property of the design itself, not of one revision —
-  // Submit Peta is the terminal stage of Finalisasi Desain.
-  if (stage === 'Submit Peta') {
+  // Approval is a property of the design itself, not of one revision — set
+  // once its phase reaches its own terminal stage (Finish for Desain
+  // Siteplan, Submit Peta for Finalisasi Desain).
+  if (stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
     await supabase
       .from('designs')
       .update({ approved_at: now, approved_by: user.id })
@@ -512,7 +513,7 @@ export async function deleteRevisionEntry(
   await syncSpkActivityStage(supabase, designRow.spk_id, latest.stage, 'Belum Mulai', today10, user.id)
   await syncSpkActivityStage(supabase, designRow.spk_id, previous.stage, 'Dalam Pengerjaan', today10, user.id)
 
-  if (latest.stage === 'Submit Peta') {
+  if (latest.stage === 'Finish' || latest.stage === 'Submit Peta') {
     await supabase
       .from('designs')
       .update({ approved_at: null, approved_by: null })

@@ -175,7 +175,6 @@ export default async function DashboardPage() {
             <CardHeader>
               <div>
                 <CardTitle>SPK On Going</CardTitle>
-                <CardDescription>Tahapan terakhir yang dicapai tiap SPK.</CardDescription>
               </div>
               <Link href="/spk" className="text-xs font-bold text-primary hover:underline">
                 Semua SPK

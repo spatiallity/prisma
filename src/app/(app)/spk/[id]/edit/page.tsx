@@ -23,16 +23,6 @@ export default async function EditSpkPage({
 
   if (!spk) notFound()
 
-  const { data: stakeOutActivity } =
-    spk.work_type === 'Stake Out'
-      ? await supabase
-          .from('spk_activities')
-          .select('target_value')
-          .eq('spk_id', id)
-          .eq('name', 'Stake Out')
-          .maybeSingle()
-      : { data: null }
-
   return (
     <div className="mx-auto max-w-3xl">
       <Link
@@ -49,7 +39,7 @@ export default async function EditSpkPage({
         action={updateSpk}
         submitLabel="Simpan perubahan"
         spk={spk}
-        stakeOutTarget={stakeOutActivity?.target_value ?? null}
+        stakeOutTarget={spk.stake_out_patok}
       />
     </div>
   )

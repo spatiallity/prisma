@@ -61,15 +61,10 @@ export const PHASE_FIRST_STAGE: Record<DesignPhase, DesignStage> = {
   finalisasi: 'Pembuatan',
 }
 
-/** `?stage=` shortcuts behind the Section 7 Design submenu. */
-export const STAGE_FILTERS: { key: string; label: string; phase: DesignPhase | null }[] = [
-  { key: 'all', label: 'Semua', phase: null },
-  { key: 'siteplan', label: PHASE_LABEL.siteplan, phase: 'siteplan' },
-  { key: 'finalisasi', label: PHASE_LABEL.finalisasi, phase: 'finalisasi' },
-]
-
-export function phaseFromFilterKey(key: string | undefined): DesignPhase | null {
-  return STAGE_FILTERS.find((f) => f.key === key)?.phase ?? null
+/** The stage that means "this phase is done" — reaching it sets approved_at. */
+export const PHASE_TERMINAL_STAGE: Record<DesignPhase, DesignStage> = {
+  siteplan: 'Finish',
+  finalisasi: 'Submit Peta',
 }
 
 /** A record with no revisions yet — auto-opened and waiting for someone to

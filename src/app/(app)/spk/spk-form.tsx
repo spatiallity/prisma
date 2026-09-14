@@ -67,12 +67,13 @@ export function SpkForm({
             />
           </Field>
 
-          <Field label="Kode Lokasi" htmlFor="site_code">
+          <Field label="Kode Lokasi" htmlFor="site_code" required>
             <Input
               id="site_code"
               name="site_code"
               defaultValue={spk?.site_code ?? ''}
               placeholder="BNG-A03"
+              required
             />
           </Field>
 
@@ -113,11 +114,7 @@ export function SpkForm({
           </Field>
 
           {isStakeOut && (
-            <Field
-              label="Jumlah titik Stake Out"
-              htmlFor="stake_out_target"
-              hint="Jumlah patok yang akan di-stake out — target progress aktivitas Stake Out. Juga bisa diisi/diubah dari tab Progress."
-            >
+            <Field label="Jumlah Patok" htmlFor="stake_out_target">
               <Input
                 id="stake_out_target"
                 name="stake_out_target"
@@ -145,8 +142,8 @@ export function SpkForm({
           <CardTitle>Lokasi &amp; volume</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Field label="Lokasi" htmlFor="location" className="sm:col-span-2">
-            <Input id="location" name="location" defaultValue={spk?.location ?? ''} />
+          <Field label="Desa" htmlFor="location" required className="sm:col-span-2">
+            <Input id="location" name="location" defaultValue={spk?.location ?? ''} required />
           </Field>
 
           <Field label="Kabupaten/Kota" htmlFor="kabupaten">

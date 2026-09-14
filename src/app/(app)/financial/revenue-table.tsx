@@ -3,10 +3,11 @@
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
+import { RowActions } from '@/components/ui/row-actions'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { DOC_STATUS_TONE, type REVENUE_META } from '@/lib/financial'
 import type { FinancialDocStatus } from '@/lib/supabase/types'
-import { RevenueDeleteButton, RevenueStatusToggle } from './revenue-form'
+import { EditRevenueButton, RevenueDeleteButton, RevenueStatusToggle, type Choice } from './revenue-form'
 import type { RevenueKind } from '@/lib/financial'
 
 export type DocRow = {
@@ -18,9 +19,13 @@ export type DocRow = {
   status: FinancialDocStatus
   extra: string | null
   notes: string | null
+  amendmentNo?: number
+  dendaValue?: number | null
+  dueDate?: string | null
+  parentId?: string | null
 }
 
-type SpkLite = { id: string; spk_number: string; site_code: string | null }
+type SpkLite = { id: string; spk_number: string; site_code: string | null; start_date?: string | null }
 
 export function RevenueTable({
   kind,
@@ -28,12 +33,16 @@ export function RevenueTable({
   spkById,
   meta,
   mayEdit,
+  spks,
+  parents,
 }: {
   kind: RevenueKind
   rows: DocRow[]
   spkById: Record<string, SpkLite>
   meta: (typeof REVENUE_META)[RevenueKind]
   mayEdit: boolean
+  spks: Choice[]
+  parents: Choice[]
 }) {
   const columns: DataTableColumn<DocRow>[] = [
     {
@@ -59,10 +68,12 @@ export function RevenueTable({
     },
     {
       key: 'date',
-      label: meta.dateLabel,
+      label: kind === 'contract' ? 'Tanggal mulai pekerjaan' : meta.dateLabel,
       className: 'tnum text-muted-foreground',
-      sortAccessor: (row) => row.date,
-      render: (row) => formatDate(row.date),
+      sortAccessor: (row) =>
+        kind === 'contract' ? spkById[row.spkId]?.start_date ?? null : row.date,
+      render: (row) =>
+        formatDate(kind === 'contract' ? spkById[row.spkId]?.start_date ?? null : row.date),
     },
     {
       key: 'value',
@@ -72,23 +83,27 @@ export function RevenueTable({
       sortAccessor: (row) => row.value,
       render: (row) => formatRupiah(row.value),
     },
-    {
-      key: 'extra',
-      label: 'Keterangan',
-      className: 'text-muted-foreground',
-      render: (row) => (
-        <>
-          {row.extra ?? '—'}
-          {row.notes && <div className="text-xs">{row.notes}</div>}
-        </>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortAccessor: (row) => row.status,
-      render: (row) => <Badge tone={DOC_STATUS_TONE[row.status]}>{row.status}</Badge>,
-    },
+    ...(kind === 'contract'
+      ? []
+      : [
+          {
+            key: 'extra',
+            label: 'Keterangan',
+            className: 'text-muted-foreground',
+            render: (row: DocRow) => (
+              <>
+                {row.extra ?? '—'}
+                {row.notes && <div className="text-xs">{row.notes}</div>}
+              </>
+            ),
+          } satisfies DataTableColumn<DocRow>,
+          {
+            key: 'status',
+            label: 'Status',
+            sortAccessor: (row: DocRow) => row.status,
+            render: (row: DocRow) => <Badge tone={DOC_STATUS_TONE[row.status]}>{row.status}</Badge>,
+          } satisfies DataTableColumn<DocRow>,
+        ]),
     ...(mayEdit
       ? [
           {
@@ -96,10 +111,11 @@ export function RevenueTable({
             label: 'Aksi',
             align: 'right' as const,
             render: (row: DocRow) => (
-              <div className="flex items-center justify-end gap-3">
+              <RowActions>
+                <EditRevenueButton kind={kind} spks={spks} parents={parents} initial={row} />
                 <RevenueStatusToggle kind={kind} id={row.id} status={row.status} />
                 <RevenueDeleteButton kind={kind} id={row.id} spkId={row.spkId} />
-              </div>
+              </RowActions>
             ),
           } satisfies DataTableColumn<DocRow>,
         ]

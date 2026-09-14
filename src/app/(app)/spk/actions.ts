@@ -44,10 +44,10 @@ function decimal(formData: FormData, key: string) {
 
 type SpkFields = {
   spk_number: string
-  site_code: string | null
+  site_code: string
   work_name: string
   work_type: string | null
-  location: string | null
+  location: string
   kabupaten: string | null
   provinsi: string | null
   area_ha: number | null
@@ -61,10 +61,14 @@ type SpkFields = {
 function readFields(formData: FormData): SpkFields | string {
   const spkNumber = text(formData, 'spk_number')
   const workName = text(formData, 'work_name')
+  const siteCode = text(formData, 'site_code')
+  const location = text(formData, 'location')
 
   if (!spkNumber || !workName) {
     return 'Nomor SPK dan nama pekerjaan wajib diisi.'
   }
+  if (!siteCode) return 'Kode Lokasi wajib diisi.'
+  if (!location) return 'Desa wajib diisi.'
 
   const startDate = nullable(formData, 'start_date')
   const endDate = nullable(formData, 'end_date')
@@ -74,10 +78,10 @@ function readFields(formData: FormData): SpkFields | string {
 
   return {
     spk_number: spkNumber,
-    site_code: nullable(formData, 'site_code'),
+    site_code: siteCode,
     work_name: workName,
     work_type: nullable(formData, 'work_type'),
-    location: nullable(formData, 'location'),
+    location,
     kabupaten: nullable(formData, 'kabupaten'),
     provinsi: nullable(formData, 'provinsi'),
     area_ha: decimal(formData, 'area_ha'),
@@ -135,6 +139,7 @@ export async function createSpk(
       ...fields,
       activity_template_id: activityTemplate?.id ?? null,
       routing_template_id: routingTemplates?.[0]?.id ?? null,
+      stake_out_patok: stakeOutTarget,
       created_by: user.id,
       updated_by: user.id,
     })
@@ -193,7 +198,7 @@ export async function updateSpk(
   const supabase = await createClient()
   const { error } = await supabase
     .from('spks')
-    .update({ ...fields, updated_by: user.id })
+    .update({ ...fields, stake_out_patok: stakeOutTarget, updated_by: user.id })
     .eq('id', id)
 
   if (error) {
@@ -254,7 +259,11 @@ export async function markOpname(
   const supabase = await createClient()
   const { error } = await supabase
     .from('spks')
-    .update({ opname_marked_at: new Date().toISOString(), opname_marked_by: user.id })
+    .update({
+      opname_marked_at: new Date().toISOString(),
+      opname_marked_by: user.id,
+      opname_value: numeric(formData, 'value'),
+    })
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -278,8 +287,10 @@ export async function unmarkOpname(
     .update({
       opname_marked_at: null,
       opname_marked_by: null,
+      opname_value: null,
       pad_marked_at: null,
       pad_marked_by: null,
+      pad_value: null,
     })
     .eq('id', id)
 
@@ -308,7 +319,11 @@ export async function markPad(
 
   const { error } = await supabase
     .from('spks')
-    .update({ pad_marked_at: new Date().toISOString(), pad_marked_by: user.id })
+    .update({
+      pad_marked_at: new Date().toISOString(),
+      pad_marked_by: user.id,
+      pad_value: numeric(formData, 'value'),
+    })
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -329,7 +344,7 @@ export async function unmarkPad(
   const supabase = await createClient()
   const { error } = await supabase
     .from('spks')
-    .update({ pad_marked_at: null, pad_marked_by: null })
+    .update({ pad_marked_at: null, pad_marked_by: null, pad_value: null })
     .eq('id', id)
 
   if (error) return { error: error.message }

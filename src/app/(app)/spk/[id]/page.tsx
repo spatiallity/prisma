@@ -13,9 +13,7 @@ import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
-import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
-import { OpnamePadRow } from './opname-pad-mark'
-import { JointCheckDateRow } from './joint-check-date'
+import { SurveyTab } from './survey-tab'
 import { DesignTab } from './design-tab'
 import { RoutingTab } from './routing-tab'
 import { FinancialTab } from './financial-tab'
@@ -28,7 +26,7 @@ export const metadata: Metadata = { title: 'Detail SPK' }
  *  below for the field-survey stage that replaces it). */
 const TABS = [
   { key: 'overview', label: 'Overview', phase: 2, ready: true },
-  { key: 'map', label: 'Map', phase: 3, ready: false },
+  { key: 'survey', label: 'Survei Lapangan', phase: 3, ready: true },
   { key: 'design', label: 'Design', phase: 5, ready: true },
   { key: 'routing', label: 'Routing', phase: 6, ready: true },
   { key: 'financial', label: 'Financial', phase: 7, ready: true },
@@ -179,6 +177,8 @@ export default async function SpkDetailPage({
         })}
       </div>
 
+      {activeTab === 'survey' && <SurveyTab spkId={spk.id} mayEdit={mayEdit} />}
+
       {activeTab === 'design' && <DesignTab spkId={spk.id} />}
 
       {activeTab === 'routing' && <RoutingTab spkId={spk.id} />}
@@ -216,39 +216,6 @@ export default async function SpkDetailPage({
                 }
               />
             </dl>
-
-            <div className="mt-5 divide-y divide-slate-100 rounded-lg border border-slate-200 px-3">
-              {mayEdit ? (
-                <>
-                  <OpnamePadRow
-                    label="Survei Terestris"
-                    spkId={spk.id}
-                    markedAt={spk.terrain_survey_completed_at}
-                    markedByName={null}
-                    markAction={markTerrainSurvey}
-                    unmarkAction={unmarkTerrainSurvey}
-                    doneLabel="Selesai"
-                    pendingLabel="On Going"
-                  />
-                  <JointCheckDateRow spkId={spk.id} date={spk.joint_check_date} />
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-sm font-bold text-slate-900">Survei Terestris</span>
-                    <Badge tone={spk.terrain_survey_completed_at ? 'success' : 'neutral'}>
-                      {spk.terrain_survey_completed_at ? 'Selesai' : 'On Going'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-sm font-bold text-slate-900">Pengecekan Bersama</span>
-                    <span className="tnum text-sm text-muted-foreground">
-                      {spk.joint_check_date ? formatDate(spk.joint_check_date) : '—'}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
 
             {spk.notes && (
               <div className="mt-5 rounded-lg border border-slate-200 bg-surface-muted p-3">

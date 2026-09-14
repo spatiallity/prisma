@@ -39,6 +39,8 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
         status: r.status,
         extra: r.amendment_no > 0 ? `Amandemen ${r.amendment_no}` : 'Kontrak awal',
         notes: r.notes,
+        amendmentNo: r.amendment_no,
+        dendaValue: r.denda_value,
       }))
       break
     }
@@ -56,6 +58,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
         status: r.status,
         extra: r.due_date ? `Jatuh tempo ${formatDate(r.due_date)}` : null,
         notes: r.notes,
+        dueDate: r.due_date,
       }))
       break
     }
@@ -79,6 +82,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
         status: r.status,
         extra: r.invoice_id ? 'Atas invoice' : 'Tanpa invoice',
         notes: r.notes,
+        parentId: r.invoice_id,
       }))
       parents = (invoices ?? []).map((i) => ({
         id: i.id,
@@ -90,7 +94,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
 
   const { data: spks } = await supabase
     .from('spks')
-    .select('id, spk_number, site_code, work_name, status')
+    .select('id, spk_number, site_code, work_name, status, start_date')
     .order('spk_number')
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
@@ -101,7 +105,6 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
     <>
       <PageHeader
         title={meta.label}
-        description={`Section ${meta.section} — ${meta.description}`}
         actions={
           mayEdit && (
             <AddRevenueButton
@@ -140,7 +143,17 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
 
       <Card className="mb-5 overflow-hidden">
         {rows.length > 0 ? (
-          <RevenueTable kind={kind} rows={rows} spkById={spkById} meta={meta} mayEdit={mayEdit} />
+          <RevenueTable
+            kind={kind}
+            rows={rows}
+            spkById={spkById}
+            meta={meta}
+            mayEdit={mayEdit}
+            spks={(spks ?? [])
+              .filter((s) => s.status !== 'Cancelled')
+              .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
+            parents={parents}
+          />
         ) : (
           <EmptyState
             title={`Belum ada ${meta.label}`}

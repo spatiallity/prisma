@@ -118,6 +118,102 @@ export async function saveRevenueDoc(
   return { error: null, success: `${meta.label} tersimpan.` }
 }
 
+/** Same field mapping as saveRevenueDoc, but updates an existing row instead of inserting one. */
+export async function updateRevenueDoc(
+  _prev: FinancialState,
+  formData: FormData,
+): Promise<FinancialState> {
+  const kind = text(formData, 'kind') as RevenueKind
+  const meta = REVENUE_META[kind]
+  if (!meta) return { error: 'Jenis dokumen tidak dikenali.' }
+
+  await requirePermission(meta.module, 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'Data tidak lengkap.' }
+
+  const spkId = text(formData, 'spk_id')
+  const value = money(formData, 'value')
+  const status = (text(formData, 'status') || 'Draft') as FinancialDocStatus
+
+  if (!spkId) return { error: 'SPK wajib dipilih.' }
+  if (value === null) return { error: `${meta.valueLabel} wajib diisi.` }
+  if (value < 0) return { error: `${meta.valueLabel} tidak boleh negatif.` }
+
+  const number = nullable(formData, 'number')
+  const date = nullable(formData, 'date')
+  const notes = nullable(formData, 'notes')
+  const supabase = await createClient()
+
+  let error: { message: string; code?: string } | null = null
+
+  switch (kind) {
+    case 'contract': {
+      if (!number) return { error: 'Nomor kontrak wajib diisi.' }
+      const amendmentRaw = text(formData, 'amendment_no')
+      const amendment = amendmentRaw ? Number(amendmentRaw) : 0
+      if (!Number.isInteger(amendment) || amendment < 0) {
+        return { error: 'Nomor amandemen harus bilangan bulat >= 0.' }
+      }
+      ;({ error } = await supabase
+        .from('contracts')
+        .update({
+          spk_id: spkId,
+          contract_number: number,
+          contract_value: value,
+          contract_date: date,
+          amendment_no: amendment,
+          denda_value: money(formData, 'denda_value'),
+          status,
+          notes,
+        })
+        .eq('id', id))
+      break
+    }
+    case 'invoice':
+      ;({ error } = await supabase
+        .from('invoices')
+        .update({
+          spk_id: spkId,
+          invoice_number: number,
+          invoice_value: value,
+          invoice_date: date,
+          due_date: nullable(formData, 'due_date'),
+          status,
+          notes,
+        })
+        .eq('id', id))
+      break
+    case 'payment':
+      ;({ error } = await supabase
+        .from('payments')
+        .update({
+          spk_id: spkId,
+          invoice_id: nullable(formData, 'parent_id'),
+          payment_value: value,
+          payment_date: date,
+          reference: number,
+          status,
+          notes,
+        })
+        .eq('id', id))
+      break
+  }
+
+  if (error) {
+    return {
+      error:
+        error.code === '23505'
+          ? 'Nomor dokumen ini sudah ada untuk SPK tersebut.'
+          : error.message,
+    }
+  }
+
+  revalidatePath(`/financial/${meta.slug}`)
+  revalidatePath(`/spk/${spkId}`)
+  return { error: null, success: `${meta.label} tersimpan.` }
+}
+
 /** Section 4.4 — a wrong document is cancelled, never deleted. */
 export async function setRevenueDocStatus(
   _prev: FinancialState,

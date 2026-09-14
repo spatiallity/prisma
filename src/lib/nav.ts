@@ -110,8 +110,8 @@ export const NAV: NavGroup[] = [
     icon: PencilRuler,
     items: [
       { label: 'Design Queue', href: '/design', icon: Layers, module: 'design', ready: true, phase: 5 },
-      { label: 'Desain Siteplan', href: '/design?stage=siteplan', icon: MapPin, module: 'design', ready: true, phase: 5 },
-      { label: 'Finalisasi Desain', href: '/design?stage=finalisasi', icon: ShieldCheck, module: 'design', ready: true, phase: 5 },
+      { label: 'Desain Siteplan', href: '/design/siteplan', icon: MapPin, module: 'design', ready: true, phase: 5 },
+      { label: 'Finalisasi Desain', href: '/design/finalisasi', icon: ShieldCheck, module: 'design', ready: true, phase: 5 },
     ],
   },
   {

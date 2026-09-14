@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
+import { Combobox } from '@/components/ui/combobox'
 import { useActionToast } from '@/components/ui/toast'
 import { advanceStep, addRoutingRevision, createRouting, type RoutingState } from './actions'
 
@@ -73,13 +74,7 @@ export function NewRoutingForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="SPK" htmlFor="r_spk" required className="sm:col-span-2">
-          <Select id="r_spk" name="spk_id" required>
-            {spks.map((spk) => (
-              <option key={spk.id} value={spk.id}>
-                {spk.label}
-              </option>
-            ))}
-          </Select>
+          <Combobox id="r_spk" name="spk_id" options={spks} placeholder="Cari SPK…" />
         </Field>
 
         <Field label="Nomor dokumen" htmlFor="r_number">
@@ -115,7 +110,6 @@ export function AddRoutingButton({
       open={open}
       onOpenChange={setOpen}
       title="Rutekan invoice"
-      description="Seluruh tahap template dibuat sekaligus; hanya tahap pertama yang langsung berjalan."
       trigger={
         <Button type="button">
           <Plus size={16} aria-hidden />

@@ -21,10 +21,7 @@ export default async function NewSpkPage() {
         Kembali ke daftar SPK
       </Link>
 
-      <PageHeader
-        title="Buat SPK Baru"
-        description="Data dasar SPK. Aktivitas dan progress bisa diisi setelah SPK dibuat."
-      />
+      <PageHeader title="Buat SPK Baru" />
 
       <SpkForm action={createSpk} submitLabel="Simpan SPK" />
     </div>

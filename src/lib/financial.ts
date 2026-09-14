@@ -40,8 +40,7 @@ export const REVENUE_META: Record<RevenueKind, RevenueMeta> = {
     slug: 'invoice',
     module: 'invoice',
     section: '25.4',
-    description:
-      'Nilai tagihan. Angka inilah yang dipakai sebagai pendapatan dalam perhitungan margin (Section 26.2).',
+    description: 'Nilai tagihan per SPK.',
     numberLabel: 'Nomor invoice',
     valueLabel: 'Nilai invoice',
     dateLabel: 'Tanggal invoice',

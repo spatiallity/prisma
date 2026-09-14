@@ -1,9 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { createClient } from '@/lib/supabase/server'
-import { formatRupiah } from '@/lib/utils'
+import { formatDate, formatRupiah } from '@/lib/utils'
+import { DOC_STATUS_TONE } from '@/lib/financial'
 import { markOpname, markPad, unmarkOpname, unmarkPad } from '../actions'
 import { OpnamePadRow } from './opname-pad-mark'
+import { EditRevenueButton } from '../../financial/revenue-form'
 
 /**
  * Section 12 — the Financial tab of Detail SPK: the Section 26.1 revenue chain
@@ -16,13 +18,20 @@ import { OpnamePadRow } from './opname-pad-mark'
 export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
   const supabase = await createClient()
 
-  const [{ data: financial }, { data: spk }] = await Promise.all([
-    supabase.from('v_spk_financial').select('*').eq('spk_id', spkId).maybeSingle(),
+  const [{ data: spk }, { data: invoices }] = await Promise.all([
     supabase
       .from('spks')
-      .select('opname_marked_at, opname_marked_by, pad_marked_at, pad_marked_by')
+      .select(
+        'spk_number, work_name, contract_value, opname_marked_at, opname_marked_by, opname_value, pad_marked_at, pad_marked_by, pad_value',
+      )
       .eq('id', spkId)
       .maybeSingle(),
+    supabase
+      .from('invoices')
+      .select('*')
+      .eq('spk_id', spkId)
+      .neq('status', 'Cancelled')
+      .order('invoice_date', { ascending: false, nullsFirst: false }),
   ])
 
   const markerIds = [spk?.opname_marked_by, spk?.pad_marked_by].filter(
@@ -33,55 +42,24 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
     : { data: [] }
   const markerName = new Map((markers ?? []).map((u) => [u.id, u.full_name]))
 
-  /** Section 26.1 — the revenue chain, each step against the one before it. */
-  const chain = [
-    { label: 'Contract', value: Number(financial?.contract_total ?? 0) },
-    { label: 'Invoice', value: Number(financial?.invoice_total ?? 0) },
-  ]
-  const peak = Math.max(1, ...chain.map((step) => step.value))
+  const spkChoice = spk ? [{ id: spkId, label: `${spk.spk_number} — ${spk.work_name}` }] : []
 
   return (
     <div className="grid gap-5">
       <Card>
         <CardHeader>
-          <div>
-            <CardTitle>Contract → Invoice</CardTitle>
-            <CardDescription>
-              Selisih antar tahap inilah yang jadi bahan bottleneck financial.
-            </CardDescription>
-          </div>
+          <CardTitle>Nilai SPK</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3">
-          {chain.map((step) => (
-            <div key={step.label} className="grid gap-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">
-                  {step.label}
-                </span>
-                <span className="tnum text-sm font-bold text-slate-900">
-                  {step.value > 0 ? formatRupiah(step.value) : '—'}
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${(step.value / peak) * 100}%` }}
-                />
-              </div>
-            </div>
-          ))}
+        <CardContent>
+          <div className="tnum text-2xl font-black text-slate-900">
+            {formatRupiah(spk?.contract_value ?? 0)}
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <div>
-            <CardTitle>Opname &amp; PAD</CardTitle>
-            <CardDescription>
-              Biasanya opname ditandai setelah Desain Awal selesai; PAD menyusul
-              setelah opname selesai.
-            </CardDescription>
-          </div>
+          <CardTitle>Opname &amp; PAD</CardTitle>
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 py-0">
           {mayEdit ? (
@@ -95,6 +73,8 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
                 }
                 markAction={markOpname}
                 unmarkAction={unmarkOpname}
+                valueLabel="Nilai Opname"
+                value={spk?.opname_value ?? null}
               />
               <OpnamePadRow
                 label="PAD"
@@ -107,6 +87,8 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
                 disabledHint="Tandai opname selesai dulu."
                 markAction={markPad}
                 unmarkAction={unmarkPad}
+                valueLabel="Nilai PAD"
+                value={spk?.pad_value ?? null}
               />
             </>
           ) : (
@@ -124,6 +106,51 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
                 </Badge>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Invoice</CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y divide-slate-100 py-0">
+          {invoices && invoices.length > 0 ? (
+            invoices.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-900">
+                      {inv.invoice_number ?? 'Invoice'}
+                    </span>
+                    <Badge tone={DOC_STATUS_TONE[inv.status]}>{inv.status}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(inv.invoice_date)} · {formatRupiah(inv.invoice_value)}
+                  </div>
+                </div>
+                {mayEdit && (
+                  <EditRevenueButton
+                    kind="invoice"
+                    spks={spkChoice}
+                    parents={[]}
+                    initial={{
+                      id: inv.id,
+                      spkId,
+                      number: inv.invoice_number,
+                      value: Number(inv.invoice_value),
+                      date: inv.invoice_date,
+                      status: inv.status,
+                      extra: null,
+                      notes: inv.notes,
+                      dueDate: inv.due_date,
+                    }}
+                  />
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="py-3 text-sm text-muted-foreground">Belum ada invoice.</div>
           )}
         </CardContent>
       </Card>

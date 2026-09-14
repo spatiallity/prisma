@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
@@ -90,7 +90,6 @@ export default async function BottleneckPage() {
         <CardHeader>
           <div>
             <CardTitle>Semua bottleneck</CardTitle>
-            <CardDescription>Urut dari yang paling kritis.</CardDescription>
           </div>
           <Badge tone={ranked.length === 0 ? 'success' : 'danger'}>
             {ranked.length} aktif
@@ -153,10 +152,6 @@ export default async function BottleneckPage() {
         <CardHeader>
           <div>
             <CardTitle>Ambang batas</CardTitle>
-            <CardDescription>
-              Disimpan sebagai data di <span className="code">app_settings</span>,
-              jadi mengubah batas bukan mengubah kode.
-            </CardDescription>
           </div>
         </CardHeader>
         {settings && settings.length > 0 ? (

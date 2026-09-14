@@ -1,5 +1,6 @@
 'use client'
 
+import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -43,11 +44,10 @@ function StepCell({
     return (
       <div>
         <Badge tone="success">Done</Badge>
-        {cell.completed_at && (
-          <div className="tnum mt-1 text-xs text-muted-foreground">
-            {formatDate(cell.completed_at)}
-          </div>
-        )}
+        <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name ?? 'N/A'}</div>
+        <div className="tnum text-xs text-muted-foreground">
+          {cell.completed_at ? formatDate(cell.completed_at) : 'N/A'}
+        </div>
       </div>
     )
   }
@@ -61,16 +61,10 @@ function StepCell({
       <Badge tone={isOverdue ? 'danger' : cell.status === 'Returned' ? 'warning' : 'primary'}>
         {isOverdue ? 'Lewat SLA' : cell.status}
       </Badge>
-      {cell.started_at && (
-        <div
-          className={cn(
-            'tnum mt-1 text-xs',
-            isOverdue ? 'font-bold text-danger' : 'text-muted-foreground',
-          )}
-        >
-          {formatDate(cell.started_at)}
-        </div>
-      )}
+      <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name ?? 'N/A'}</div>
+      <div className={cn('tnum text-xs', isOverdue ? 'font-bold text-danger' : 'text-muted-foreground')}>
+        {cell.started_at ? formatDate(cell.started_at) : 'N/A'}
+      </div>
     </div>
   )
 
@@ -141,6 +135,7 @@ export function RoutingMatrix({
   currentSequenceByDoc,
   overdueByDoc,
   mayEdit,
+  invoiceDraftedBySpk,
 }: {
   docs: RoutingDoc[]
   spkById: Record<string, SpkLite>
@@ -150,8 +145,26 @@ export function RoutingMatrix({
   currentSequenceByDoc: Record<string, number | undefined>
   overdueByDoc: Record<string, boolean>
   mayEdit: boolean
+  invoiceDraftedBySpk: Record<string, string | null>
 }) {
   const columns: DataTableColumn<RoutingDoc>[] = [
+    {
+      key: 'drafting_invoice',
+      label: 'Drafting Invoice',
+      align: 'center',
+      className: 'text-muted-foreground',
+      sortAccessor: (row) => (row.spk_id in invoiceDraftedBySpk ? 1 : 0),
+      render: (row) => {
+        const date = invoiceDraftedBySpk[row.spk_id]
+        if (!(row.spk_id in invoiceDraftedBySpk)) return <Badge tone="neutral">Belum</Badge>
+        return (
+          <div>
+            <Badge tone="success">Sudah</Badge>
+            <div className="tnum mt-1 text-xs">{date ? formatDate(date) : 'N/A'}</div>
+          </div>
+        )
+      },
+    },
     {
       key: 'spk',
       label: 'SPK',
@@ -173,6 +186,7 @@ export function RoutingMatrix({
       (step): DataTableColumn<RoutingDoc> => ({
         key: step.id,
         label: step.name,
+        align: 'center',
         stopRowClick: true,
         render: (row) => (
           <StepCell
@@ -185,6 +199,37 @@ export function RoutingMatrix({
         ),
       }),
     ),
+    ...(mayEdit
+      ? [
+          {
+            key: 'aksi',
+            label: 'Aksi',
+            align: 'right' as const,
+            stopRowClick: true,
+            render: (row: RoutingDoc) => {
+              const currentCell = historyByDoc[row.id]?.[currentSequenceByDoc[row.id] ?? -1]
+              if (!currentCell) return <span className="text-muted-foreground">—</span>
+              return (
+                <Modal
+                  title="Review tahap"
+                  description={currentCell.status === 'Returned' ? 'Tahap ini sedang direvisi.' : undefined}
+                  trigger={
+                    <button
+                      type="button"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                      aria-label="Edit"
+                    >
+                      <Pencil size={14} aria-hidden />
+                    </button>
+                  }
+                >
+                  <StepReviewForm routingId={row.id} stepId={currentCell.id} defaultPic={currentCell.pic_name} />
+                </Modal>
+              )
+            },
+          } satisfies DataTableColumn<RoutingDoc>,
+        ]
+      : []),
   ]
 
   return (

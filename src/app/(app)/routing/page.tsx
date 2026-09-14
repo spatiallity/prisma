@@ -133,18 +133,14 @@ export async function RoutingMonitor({
         <CardHeader>
           <div>
             <CardTitle>{filtered.length} dokumen</CardTitle>
-            <CardDescription>
-              {step ? (
-                <>
-                  Difilter ke tahap <strong className="text-slate-700">{step}</strong> —{' '}
-                  <Link href="/routing" className="font-bold text-primary hover:underline">
-                    hapus filter
-                  </Link>
-                </>
-              ) : (
-                'Merah berarti tahap sekarang sudah melewati SLA-nya.'
-              )}
-            </CardDescription>
+            {step && (
+              <CardDescription>
+                Difilter ke tahap <strong className="text-slate-700">{step}</strong> —{' '}
+                <Link href="/routing" className="font-bold text-primary hover:underline">
+                  hapus filter
+                </Link>
+              </CardDescription>
+            )}
           </div>
           {overdueCount > 0 && (
             <Badge tone="danger">{overdueCount} lewat SLA</Badge>
@@ -274,8 +270,9 @@ async function RoutingMatrixSection({
 }) {
   const supabase = await createClient()
   const docIds = docs.map((d) => d.id)
+  const spkIds = docs.map((d) => d.spk_id)
 
-  const [{ data: steps }, { data: history }] = await Promise.all([
+  const [{ data: steps }, { data: history }, { data: invoices }] = await Promise.all([
     templateId
       ? supabase
           .from('routing_template_steps')
@@ -289,11 +286,24 @@ async function RoutingMatrixSection({
           .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name')
           .in('spk_routing_id', docIds)
       : Promise.resolve({ data: [] }),
+    spkIds.length
+      ? supabase
+          .from('invoices')
+          .select('spk_id, invoice_date')
+          .in('spk_id', spkIds)
+          .neq('status', 'Cancelled')
+          .order('invoice_date', { ascending: false, nullsFirst: false })
+      : Promise.resolve({ data: [] }),
   ])
 
   const historyByDoc: Record<string, Record<number, HistoryCell>> = {}
   for (const row of history ?? []) {
     ;(historyByDoc[row.spk_routing_id] ??= {})[row.sequence] = row
+  }
+
+  const invoiceDraftedBySpk: Record<string, string | null> = {}
+  for (const inv of invoices ?? []) {
+    if (!(inv.spk_id in invoiceDraftedBySpk)) invoiceDraftedBySpk[inv.spk_id] = inv.invoice_date
   }
 
   const currentSequenceByDoc = Object.fromEntries(
@@ -309,6 +319,7 @@ async function RoutingMatrixSection({
       currentSequenceByDoc={currentSequenceByDoc}
       overdueByDoc={overdueByDoc}
       mayEdit={mayEdit}
+      invoiceDraftedBySpk={invoiceDraftedBySpk}
     />
   )
 }
@@ -326,12 +337,7 @@ async function StageAverages() {
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <div>
-          <CardTitle>Rata-rata lead time per tahap</CardTitle>
-          <CardDescription>
-            Dihitung dari tahap yang sudah selesai — bahan untuk menyepakati SLA.
-          </CardDescription>
-        </div>
+        <CardTitle>Rata-rata lead time per tahap</CardTitle>
       </CardHeader>
       <Table>
         <thead>

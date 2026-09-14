@@ -1,11 +1,13 @@
 'use client'
 
+import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
-import type { Database } from '@/lib/supabase/types'
+import type { Database, DesignPhase } from '@/lib/supabase/types'
 
 type DesignRow = Database['public']['Tables']['designs']['Row']
 type SpkLite = { id: string; spk_number: string; site_code: string | null; work_name: string }
@@ -16,15 +18,20 @@ type CurrentStage = {
 }
 
 export function DesignTable({
+  phase,
   designs,
   spkById,
   picName,
   currentByDesign,
+  siteplanApprovedBySpk,
 }: {
+  phase: DesignPhase
   designs: DesignRow[]
   spkById: Record<string, SpkLite>
   picName: Record<string, string>
   currentByDesign: Record<string, CurrentStage>
+  /** Finalisasi only: when the sibling Desain Siteplan record was approved. */
+  siteplanApprovedBySpk?: Record<string, string | null>
 }) {
   const columns: DataTableColumn<DesignRow>[] = [
     {
@@ -47,17 +54,6 @@ export function DesignTable({
       },
     },
     {
-      key: 'title',
-      label: 'Judul',
-      className: 'max-w-xs',
-      sortAccessor: (row) => row.title ?? spkById[row.spk_id]?.work_name ?? null,
-      render: (row) => (
-        <span className="line-clamp-1 font-bold text-slate-900">
-          {row.title ?? spkById[row.spk_id]?.work_name ?? '—'}
-        </span>
-      ),
-    },
-    {
       key: 'stage',
       label: 'Tahap',
       sortAccessor: (row) => (currentByDesign[row.id] ? row.current_stage : ''),
@@ -70,7 +66,7 @@ export function DesignTable({
     },
     {
       key: 'pic',
-      label: 'PIC',
+      label: 'Drafter',
       className: 'text-muted-foreground',
       sortAccessor: (row) => (row.pic_id ? (picName[row.pic_id] ?? null) : null),
       render: (row) => (row.pic_id ? (picName[row.pic_id] ?? '—') : '—'),
@@ -82,13 +78,24 @@ export function DesignTable({
       sortAccessor: (row) => currentByDesign[row.id]?.picPertamina ?? null,
       render: (row) => currentByDesign[row.id]?.picPertamina ?? '—',
     },
-    {
-      key: 'topo',
-      label: 'Data topografi masuk',
-      className: 'tnum text-muted-foreground',
-      sortAccessor: (row) => row.topo_data_received_at,
-      render: (row) => (row.topo_data_received_at ? formatDate(row.topo_data_received_at) : '—'),
-    },
+    phase === 'siteplan'
+      ? {
+          key: 'topo',
+          label: 'Data topografi masuk',
+          className: 'tnum text-muted-foreground',
+          sortAccessor: (row) => row.topo_data_received_at,
+          render: (row) => (row.topo_data_received_at ? formatDate(row.topo_data_received_at) : '—'),
+        }
+      : {
+          key: 'siteplan_approved',
+          label: 'Desain Awal Approved',
+          className: 'tnum text-muted-foreground',
+          sortAccessor: (row) => siteplanApprovedBySpk?.[row.spk_id] ?? null,
+          render: (row) => {
+            const at = siteplanApprovedBySpk?.[row.spk_id]
+            return at ? formatDate(at) : '—'
+          },
+        },
     {
       key: 'keterangan',
       label: 'Keterangan',
@@ -122,6 +129,20 @@ export function DesignTable({
         )
       },
     },
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      align: 'right',
+      render: (row) => (
+        <Link
+          href={`/design/${row.id}`}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+          aria-label="Edit"
+        >
+          <Pencil size={14} aria-hidden />
+        </Link>
+      ),
+    },
   ]
 
   return (
@@ -131,9 +152,9 @@ export function DesignTable({
       rowKey={(row) => row.id}
       searchAccessor={(row) => {
         const spk = spkById[row.spk_id]
-        return [row.title, spk?.spk_number, spk?.site_code, spk?.work_name].filter(Boolean).join(' ')
+        return [spk?.spk_number, spk?.site_code, spk?.work_name].filter(Boolean).join(' ')
       }}
-      searchPlaceholder="Cari judul atau SPK…"
+      searchPlaceholder="Cari SPK…"
       emptyTitle="Belum ada record desain"
       pageSize={100}
     />

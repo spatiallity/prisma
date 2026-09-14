@@ -6,35 +6,40 @@ import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatRupiah } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'PAD' }
 
 /**
- * Section 25.2/25.3 — PAD is a mark on the SPK itself (migration 0018), not a
- * routed document, so this page is a read-only list of who's been marked.
- * Marking/unmarking still happens in the Financial tab of Detail SPK.
+ * PAD is a mark on the SPK itself, not a routed document, so this page is a
+ * read-only list of who's been marked. Marking/unmarking still happens in
+ * the Financial tab of Detail SPK. An SPK drops off this list once it's both
+ * PAD-marked and already has an invoice — from there it's Invoice's list to
+ * track, not PAD's.
  */
 export default async function PadPage() {
   await requirePermission('pad', 'view')
   const supabase = await createClient()
 
-  const { data: spks } = await supabase
-    .from('spks')
-    .select('id, spk_number, site_code, work_name, status, opname_marked_at, pad_marked_at')
-    .neq('status', 'Cancelled')
-    .order('pad_marked_at', { ascending: false, nullsFirst: false })
-    .order('spk_number')
+  const [{ data: spks }, { data: invoiced }] = await Promise.all([
+    supabase
+      .from('spks')
+      .select(
+        'id, spk_number, site_code, work_name, status, opname_marked_at, opname_value, pad_marked_at, pad_value',
+      )
+      .neq('status', 'Cancelled')
+      .order('pad_marked_at', { ascending: false, nullsFirst: false })
+      .order('spk_number'),
+    supabase.from('invoices').select('spk_id').neq('status', 'Cancelled'),
+  ])
 
-  const rows = spks ?? []
+  const invoicedSpkIds = new Set((invoiced ?? []).map((i) => i.spk_id))
+  const rows = (spks ?? []).filter((s) => !(s.pad_marked_at && invoicedSpkIds.has(s.id)))
   const padded = rows.filter((s) => s.pad_marked_at)
 
   return (
     <>
-      <PageHeader
-        title="PAD"
-        description="SPK yang sudah ditandai PAD, sebelum masuk ke Invoice."
-      />
+      <PageHeader title="PAD" />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <Card>
@@ -62,9 +67,10 @@ export default async function PadPage() {
               <tr>
                 <Th>SPK</Th>
                 <Th>Pekerjaan</Th>
-                <Th>Opname</Th>
-                <Th>PAD</Th>
+                <Th>Tanggal Opname</Th>
+                <Th className="text-right">Nilai Opname</Th>
                 <Th>Tanggal PAD</Th>
+                <Th className="text-right">Nilai PAD</Th>
               </tr>
             </thead>
             <tbody>
@@ -79,18 +85,25 @@ export default async function PadPage() {
                     />
                   </Td>
                   <Td className="text-xs text-muted-foreground">{s.work_name}</Td>
-                  <Td>
-                    <Badge tone={s.opname_marked_at ? 'success' : 'neutral'}>
-                      {s.opname_marked_at ? 'Sudah' : 'Belum'}
-                    </Badge>
+                  <Td className="tnum text-xs text-muted-foreground">
+                    {s.opname_marked_at ? (
+                      formatDate(s.opname_marked_at)
+                    ) : (
+                      <Badge tone="neutral">Belum</Badge>
+                    )}
                   </Td>
-                  <Td>
-                    <Badge tone={s.pad_marked_at ? 'success' : 'neutral'}>
-                      {s.pad_marked_at ? 'Sudah' : 'Belum'}
-                    </Badge>
+                  <Td className="tnum text-right text-xs text-muted-foreground">
+                    {s.opname_value != null ? formatRupiah(s.opname_value) : '—'}
                   </Td>
                   <Td className="tnum text-xs text-muted-foreground">
-                    {s.pad_marked_at ? formatDate(s.pad_marked_at) : '—'}
+                    {s.pad_marked_at ? (
+                      formatDate(s.pad_marked_at)
+                    ) : (
+                      <Badge tone="neutral">Belum</Badge>
+                    )}
+                  </Td>
+                  <Td className="tnum text-right text-xs text-muted-foreground">
+                    {s.pad_value != null ? formatRupiah(s.pad_value) : '—'}
                   </Td>
                 </Tr>
               ))}

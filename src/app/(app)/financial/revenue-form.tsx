@@ -1,12 +1,13 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { DeleteButton } from '@/components/ui/delete-button'
+import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
 import { FINANCIAL_DOC_STATUSES } from '@/lib/supabase/types'
 import { REVENUE_META, type RevenueKind } from '@/lib/financial'
@@ -14,8 +15,10 @@ import {
   deleteRevenueDoc,
   saveRevenueDoc,
   setRevenueDocStatus,
+  updateRevenueDoc,
   type FinancialState,
 } from './actions'
+import type { DocRow } from './revenue-table'
 
 const initialState: FinancialState = { error: null }
 
@@ -46,14 +49,17 @@ export function RevenueForm({
   spks,
   parents,
   onSaved,
+  initial,
 }: {
   kind: RevenueKind
   spks: Choice[]
   /** Payment picks the invoice it's against. */
   parents: Choice[]
   onSaved?: () => void
+  /** Editing an existing document instead of creating a new one. */
+  initial?: DocRow & { amendmentNo?: number; dueDate?: string | null; parentId?: string | null; dendaValue?: number | null }
 }) {
-  const [state, formAction] = useActionState(saveRevenueDoc, initialState)
+  const [state, formAction] = useActionState(initial ? updateRevenueDoc : saveRevenueDoc, initialState)
   const meta = REVENUE_META[kind]
   useActionToast(state, onSaved)
 
@@ -67,10 +73,11 @@ export function RevenueForm({
     <form action={formAction} className="grid gap-4">
       <Feedback state={state} />
       <input type="hidden" name="kind" value={kind} />
+      {initial && <input type="hidden" name="id" value={initial.id} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="SPK" htmlFor="f_spk" required className="lg:col-span-2">
-          <Select id="f_spk" name="spk_id" required>
+          <Select id="f_spk" name="spk_id" required defaultValue={initial?.spkId}>
             {spks.map((spk) => (
               <option key={spk.id} value={spk.id}>
                 {spk.label}
@@ -84,19 +91,26 @@ export function RevenueForm({
           htmlFor="f_number"
           required={kind === 'contract'}
         >
-          <Input id="f_number" name="number" required={kind === 'contract'} />
+          <Input id="f_number" name="number" required={kind === 'contract'} defaultValue={initial?.number ?? undefined} />
         </Field>
 
         <Field label={`${meta.valueLabel} (Rp)`} htmlFor="f_value" required>
-          <Input id="f_value" name="value" inputMode="numeric" required placeholder="500000000" />
+          <Input
+            id="f_value"
+            name="value"
+            inputMode="numeric"
+            required
+            placeholder="500000000"
+            defaultValue={initial?.value ?? undefined}
+          />
         </Field>
 
         <Field label={meta.dateLabel} htmlFor="f_date">
-          <Input id="f_date" name="date" type="date" />
+          <Input id="f_date" name="date" type="date" defaultValue={initial?.date ?? undefined} />
         </Field>
 
         <Field label="Status" htmlFor="f_status">
-          <Select id="f_status" name="status" defaultValue="Draft">
+          <Select id="f_status" name="status" defaultValue={initial?.status ?? 'Draft'}>
             {FINANCIAL_DOC_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -111,19 +125,19 @@ export function RevenueForm({
             htmlFor="f_amendment"
             hint="0 untuk kontrak awal. Amandemen jadi baris baru, tidak menimpa."
           >
-            <Input id="f_amendment" name="amendment_no" inputMode="numeric" defaultValue="0" />
+            <Input id="f_amendment" name="amendment_no" inputMode="numeric" defaultValue={initial?.amendmentNo ?? 0} />
           </Field>
         )}
 
         {kind === 'contract' && (
           <Field label="Denda (Rp)" htmlFor="f_denda" hint="Kosongkan kalau tidak ada denda.">
-            <Input id="f_denda" name="denda_value" inputMode="numeric" placeholder="0" />
+            <Input id="f_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={initial?.dendaValue ?? undefined} />
           </Field>
         )}
 
         {kind === 'invoice' && (
           <Field label="Jatuh tempo" htmlFor="f_due">
-            <Input id="f_due" name="due_date" type="date" />
+            <Input id="f_due" name="due_date" type="date" defaultValue={initial?.dueDate ?? undefined} />
           </Field>
         )}
 
@@ -133,7 +147,7 @@ export function RevenueForm({
             htmlFor="f_parent"
             hint={`Menautkan dokumen ini ke ${parentLabel} yang mendasarinya.`}
           >
-            <Select id="f_parent" name="parent_id" defaultValue="">
+            <Select id="f_parent" name="parent_id" defaultValue={initial?.parentId ?? ''}>
               <option value="">— tidak ditautkan —</option>
               {parents.map((parent) => (
                 <option key={parent.id} value={parent.id}>
@@ -145,14 +159,48 @@ export function RevenueForm({
         )}
 
         <Field label="Catatan" htmlFor="f_notes" className="sm:col-span-2">
-          <Input id="f_notes" name="notes" />
+          <Input id="f_notes" name="notes" defaultValue={initial?.notes ?? undefined} />
         </Field>
       </div>
 
       <div>
-        <Submit label={`Simpan ${meta.label}`} />
+        <Submit label={initial ? 'Simpan perubahan' : `Simpan ${meta.label}`} />
       </div>
     </form>
+  )
+}
+
+/** Edit icon → the same form as create, prefilled, calling updateRevenueDoc. */
+export function EditRevenueButton({
+  kind,
+  spks,
+  parents,
+  initial,
+}: {
+  kind: RevenueKind
+  spks: Choice[]
+  parents: Choice[]
+  initial: DocRow & { amendmentNo?: number; dueDate?: string | null; parentId?: string | null; dendaValue?: number | null }
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Modal
+      open={open}
+      onOpenChange={setOpen}
+      title={`Edit ${REVENUE_META[kind].label}`}
+      size="lg"
+      trigger={
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"
+        >
+          <Pencil size={14} aria-hidden />
+          Edit
+        </button>
+      }
+    >
+      <RevenueForm kind={kind} spks={spks} parents={parents} initial={initial} onSaved={() => setOpen(false)} />
+    </Modal>
   )
 }
 

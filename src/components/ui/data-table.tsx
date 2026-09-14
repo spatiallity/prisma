@@ -10,7 +10,7 @@ import { EmptyState } from './page-header'
 export type DataTableColumn<T> = {
   key: string
   label: string
-  align?: 'left' | 'right'
+  align?: 'left' | 'right' | 'center'
   className?: string
   /** Omit to make the column unsortable (e.g. an actions column). */
   sortAccessor?: (row: T) => string | number | null
@@ -182,6 +182,7 @@ export function DataTable<T>({
                   key={col.key}
                   className={cn(
                     col.align === 'right' && 'text-right',
+                    col.align === 'center' && 'text-center',
                     col.sortAccessor && 'cursor-pointer select-none hover:text-slate-700',
                     col.className,
                   )}
@@ -191,6 +192,7 @@ export function DataTable<T>({
                     className={cn(
                       'inline-flex items-center gap-1',
                       col.align === 'right' && 'flex-row-reverse',
+                      col.align === 'center' && 'justify-center',
                     )}
                   >
                     {col.label}
@@ -230,7 +232,11 @@ export function DataTable<T>({
                 {columns.map((col) => (
                   <Td
                     key={col.key}
-                    className={cn(col.align === 'right' && 'text-right', col.className)}
+                    className={cn(
+                      col.align === 'right' && 'text-right',
+                      col.align === 'center' && 'text-center',
+                      col.className,
+                    )}
                     onClick={col.stopRowClick ? (e) => e.stopPropagation() : undefined}
                   >
                     {col.render(row)}

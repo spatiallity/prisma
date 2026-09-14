@@ -145,9 +145,6 @@ export default async function RoutingDetailPage({
           <CardHeader>
             <div>
               <CardTitle>Rantai routing</CardTitle>
-              <CardDescription>
-                Lead time per tahap dihitung dari selisih mulai dan selesai.
-              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>

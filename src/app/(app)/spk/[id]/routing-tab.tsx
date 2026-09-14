@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/page-header'
@@ -65,9 +65,6 @@ export async function RoutingTab({ spkId }: { spkId: string }) {
       <CardHeader>
         <div>
           <CardTitle>Dokumen SPK ini</CardTitle>
-          <CardDescription>
-            Posisi dan lead time per dokumen.
-          </CardDescription>
         </div>
         <Link href="/routing" className="text-xs font-bold text-primary hover:underline">
           Kelola
