@@ -86,14 +86,15 @@ export const PHASE_TERMINAL_STAGE: Record<DesignPhase, DesignStage> = {
 
 /** The stage(s) Lanjut may move to from a given stage — exactly one for
  *  almost every stage, so the review form can default to it without asking.
- *  The exceptions: Review Desain Awal always goes to Revisi Desain Awal
- *  first (a pass is the rare manual override, not the default), and Revisi
- *  Desain Awal loops back to Review for another look. A terminal stage has
+ *  The one exception: Review Desain Awal always goes to Revisi Desain Awal
+ *  first (a pass is the rare manual override, not the default). Once fixed,
+ *  Revisi Desain Awal moves straight on to Stake Out — the fix itself is the
+ *  re-check, not a trip back through Review again. A terminal stage has
  *  none. */
 export const DESIGN_NEXT_STAGES: Record<DesignStage, DesignStage[]> = {
   'Pembuatan Desain Awal': ['Review Desain Awal'],
   'Review Desain Awal': ['Revisi Desain Awal', 'Pembuatan Peta Inventaris dan Stake Out'],
-  'Revisi Desain Awal': ['Review Desain Awal'],
+  'Revisi Desain Awal': ['Pembuatan Peta Inventaris dan Stake Out'],
   'Pembuatan Peta Inventaris dan Stake Out': ['Finalisasi'],
   Finalisasi: ['Finish'],
   Finish: ['Opname'],
@@ -117,4 +118,14 @@ export function daysInStage(since: string | null | undefined) {
   const started = new Date(since)
   if (Number.isNaN(started.getTime())) return null
   return Math.max(0, Math.floor((Date.now() - started.getTime()) / 86_400_000))
+}
+
+/** Whole days between two timestamps — a closed stage's own duration, as
+ *  opposed to daysInStage's "still open, counted against now". */
+export function daysBetween(start: string | null | undefined, end: string | null | undefined) {
+  if (!start || !end) return null
+  const a = new Date(start).getTime()
+  const b = new Date(end).getTime()
+  if (Number.isNaN(a) || Number.isNaN(b)) return null
+  return Math.max(0, Math.floor((b - a) / 86_400_000))
 }

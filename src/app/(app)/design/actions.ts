@@ -373,7 +373,7 @@ export async function advanceStage(
 
   const { data: revisions, error: readError } = await supabase
     .from('design_revisions')
-    .select('id, revision_no, stage, completed_at, pic_id, pic_pertamina')
+    .select('id, revision_no, stage, started_at, completed_at, pic_id, pic_pertamina')
     .eq('design_id', designId)
     .eq('status', 'Active')
     .order('revision_no', { ascending: false })
@@ -387,6 +387,9 @@ export async function advanceStage(
   }
 
   const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
+  if (current?.started_at && new Date(now) < new Date(current.started_at)) {
+    return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
+  }
   // A blank PIC field carries the previous stage's PIC forward, matching the
   // "sama seperti sebelumnya" placeholder — only a typed name changes it.
   const typedPicName = text(formData, 'pic_name')
@@ -531,12 +534,15 @@ export async function completeStage(
 
   const { data: entry } = await supabase
     .from('design_revisions')
-    .select('stage')
+    .select('stage, started_at')
     .eq('id', entryId)
     .maybeSingle()
   if (!entry) return { error: 'Entri tidak ditemukan.' }
 
   const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
+  if (entry.started_at && new Date(now) < new Date(entry.started_at)) {
+    return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
+  }
 
   const { error } = await supabase
     .from('design_revisions')
@@ -728,5 +734,39 @@ export async function deleteRevisionEntry(
   revalidatePath(`/design/${designId}`)
   revalidatePath(`/spk/${designRow.spk_id}`)
   return { error: null, success: 'Tahap terakhir dibatalkan.' }
+}
+
+/**
+ * Wipes a design record's whole progress (cascades to design_revisions and
+ * design_stage_revisions), leaving the SPK itself untouched — the user can
+ * start fresh via createDesign/startDesign afterwards. Distinct from
+ * deleteRevisionEntry, which only undoes one stage at a time.
+ */
+export async function deleteDesign(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  await requirePermission('design', 'edit')
+
+  const designId = text(formData, 'design_id')
+  if (!designId) return { error: 'Desain tidak dikenali.' }
+
+  const supabase = await createClient()
+
+  const { data: designRow } = await supabase
+    .from('designs')
+    .select('spk_id')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
+  const { error } = await supabase.from('designs').delete().eq('id', designId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/design')
+  revalidatePath('/design/siteplan')
+  revalidatePath('/design/finalisasi')
+  revalidatePath(`/spk/${designRow.spk_id}`)
+  return { error: null }
 }
 

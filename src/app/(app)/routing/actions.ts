@@ -231,6 +231,9 @@ export async function updateRoutingStepDates(
     return { error: 'Tanggal selesai wajib diisi.' }
   }
   const completedAt = completedRaw ? new Date(`${completedRaw}T12:00:00`).toISOString() : null
+  if (completedAt && completedAt < startedAt) {
+    return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
+  }
   const status: RoutingStatus = completedAt ? 'Completed' : 'In Progress'
 
   // The Invoiced step's whole point is capturing the invoice itself — closing
@@ -302,4 +305,35 @@ export async function addRoutingRevision(
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
   return { error: null, success: 'Revisi dicatat.' }
+}
+
+/**
+ * Wipes a routing document's whole progress (cascades to routing_history and
+ * routing_step_revisions), leaving the SPK itself untouched — the user can
+ * re-route it fresh via createRouting afterwards.
+ */
+export async function deleteRouting(
+  _prev: RoutingState,
+  formData: FormData,
+): Promise<RoutingState> {
+  await requirePermission('routing', 'edit')
+
+  const routingId = text(formData, 'routing_id')
+  if (!routingId) return { error: 'Dokumen routing tidak dikenali.' }
+
+  const supabase = await createClient()
+
+  const { data: routingRow } = await supabase
+    .from('spk_routing')
+    .select('spk_id')
+    .eq('id', routingId)
+    .maybeSingle()
+  if (!routingRow) return { error: 'Dokumen routing tidak ditemukan.' }
+
+  const { error } = await supabase.from('spk_routing').delete().eq('id', routingId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/routing')
+  revalidatePath(`/spk/${routingRow.spk_id}`)
+  return { error: null }
 }

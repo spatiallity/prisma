@@ -2,13 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Pencil } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
+import { RowActions } from '@/components/ui/row-actions'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { cn, formatDate } from '@/lib/utils'
+import { daysBetween, daysInStage } from '@/lib/design'
 import { RoutingStepDateForm } from './forms'
+import { deleteRouting } from './actions'
 import { OpnamePadRow } from '../spk/[id]/opname-pad-mark'
 import { markOpname, markPad, unmarkOpname, unmarkPad } from '../spk/actions'
 import type { Database } from '@/lib/supabase/types'
@@ -149,6 +153,18 @@ function RoutingDetailModal({
           {cell.pic_name ?? 'PIC belum ditentukan'}
           {cell.started_at && ` · mulai ${formatDate(cell.started_at)}`}
           {cell.completed_at && ` → ${formatDate(cell.completed_at)}`}
+          {(() => {
+            const spent = cell.completed_at
+              ? daysBetween(cell.started_at, cell.completed_at)
+              : isCurrent
+                ? daysInStage(cell.started_at)
+                : null
+            return (
+              spent !== null && (
+                <span className="text-slate-500"> · {spent} hari{!cell.completed_at && ' (berjalan)'}</span>
+              )
+            )
+          })()}
           <NotesList text={cell.note} />
           {revisions.length > 0 && (
             <ul className="mt-2 grid gap-1.5 border-l-2 border-warning/40 pl-3">
@@ -214,7 +230,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">PAD</div>
-              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Done' : 'Draft'}</Badge>
+              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Done' : 'Not Yet'}</Badge>
               {padMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(padMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -264,6 +280,7 @@ export function RoutingMatrix({
   opnameValueBySpk,
   padBySpk,
   padValueBySpk,
+  stepFilter,
 }: {
   docs: RoutingDoc[]
   /** SPKs eligible for routing with no spk_routing document yet. */
@@ -276,13 +293,23 @@ export function RoutingMatrix({
   overdueByDoc: Record<string, boolean>
   revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
-  invoiceDraftedBySpk: Record<string, boolean>
+  invoiceDraftedBySpk: Record<string, 'not_yet' | 'in_progress' | 'done'>
   opnameBySpk: Record<string, string | null>
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
   padValueBySpk: Record<string, number | null>
+  /** The `?step=` filter chip currently active — clicking a different chip
+   *  re-renders this same table instance with a new `docs` set, so any popup
+   *  left open must close instead of possibly matching a same-id row in the
+   *  new set and popping back open on its own. */
+  stepFilter?: string
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setOpenRowId(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepFilter])
   const openRow = rowsWithVirtual(docs, virtualSpkIds).find((r) => r.id === openRowId) ?? null
   const openDoc = openRow && !isVirtual(openRow) ? openRow : null
   const openSpkId = openRow?.spk_id
@@ -335,7 +362,7 @@ export function RoutingMatrix({
         const markedAt = padBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Not Yet'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
@@ -346,12 +373,13 @@ export function RoutingMatrix({
       label: 'Drafting Invoice',
       align: 'center',
       className: 'text-muted-foreground',
-      sortAccessor: (row) => (invoiceDraftedBySpk[row.spk_id] ? 1 : 0),
-      render: (row) => (
-        <Badge tone={invoiceDraftedBySpk[row.spk_id] ? 'success' : 'neutral'}>
-          {invoiceDraftedBySpk[row.spk_id] ? 'Done' : 'Draft'}
-        </Badge>
-      ),
+      sortAccessor: (row) => (invoiceDraftedBySpk[row.spk_id] === 'done' ? 2 : invoiceDraftedBySpk[row.spk_id] === 'in_progress' ? 1 : 0),
+      render: (row) => {
+        const status = invoiceDraftedBySpk[row.spk_id] ?? 'not_yet'
+        const tone = status === 'done' ? 'success' : status === 'in_progress' ? 'warning' : 'neutral'
+        const label = status === 'done' ? 'Done' : status === 'in_progress' ? 'In Progress' : 'Not Yet'
+        return <Badge tone={tone}>{label}</Badge>
+      },
     },
     ...steps.map(
       (step): DataTableColumn<MatrixRow> => ({
@@ -375,16 +403,29 @@ export function RoutingMatrix({
       label: 'Aksi',
       align: 'right',
       stopRowClick: true,
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => setOpenRowId(row.id)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-          aria-label="Detail"
-        >
-          <Pencil size={14} aria-hidden />
-        </button>
-      ),
+      render: (row) => {
+        const spk = spkById[row.spk_id]
+        return (
+          <RowActions>
+            <button
+              type="button"
+              onClick={() => setOpenRowId(row.id)}
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Eye size={14} aria-hidden />
+              Detail
+            </button>
+            {mayEdit && !isVirtual(row) && (
+              <DeleteButton
+                action={deleteRouting}
+                hiddenFields={{ routing_id: row.id }}
+                label="Hapus Progress"
+                confirmText={`Progres routing untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — bisa dirutekan ulang dari sini.`}
+              />
+            )}
+          </RowActions>
+        )
+      },
     },
   ]
 

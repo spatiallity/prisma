@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { RowActions } from '@/components/ui/row-actions'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage } from '@/lib/design'
 import type { Database, DesignPhase } from '@/lib/supabase/types'
 import { DesignDetailModal } from './design-detail-modal'
+import { deleteDesign } from './actions'
 import type { PicOption } from './forms'
 
 type DesignRow = Database['public']['Tables']['designs']['Row']
@@ -38,6 +41,7 @@ export function DesignTable({
   siteplanApprovedBySpk,
   pics = [],
   mayEdit = false,
+  stageFilter,
 }: {
   phase: DesignPhase
   designs: DesignRow[]
@@ -49,9 +53,19 @@ export function DesignTable({
   siteplanApprovedBySpk?: Record<string, string | null>
   pics?: PicOption[]
   mayEdit?: boolean
+  /** The `?stage=` filter chip currently active — clicking a different chip
+   *  re-renders this same table instance with a new `designs` set, so any
+   *  popup left open must close instead of possibly matching a same-id row
+   *  in the new set and popping back open on its own. */
+  stageFilter?: string
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const openDesign = designs.find((d) => d.id === openId) ?? null
+
+  useEffect(() => {
+    setOpenId(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageFilter])
 
   const columns: DataTableColumn<DesignRow>[] = [
     {
@@ -154,16 +168,29 @@ export function DesignTable({
       label: 'Aksi',
       align: 'right',
       stopRowClick: true,
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => setOpenId(row.id)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-          aria-label="Detail"
-        >
-          <Pencil size={14} aria-hidden />
-        </button>
-      ),
+      render: (row) => {
+        const spk = spkById[row.spk_id]
+        return (
+          <RowActions>
+            <button
+              type="button"
+              onClick={() => setOpenId(row.id)}
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Eye size={14} aria-hidden />
+              Detail
+            </button>
+            {mayEdit && (
+              <DeleteButton
+                action={deleteDesign}
+                hiddenFields={{ design_id: row.id }}
+                label="Hapus Progress"
+                confirmText={`Progres desain untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — bisa dimulai ulang dari sini.`}
+              />
+            )}
+          </RowActions>
+        )
+      },
     },
   ]
 

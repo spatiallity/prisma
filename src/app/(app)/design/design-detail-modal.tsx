@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
 import { formatDate } from '@/lib/utils'
-import { PHASE_STAGES, STAGE_ORDER } from '@/lib/design'
+import { PHASE_STAGES, STAGE_ORDER, daysBetween, daysInStage } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
 
@@ -89,16 +89,24 @@ export function DesignDetailModal({
       summary:
         stageRevisions.length > 0 ? (
           <ul className="grid gap-2">
-            {stageRevisions.map((revision) => (
+            {stageRevisions.map((revision) => {
+              const spent = revision.completed_at
+                ? daysBetween(revision.started_at, revision.completed_at)
+                : daysInStage(revision.started_at)
+              return (
               <li key={revision.id}>
                 Revisi {revision.revision_no} · {formatDate(revision.started_at)}
                 {revision.completed_at && ` → ${formatDate(revision.completed_at)}`}
+                {spent !== null && (
+                  <span className="text-slate-500"> · {spent} hari{!revision.completed_at && ' (berjalan)'}</span>
+                )}
                 <br />
                 {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'Drafter belum ditentukan'}
                 {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
                 <NotesList text={revision.notes} />
               </li>
-            ))}
+              )
+            })}
           </ul>
         ) : now ? (
           'Belum dimulai.'

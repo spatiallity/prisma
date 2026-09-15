@@ -58,6 +58,7 @@ export default async function DesignSiteplanPage({
             revisionsByDesign={revisionsByDesign}
             pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
             mayEdit={mayEdit}
+            stageFilter={stage}
           />
         ) : (
           <EmptyState title="Belum ada Desain Siteplan" />

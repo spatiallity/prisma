@@ -50,6 +50,7 @@ export default async function DesignFinalisasiPage({
             siteplanApprovedBySpk={siteplanApprovedBySpk}
             pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
             mayEdit={mayEdit}
+            stageFilter={stage}
           />
         ) : (
           <EmptyState title="Belum ada Finalisasi Desain" />

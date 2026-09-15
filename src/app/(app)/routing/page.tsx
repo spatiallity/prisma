@@ -190,6 +190,7 @@ export async function RoutingMonitor({
             padBySpk={padBySpk}
             padValueBySpk={padValueBySpk}
             virtualSpkIds={step ? [] : virtualSpkIds}
+            stepFilter={step}
           />
         ) : (
           <RoutingTable
@@ -291,6 +292,7 @@ async function RoutingMatrixSection({
   padBySpk,
   padValueBySpk,
   virtualSpkIds,
+  stepFilter,
 }: {
   docs: RoutingDoc[]
   spkById: Record<string, { id: string; spk_number: string; site_code: string | null; work_name?: string }>
@@ -306,6 +308,9 @@ async function RoutingMatrixSection({
    *  row yet — shown as placeholder rows so they aren't invisible while
    *  waiting to be routed. */
   virtualSpkIds: string[]
+  /** The `?step=` filter currently active — passed through so RoutingMatrix
+   *  can close any open row popup when it changes. */
+  stepFilter?: string
 }) {
   const supabase = await createClient()
   const docIds = docs.map((d) => d.id)
@@ -333,11 +338,14 @@ async function RoutingMatrixSection({
     ;(historyByDoc[row.spk_routing_id] ??= {})[row.sequence] = row
   }
 
-  // "Drafting invoice" is done once the document has entered Document
-  // Control (sequence 1) — that's the moment the invoice starts its routing.
-  const invoiceDraftedBySpk: Record<string, boolean> = {}
+  // "Drafting invoice" reflects the actual status of sequence 1 (Drafting
+  // Dokumen Invoicing), not just whether that row exists — every document
+  // has one from creation, so existence alone would read "Done" the whole
+  // time it's still being worked on.
+  const invoiceDraftedBySpk: Record<string, 'not_yet' | 'in_progress' | 'done'> = {}
   for (const doc of docs) {
-    invoiceDraftedBySpk[doc.spk_id] = !!historyByDoc[doc.id]?.[1]
+    const step1 = historyByDoc[doc.id]?.[1]
+    invoiceDraftedBySpk[doc.spk_id] = step1?.status === 'Completed' ? 'done' : step1 ? 'in_progress' : 'not_yet'
   }
 
   const stepIds = (history ?? []).map((h) => h.id)
@@ -373,6 +381,7 @@ async function RoutingMatrixSection({
       opnameValueBySpk={opnameValueBySpk}
       padBySpk={padBySpk}
       padValueBySpk={padValueBySpk}
+      stepFilter={stepFilter}
     />
   )
 }
