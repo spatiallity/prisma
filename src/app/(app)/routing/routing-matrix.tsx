@@ -275,7 +275,6 @@ export function RoutingMatrix({
   overdueByDoc,
   revisionsByStep,
   mayEdit,
-  invoiceDraftedBySpk,
   opnameBySpk,
   opnameValueBySpk,
   padBySpk,
@@ -293,7 +292,6 @@ export function RoutingMatrix({
   overdueByDoc: Record<string, boolean>
   revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
-  invoiceDraftedBySpk: Record<string, 'not_yet' | 'in_progress' | 'done'>
   opnameBySpk: Record<string, string | null>
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
@@ -364,26 +362,6 @@ export function RoutingMatrix({
           <div>
             <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Not Yet'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'drafting_invoice',
-      label: 'Drafting Invoice',
-      align: 'center',
-      className: 'text-muted-foreground',
-      sortAccessor: (row) => (invoiceDraftedBySpk[row.spk_id] === 'done' ? 2 : invoiceDraftedBySpk[row.spk_id] === 'in_progress' ? 1 : 0),
-      render: (row) => {
-        const status = invoiceDraftedBySpk[row.spk_id] ?? 'not_yet'
-        const tone = status === 'done' ? 'success' : status === 'in_progress' ? 'warning' : 'neutral'
-        const label = status === 'done' ? 'Done' : status === 'in_progress' ? 'In Progress' : 'Not Yet'
-        const step1 = historyByDoc[row.id]?.[1]
-        const date = status === 'done' ? step1?.completed_at : step1?.started_at
-        return (
-          <div>
-            <Badge tone={tone}>{label}</Badge>
-            {date && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(date)}</div>}
           </div>
         )
       },

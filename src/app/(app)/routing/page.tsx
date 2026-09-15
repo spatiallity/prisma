@@ -338,16 +338,6 @@ async function RoutingMatrixSection({
     ;(historyByDoc[row.spk_routing_id] ??= {})[row.sequence] = row
   }
 
-  // "Drafting invoice" reflects the actual status of sequence 1 (Drafting
-  // Dokumen Invoicing), not just whether that row exists — every document
-  // has one from creation, so existence alone would read "Done" the whole
-  // time it's still being worked on.
-  const invoiceDraftedBySpk: Record<string, 'not_yet' | 'in_progress' | 'done'> = {}
-  for (const doc of docs) {
-    const step1 = historyByDoc[doc.id]?.[1]
-    invoiceDraftedBySpk[doc.spk_id] = step1?.status === 'Completed' ? 'done' : step1 ? 'in_progress' : 'not_yet'
-  }
-
   const stepIds = (history ?? []).map((h) => h.id)
   const { data: revisions } = stepIds.length
     ? await supabase
@@ -376,7 +366,6 @@ async function RoutingMatrixSection({
       currentSequenceByDoc={currentSequenceByDoc}
       overdueByDoc={overdueByDoc}
       mayEdit={mayEdit}
-      invoiceDraftedBySpk={invoiceDraftedBySpk}
       opnameBySpk={opnameBySpk}
       opnameValueBySpk={opnameValueBySpk}
       padBySpk={padBySpk}
