@@ -36,18 +36,30 @@ export async function RoutingMonitor({
 
   const supabase = await createClient()
 
-  const [{ data: documents, error }, { data: lead }, { data: spks }, { data: templates }] =
+  const [{ data: documents, error }, { data: lead }, { data: spks }, { data: templates }, { data: finalisasiDesigns }] =
     await Promise.all([
       supabase.from('spk_routing').select('*').order('created_at', { ascending: false }),
       supabase.from('v_routing_lead_time').select('*'),
       supabase
         .from('spks')
-        .select('id, spk_number, site_code, work_name, status')
+        .select('id, spk_number, site_code, work_name, status, opname_marked_at')
         .order('spk_number'),
       supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
+      // Finalisasi Desain opens (any stage) once Desain Siteplan hits Finish —
+      // that's the "eligible for routing" signal, whether or not it's routed yet.
+      supabase.from('designs').select('spk_id').eq('phase', 'finalisasi').eq('status', 'Active'),
     ])
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
+  const opnameBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.opname_marked_at]))
+
+  // Section 27 — an SPK ready for routing but not yet routed (no spk_routing
+  // row) still needs to show up as "Drafting Invoice: Not Yet" so it isn't
+  // invisible while sitting between Desain and routing.
+  const routedSpkIds = new Set((documents ?? []).map((d) => d.spk_id))
+  const virtualSpkIds = [...new Set((finalisasiDesigns ?? []).map((d) => d.spk_id))].filter(
+    (spkId) => !routedSpkIds.has(spkId),
+  )
 
   // The stage a document is actually sitting in: the first one not finished.
   const currentByDoc = new Map<string, RoutingLeadTimeView>()
@@ -168,6 +180,8 @@ export async function RoutingMonitor({
             currentByDoc={currentByDocPlain}
             overdueByDoc={Object.fromEntries(overdueByDoc)}
             mayEdit={mayEdit}
+            opnameBySpk={opnameBySpk}
+            virtualSpkIds={step ? [] : virtualSpkIds}
           />
         ) : (
           <RoutingTable
@@ -261,6 +275,8 @@ async function RoutingMatrixSection({
   currentByDoc,
   overdueByDoc,
   mayEdit,
+  opnameBySpk,
+  virtualSpkIds,
 }: {
   docs: RoutingDoc[]
   spkById: Record<string, { id: string; spk_number: string; site_code: string | null; work_name?: string }>
@@ -268,6 +284,11 @@ async function RoutingMatrixSection({
   currentByDoc: Record<string, RoutingLeadTimeView>
   overdueByDoc: Record<string, boolean>
   mayEdit: boolean
+  opnameBySpk: Record<string, string | null>
+  /** SPKs eligible for routing (Finalisasi Desain opened) with no spk_routing
+   *  row yet — shown as placeholder rows so they aren't invisible while
+   *  waiting to be routed. */
+  virtualSpkIds: string[]
 }) {
   const supabase = await createClient()
   const docIds = docs.map((d) => d.id)
@@ -320,6 +341,7 @@ async function RoutingMatrixSection({
   return (
     <RoutingMatrix
       docs={docs}
+      virtualSpkIds={virtualSpkIds}
       spkById={spkById}
       steps={steps ?? []}
       historyByDoc={historyByDoc}
@@ -328,6 +350,7 @@ async function RoutingMatrixSection({
       overdueByDoc={overdueByDoc}
       mayEdit={mayEdit}
       invoiceDraftedBySpk={invoiceDraftedBySpk}
+      opnameBySpk={opnameBySpk}
     />
   )
 }

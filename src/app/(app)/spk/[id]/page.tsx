@@ -206,7 +206,7 @@ export default async function SpkDetailPage({
                 label={hasRoutingStarted ? 'Posisi dokumen' : 'Sisa waktu'}
                 value={
                   hasRoutingStarted ? (
-                    (stage?.label ?? 'Selesai')
+                    (stage?.label ?? 'Done')
                   ) : remaining === null ? (
                     '—'
                   ) : remaining < 0 ? (

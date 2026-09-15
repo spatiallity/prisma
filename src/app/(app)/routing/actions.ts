@@ -159,6 +159,68 @@ export async function advanceStep(
 }
 
 /**
+ * Section 23 — the popup version of step review: fill Tanggal mulai and
+ * Tanggal selesai directly on the step instead of a Lanjut/Revisi toggle.
+ * Leaving Tanggal selesai blank keeps the step at In Progress; filling it
+ * closes the step (status is derived from the two dates, not typed). The
+ * previous step must already be Completed — mirrors the gate the popup's
+ * accordion enforces client-side, so this can't be raced by opening two
+ * steps' forms at once.
+ */
+export async function updateRoutingStepDates(
+  _prev: RoutingState,
+  formData: FormData,
+): Promise<RoutingState> {
+  await requirePermission('routing', 'edit')
+
+  const routingId = text(formData, 'routing_id')
+  const stepId = text(formData, 'step_id')
+  if (!routingId || !stepId) return { error: 'Tahap tidak dikenali.' }
+
+  const supabase = await createClient()
+
+  const { data: steps, error: readError } = await supabase
+    .from('routing_history')
+    .select('id, sequence, status')
+    .eq('spk_routing_id', routingId)
+    .order('sequence')
+  if (readError) return { error: readError.message }
+
+  const index = (steps ?? []).findIndex((s) => s.id === stepId)
+  if (index === -1) return { error: 'Tahap tidak ditemukan.' }
+  const previous = index > 0 ? steps![index - 1] : null
+  // Gate on status, not completed_at: older, bulk-imported rows can carry
+  // status 'Completed' with no completed_at ever recorded.
+  if (previous && previous.status !== 'Completed') {
+    return { error: 'Selesaikan tahap sebelumnya dulu.' }
+  }
+
+  const startedRaw = text(formData, 'started_at')
+  const completedRaw = text(formData, 'completed_at')
+  if (!startedRaw) return { error: 'Tanggal mulai wajib diisi.' }
+
+  const startedAt = new Date(`${startedRaw}T12:00:00`).toISOString()
+  const completedAt = completedRaw ? new Date(`${completedRaw}T12:00:00`).toISOString() : null
+  const status: RoutingStatus = completedAt ? 'Completed' : 'In Progress'
+
+  const { error } = await supabase
+    .from('routing_history')
+    .update({
+      started_at: startedAt,
+      completed_at: completedAt,
+      status,
+      pic_name: nullable(formData, 'pic_name') ?? undefined,
+      note: nullable(formData, 'note') ?? undefined,
+    })
+    .eq('id', stepId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/routing')
+  revalidatePath(`/routing/${routingId}`)
+  return { error: null, success: 'Tahap diperbarui.' }
+}
+
+/**
  * Section 23 — a review round that isn't ready to pass yet. Doesn't move or
  * block the step; it just logs what needs fixing and when it comes back, so
  * a step can collect as many rounds as it needs before Lanjut.

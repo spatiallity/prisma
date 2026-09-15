@@ -7,22 +7,30 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { DesignTable } from '../design-table'
 import { loadDesignQueue } from '../queue-data'
+import { StageFilterChips } from '../stage-filter'
 
 export const metadata: Metadata = { title: 'Finalisasi Desain' }
 
 /** Finalisasi Desain never opens by hand — it auto-opens once its sibling
  *  Desain Siteplan finishes — so this page has no "Add Data" action. */
-export default async function DesignFinalisasiPage() {
+export default async function DesignFinalisasiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string }>
+}) {
+  const { stage } = await searchParams
   const user = await requirePermission('design', 'view')
   const mayEdit = can(user.permissions, 'design', 'edit')
   const supabase = await createClient()
 
   const { designs, error, spkById, picName, currentByDesign, revisionsByDesign, siteplanApprovedBySpk, pics } =
-    await loadDesignQueue(supabase, 'finalisasi')
+    await loadDesignQueue(supabase, 'finalisasi', stage)
 
   return (
     <>
       <PageHeader title="Finalisasi Desain" />
+
+      <StageFilterChips phase="finalisasi" basePath="/design/finalisasi" active={stage} />
 
       {error && (
         <Alert tone="danger" className="mb-4" title="Gagal memuat data">

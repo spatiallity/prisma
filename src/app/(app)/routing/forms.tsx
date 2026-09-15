@@ -10,7 +10,13 @@ import { Modal } from '@/components/ui/modal'
 import { Combobox } from '@/components/ui/combobox'
 import { useActionToast } from '@/components/ui/toast'
 import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
-import { advanceStep, addRoutingRevision, createRouting, type RoutingState } from './actions'
+import {
+  advanceStep,
+  addRoutingRevision,
+  createRouting,
+  updateRoutingStepDates,
+  type RoutingState,
+} from './actions'
 
 const initialState: RoutingState = { error: null }
 
@@ -120,6 +126,132 @@ export function AddRoutingButton({
     >
       <NewRoutingForm spks={spks} templateId={templateId} onSaved={() => setOpen(false)} />
     </Modal>
+  )
+}
+
+export type RoutingStepEntry = {
+  id: string
+  status: string
+  started_at: string | null
+  completed_at: string | null
+  pic_name: string | null
+  note: string | null
+}
+
+/**
+ * Section 23 — the popup version of step review: Tanggal mulai and Tanggal
+ * selesai directly on the step, no Lanjut/Revisi picker up front. Leaving
+ * Tanggal selesai blank keeps the step open; filling it closes it and, in
+ * the accordion above, unlocks the next row. A revision note stays available
+ * as a small secondary action rather than a mode that replaces this form.
+ */
+export function RoutingStepDateForm({
+  routingId,
+  stepId,
+  entry,
+  onSaved,
+}: {
+  routingId: string
+  stepId: string
+  entry: RoutingStepEntry
+  onSaved?: () => void
+}) {
+  const [state, formAction] = useActionState(updateRoutingStepDates, initialState)
+  useActionToast(state, onSaved)
+  const [showRevision, setShowRevision] = useState(false)
+  const today = new Date().toISOString().slice(0, 10)
+  const picListId = useId()
+
+  return (
+    <div className="grid gap-3">
+      <form action={formAction} className="grid gap-3">
+        <Feedback state={state} />
+        <input type="hidden" name="routing_id" value={routingId} />
+        <input type="hidden" name="step_id" value={stepId} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Tanggal mulai" htmlFor="rd_started" required>
+            <Input
+              id="rd_started"
+              name="started_at"
+              type="date"
+              defaultValue={entry.started_at?.slice(0, 10) ?? today}
+              required
+            />
+          </Field>
+          <Field label="Tanggal selesai" htmlFor="rd_completed">
+            <Input
+              id="rd_completed"
+              name="completed_at"
+              type="date"
+              defaultValue={entry.completed_at?.slice(0, 10) ?? ''}
+            />
+          </Field>
+        </div>
+
+        <Field label="PIC Pertamina" htmlFor="rd_pic">
+          <Input id="rd_pic" name="pic_name" list={picListId} defaultValue={entry.pic_name ?? ''} autoComplete="off" />
+          <datalist id={picListId}>
+            {PIC_PERTAMINA_SUGGESTIONS.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </Field>
+
+        <Field label="Catatan" htmlFor="rd_note">
+          <Input id="rd_note" name="note" defaultValue={entry.note ?? ''} placeholder="Hasil pemeriksaan…" />
+        </Field>
+
+        <div>
+          <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} />
+        </div>
+      </form>
+
+      {!showRevision ? (
+        <button
+          type="button"
+          onClick={() => setShowRevision(true)}
+          className="text-left text-xs font-bold text-warning hover:underline"
+        >
+          + Catat revisi
+        </button>
+      ) : (
+        <RoutingRevisionNoteForm routingId={routingId} stepId={stepId} onSaved={() => setShowRevision(false)} />
+      )}
+    </div>
+  )
+}
+
+/** A revision round logged against the current step — never blocks or moves
+ *  it, just records what needs fixing and when it comes back. */
+export function RoutingRevisionNoteForm({
+  routingId,
+  stepId,
+  onSaved,
+}: {
+  routingId: string
+  stepId: string
+  onSaved?: () => void
+}) {
+  const [state, formAction] = useActionState(addRoutingRevision, initialState)
+  useActionToast(state, onSaved)
+  const today = new Date().toISOString().slice(0, 10)
+
+  return (
+    <form action={formAction} className="grid gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
+      <Feedback state={state} />
+      <input type="hidden" name="routing_id" value={routingId} />
+      <input type="hidden" name="step_id" value={stepId} />
+      <Field label="Catatan revisi" htmlFor="rv_note" required>
+        <Input id="rv_note" name="note" required placeholder="Yang perlu diperbaiki…" />
+      </Field>
+      <Field label="Disubmit ulang tanggal" htmlFor="rv_resubmit" required>
+        <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />
+      </Field>
+      <div>
+        <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} />
+      </div>
+    </form>
   )
 }
 

@@ -191,6 +191,7 @@ export function DesignTable({
         picName={picName}
         pics={pics}
         mayEdit={mayEdit}
+        spkId={openDesign?.spk_id}
       />
     </>
   )

@@ -63,7 +63,7 @@ export function DesignTabCards({
               key: stage,
               label: stage,
               state: now ? 'current' : done ? 'done' : 'pending',
-              badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? design.current_stage : done ? 'Selesai' : 'Belum'),
+              badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? design.current_stage : undefined),
               sub:
                 stageRevisions.length > 0 ? (
                   <ul className="grid gap-1">

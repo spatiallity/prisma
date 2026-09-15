@@ -78,6 +78,25 @@ export const PHASE_TERMINAL_STAGE: Record<DesignPhase, DesignStage> = {
   finalisasi: 'Acc PIC Pertamina',
 }
 
+/** The stage(s) Lanjut may move to from a given stage — exactly one for
+ *  almost every stage, so the review form can default to it without asking.
+ *  The two exceptions: Review Desain Awal either passes (→ Stake Out) or
+ *  needs fixing (→ Revisi Desain Awal), and Revisi Desain Awal always loops
+ *  back to Review for another look. A terminal stage has none. */
+export const DESIGN_NEXT_STAGES: Record<DesignStage, DesignStage[]> = {
+  'Pembuatan Desain Awal': ['Review Desain Awal'],
+  'Review Desain Awal': ['Pembuatan Peta Inventaris dan Stake Out', 'Revisi Desain Awal'],
+  'Revisi Desain Awal': ['Review Desain Awal'],
+  'Pembuatan Peta Inventaris dan Stake Out': ['Finalisasi'],
+  Finalisasi: ['Finish'],
+  Finish: [],
+  'Pembuatan Finalisasi Desain': ['Review Internal'],
+  'Review Internal': ['Sinkronisasi Hasil Finalisasi'],
+  'Sinkronisasi Hasil Finalisasi': ['Review PIC Pertamina'],
+  'Review PIC Pertamina': ['Acc PIC Pertamina'],
+  'Acc PIC Pertamina': [],
+}
+
 /** A record with no revisions yet — auto-opened and waiting for someone to
  *  mark it started (see startDesign). */
 export function isDraft(revisionCount: number) {

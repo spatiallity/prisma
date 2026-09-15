@@ -89,7 +89,7 @@ export default async function PadPage() {
                     {s.opname_marked_at ? (
                       formatDate(s.opname_marked_at)
                     ) : (
-                      <Badge tone="neutral">Belum</Badge>
+                      <Badge tone="neutral">Draft</Badge>
                     )}
                   </Td>
                   <Td className="tnum text-right text-xs text-muted-foreground">
@@ -99,7 +99,7 @@ export default async function PadPage() {
                     {s.pad_marked_at ? (
                       formatDate(s.pad_marked_at)
                     ) : (
-                      <Badge tone="neutral">Belum</Badge>
+                      <Badge tone="neutral">Draft</Badge>
                     )}
                   </Td>
                   <Td className="tnum text-right text-xs text-muted-foreground">

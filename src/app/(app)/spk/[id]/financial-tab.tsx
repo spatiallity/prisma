@@ -54,7 +54,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       key: 'opname',
       label: 'Opname',
       state: opnameDone ? 'done' : 'current',
-      badge: chainBadge(opnameDone ? 'done' : 'current', opnameDone ? 'Sudah' : 'Belum'),
+      badge: chainBadge(opnameDone ? 'done' : 'current'),
       sub: opnameDone ? (
         <>
           {formatDate(spk!.opname_marked_at)}
@@ -78,7 +78,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       key: 'pad',
       label: 'PAD',
       state: padDone ? 'done' : opnameDone ? 'current' : 'pending',
-      badge: chainBadge(padDone ? 'done' : opnameDone ? 'current' : 'pending', padDone ? 'Sudah' : 'Belum'),
+      badge: chainBadge(padDone ? 'done' : opnameDone ? 'current' : 'pending'),
       sub: padDone ? (
         <>
           {formatDate(spk!.pad_marked_at)}
@@ -105,7 +105,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       key: 'invoice',
       label: 'Invoice',
       state: hasInvoice ? 'done' : padDone ? 'current' : 'pending',
-      badge: chainBadge(hasInvoice ? 'done' : padDone ? 'current' : 'pending', hasInvoice ? 'Sudah' : 'Belum'),
+      badge: chainBadge(hasInvoice ? 'done' : padDone ? 'current' : 'pending'),
       sub: (
         <div className="mt-1 grid gap-2">
           {(invoices ?? []).map((inv) => (

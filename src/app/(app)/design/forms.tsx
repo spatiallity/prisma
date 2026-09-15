@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
-import { PHASE_STAGES } from '@/lib/design'
+import { DESIGN_NEXT_STAGES, PHASE_STAGES } from '@/lib/design'
 import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import {
   addDesignRevision,
@@ -365,6 +365,102 @@ export function StageReviewForm({
         </form>
       )}
     </div>
+  )
+}
+
+/**
+ * Section 21 — the popup version of stage review: fill Tanggal selesai and
+ * hit Lanjut. The target stage defaults to the one true next stage (see
+ * DESIGN_NEXT_STAGES) so there's no picker to fill in for the common case;
+ * Review Desain Awal is the one stage with a real fork (pass or revisi), and
+ * "Pilih tahap lain" stays tucked away for the rare manual correction.
+ */
+export function StageAdvanceForm({
+  designId,
+  phase,
+  currentStage,
+  pics,
+  defaultPicPertamina,
+}: {
+  designId: string
+  phase: DesignPhase
+  currentStage: DesignStage
+  pics: PicOption[]
+  defaultPicPertamina: string | null
+}) {
+  const [advanceState, advanceAction] = useActionState(advanceStage, initialState)
+  useActionToast(advanceState)
+  const today = new Date().toISOString().slice(0, 10)
+  const nextOptions = DESIGN_NEXT_STAGES[currentStage]
+  const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
+  const [showAll, setShowAll] = useState(false)
+
+  if (nextOptions.length === 0) return null
+
+  const allOptions = PHASE_STAGES[phase].filter((stage) => stage !== currentStage)
+
+  return (
+    <form action={advanceAction} className="grid gap-3">
+      <Feedback state={advanceState} />
+      <input type="hidden" name="design_id" value={designId} />
+      <input type="hidden" name="stage" value={target} />
+
+      <Field label="Tanggal selesai" htmlFor="adv_date" required>
+        <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
+      </Field>
+
+      {nextOptions.length > 1 ? (
+        <Field label="Hasil review" htmlFor="adv_target">
+          <Select id="adv_target" value={target} onChange={(e) => setTarget(e.target.value)}>
+            {nextOptions.map((stage) => (
+              <option key={stage} value={stage}>
+                {stage === 'Revisi Desain Awal' ? 'Perlu revisi' : `Lanjut — ${stage}`}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Lanjut ke <strong className="text-slate-900">{target}</strong>
+        </p>
+      )}
+
+      <PicField label="PIC tahap ini" pics={pics} placeholder="Sama seperti sebelumnya" />
+
+      <PicPertaminaField
+        label="PIC Pertamina"
+        defaultValue={defaultPicPertamina ?? ''}
+        placeholder="Sama seperti sebelumnya"
+      />
+
+      <Field label="Catatan" htmlFor="adv_notes">
+        <Input id="adv_notes" name="notes" placeholder="Hasil review…" />
+      </Field>
+
+      {!showAll ? (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="text-left text-xs font-bold text-primary hover:underline"
+        >
+          Pilih tahap lain…
+        </button>
+      ) : (
+        <Field label="Pindah ke tahap lain" htmlFor="adv_other">
+          <Select id="adv_other" value={target} onChange={(e) => setTarget(e.target.value)}>
+            {allOptions.map((stage) => (
+              <option key={stage} value={stage}>
+                {stage}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+
+      <div>
+        <Submit label="Selesai &amp; lanjutkan" icon={<ArrowRight size={16} aria-hidden />} />
+      </div>
+    </form>
   )
 }
 

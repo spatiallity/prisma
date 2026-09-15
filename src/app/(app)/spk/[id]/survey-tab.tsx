@@ -28,7 +28,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       key: 'terrain',
       label: 'Survei Terestris',
       state: surveyDone ? 'done' : 'current',
-      badge: chainBadge(surveyDone ? 'done' : 'current', surveyDone ? 'Selesai' : 'On Going'),
+      badge: chainBadge(surveyDone ? 'done' : 'current'),
       sub: surveyDone ? (
         <>
           {formatDateTime(spk!.terrain_survey_completed_at)}

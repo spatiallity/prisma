@@ -55,7 +55,7 @@ export function RoutingTable({
       className: 'text-muted-foreground',
       sortAccessor: (row) => currentByDoc[row.id]?.step_name ?? null,
       render: (row) =>
-        currentByDoc[row.id]?.step_name ?? (row.status === 'Completed' ? 'Selesai' : '—'),
+        currentByDoc[row.id]?.step_name ?? (row.status === 'Completed' ? 'Done' : '—'),
     },
     {
       key: 'pic',

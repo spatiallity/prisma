@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
+import { AccordionChain, type AccordionStep } from '@/components/ui/step-chain'
 import { formatDateTime } from '@/lib/utils'
 import { PHASE_STAGES, STAGE_ORDER } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
-import { StageReviewForm, StartDesignForm, type PicOption } from './forms'
+import { StageAdvanceForm, StartDesignForm, EditRevisionEntryButton, type PicOption } from './forms'
 
 type Revision = {
   id: string
@@ -25,7 +27,10 @@ type DesignLite = {
 }
 
 /** The chain for one design, plus its review form — a popup instead of a
- *  separate page, matching the routing document popup. */
+ *  separate page, matching the routing document popup. Each stage is its own
+ *  accordion row instead of one form for "the current stage" plus a
+ *  Lanjut/Revisi picker: expand a row to fill it in, the next one unlocks
+ *  once this one has a Tanggal selesai. */
 export function DesignDetailModal({
   open,
   onOpenChange,
@@ -35,6 +40,7 @@ export function DesignDetailModal({
   picName,
   pics,
   mayEdit,
+  spkId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -44,7 +50,20 @@ export function DesignDetailModal({
   picName: Record<string, string>
   pics: PicOption[]
   mayEdit: boolean
+  /** Shows a "Buka Detail SPK" link when set — omitted where the modal is
+   *  already opened from inside that SPK's own page. */
+  spkId?: string
 }) {
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const lastDesignId = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (design && design.id !== lastDesignId.current) {
+      lastDesignId.current = design.id
+      setOpenKey(design.current_stage)
+    }
+  }, [design])
+
   if (!design) return null
 
   const isDraft = revisions.length === 0
@@ -53,17 +72,20 @@ export function DesignDetailModal({
   const currentEntry = revisions.find((r) => !r.completed_at) ?? null
   const stages = PHASE_STAGES[design.phase]
 
-  const chainSteps: ChainStep[] = stages.map((stage) => {
+  const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
+
+  const accordionSteps: AccordionStep[] = stages.map((stage) => {
     const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
     const now = stage === design.current_stage
     const state = now ? 'current' : done ? 'done' : 'pending'
     const stageRevisions = revisions.filter((r) => r.stage === stage)
+
     return {
       key: stage,
       label: stage,
       state,
-      badge: chainBadge(state, now ? 'Berjalan' : done ? 'Selesai' : 'Belum'),
-      sub:
+      locked: !now && !done,
+      summary:
         stageRevisions.length > 0 ? (
           <ul className="grid gap-1">
             {stageRevisions.map((revision) => (
@@ -77,38 +99,49 @@ export function DesignDetailModal({
               </li>
             ))}
           </ul>
+        ) : now ? (
+          'Belum dimulai.'
+        ) : undefined,
+      content:
+        mayEdit && now ? (
+          isDraft ? (
+            <StartDesignForm
+              designId={design.id}
+              phase={design.phase}
+              currentStage={design.current_stage}
+              pics={pics}
+            />
+          ) : (
+            <div className="grid gap-3">
+              {currentEntry && (
+                <div className="flex justify-end">
+                  <EditRevisionEntryButton designId={design.id} pics={pics} entry={currentEntry} />
+                </div>
+              )}
+              <StageAdvanceForm
+                designId={design.id}
+                phase={design.phase}
+                currentStage={design.current_stage}
+                pics={pics}
+                defaultPicPertamina={currentEntry?.pic_pertamina ?? null}
+              />
+            </div>
+          )
         ) : undefined,
     }
   })
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} title={title} size="lg">
-      <div className="grid gap-5">
-        <StepChain steps={chainSteps} />
-        {mayEdit && (
-          <div className="border-t border-slate-100 pt-4">
-            <div className="mb-2 text-sm font-bold text-slate-900">
-              {isDraft ? 'Mulai pengerjaan' : `Review ${design.current_stage}`}
-            </div>
-            {isDraft ? (
-              <StartDesignForm
-                designId={design.id}
-                phase={design.phase}
-                currentStage={design.current_stage}
-                pics={pics}
-              />
-            ) : (
-              <StageReviewForm
-                designId={design.id}
-                entryId={currentEntry?.id ?? null}
-                phase={design.phase}
-                currentStage={design.current_stage}
-                pics={pics}
-                defaultPicPertamina={currentEntry?.pic_pertamina ?? null}
-              />
-            )}
+      <div className="grid gap-4">
+        {spkId && (
+          <div className="flex justify-end">
+            <Link href={`/spk/${spkId}`} className="text-sm font-bold text-primary hover:underline">
+              Buka Detail SPK
+            </Link>
           </div>
         )}
+        <AccordionChain steps={accordionSteps} openKey={openKey} onToggle={toggle} />
       </div>
     </Modal>
   )

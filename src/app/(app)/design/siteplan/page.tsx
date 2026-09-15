@@ -8,16 +8,22 @@ import { can } from '@/lib/auth/permissions'
 import { AddDesignButton } from '../forms'
 import { DesignTable } from '../design-table'
 import { loadDesignQueue } from '../queue-data'
+import { StageFilterChips } from '../stage-filter'
 
 export const metadata: Metadata = { title: 'Desain Siteplan' }
 
-export default async function DesignSiteplanPage() {
+export default async function DesignSiteplanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string }>
+}) {
+  const { stage } = await searchParams
   const user = await requirePermission('design', 'view')
   const mayEdit = can(user.permissions, 'design', 'edit')
   const supabase = await createClient()
 
   const { designs, error, spkById, picName, currentByDesign, revisionsByDesign, openSpks, pics } =
-    await loadDesignQueue(supabase, 'siteplan')
+    await loadDesignQueue(supabase, 'siteplan', stage)
 
   return (
     <>
@@ -32,6 +38,8 @@ export default async function DesignSiteplanPage() {
           )
         }
       />
+
+      <StageFilterChips phase="siteplan" basePath="/design/siteplan" active={stage} />
 
       {error && (
         <Alert tone="danger" className="mb-4" title="Gagal memuat data">

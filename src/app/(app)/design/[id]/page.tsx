@@ -239,7 +239,7 @@ export default async function DesignDetailPage({
                 key: stage,
                 label: stage,
                 state,
-                badge: chainBadge(state, now ? 'Berjalan' : done ? 'Selesai' : 'Belum'),
+                badge: chainBadge(state),
               }
             })}
           />

@@ -134,7 +134,7 @@ export default async function RoutingDetailPage({
               Posisi sekarang
             </div>
             <div className="mt-1 truncate text-lg font-black text-slate-900">
-              {current?.step_name ?? 'Selesai'}
+              {current?.step_name ?? 'Done'}
             </div>
           </CardContent>
         </Card>
