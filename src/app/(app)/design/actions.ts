@@ -390,12 +390,10 @@ export async function advanceStage(
   if (current?.started_at && new Date(now) < new Date(current.started_at)) {
     return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
   }
-  // A blank PIC field carries the previous stage's PIC forward, matching the
-  // "sama seperti sebelumnya" placeholder — only a typed name changes it.
+  // Drafter is per-stage-entry, not carried forward — a blank field means no
+  // drafter recorded for this entry, not "same as before".
   const typedPicName = text(formData, 'pic_name')
-  const picId = typedPicName
-    ? await resolvePicId(supabase, typedPicName, user.id)
-    : (current?.pic_id ?? null)
+  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
 
   if (current && !current.completed_at) {
     const { error } = await supabase
@@ -636,14 +634,9 @@ export async function updateRevisionEntry(
   if (!entryId) return { error: 'Entri tidak dikenali.' }
 
   const supabase = await createClient()
-  const { data: entry } = await supabase
-    .from('design_revisions')
-    .select('pic_id')
-    .eq('id', entryId)
-    .maybeSingle()
 
   const typedPicName = text(formData, 'pic_name')
-  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : (entry?.pic_id ?? null)
+  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
 
   const { error } = await supabase
     .from('design_revisions')
