@@ -1,34 +1,9 @@
 import type { Metadata } from 'next'
-import { FolderKanban, Map, Percent, Wallet } from 'lucide-react'
-import { BRAND, BRAND_LETTERS } from '@/lib/brand'
+import { BRAND } from '@/lib/brand'
 import { BrandLogo } from '@/components/brand-logo'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = { title: 'Masuk' }
-
-/** Section 1 — the four things the system replaces the spreadsheets with. */
-const FEATURES = [
-  {
-    icon: FolderKanban,
-    label: 'SPK sebagai Pusat Data',
-    desc: 'Setiap progress, desain, routing, dan angka financial menempel pada satu SPK.',
-  },
-  {
-    icon: Percent,
-    label: 'Progress Otomatis',
-    desc: 'Bobot aktivitas dihitung sistem — tidak ada lagi persen yang diketik manual.',
-  },
-  {
-    icon: Map,
-    label: 'Monitoring Lapangan',
-    desc: 'Daily Plan dan Daily Progress per tim vendor, lengkap dengan produktivitas.',
-  },
-  {
-    icon: Wallet,
-    label: 'RAB Anggaran vs Realisasi',
-    desc: 'UMK, SPPD, PPBJ, Gaji PTT Project, dan MCU menempel ke satu Chart of Accounts.',
-  },
-]
 
 export default async function LoginPage({
   searchParams,
@@ -60,61 +35,24 @@ export default async function LoginPage({
           style={{ background: 'radial-gradient(circle, white, transparent)' }}
         />
 
-        <div className="relative z-10 flex h-full flex-col p-12">
-          <div className="mb-8">
-            <div className="mb-3 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-              {BRAND.owner}
-            </div>
-            <h1 className="sr-only">{BRAND.name}</h1>
+        <div className="relative z-10 flex h-full flex-col justify-between p-12">
+          <div className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+            {BRAND.owner}
+          </div>
 
-            {/* The acronym, spelled out. */}
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-              {BRAND_LETTERS.map(({ letter, word }) => (
-                <div key={letter} className="flex items-baseline gap-1.5">
-                  <span
-                    className="text-lg font-black"
-                    style={{ color: '#13B2AA' }}
-                    aria-hidden
-                  >
-                    {letter}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-300">
-                    {word}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-300">
-              Sistem kontrol project {BRAND.project} — {BRAND.client}. Satu tempat
-              untuk pekerjaan lapangan, desain, routing dokumen, dan kondisi
-              financial setiap SPK.
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <h1
+              className="text-5xl font-black tracking-tight text-white"
+              style={{ letterSpacing: '0.02em' }}
+            >
+              {BRAND.name}
+            </h1>
+            <p className="max-w-xs text-sm leading-relaxed text-slate-300">
+              Sistem kontrol project {BRAND.project} — {BRAND.client}.
             </p>
           </div>
 
-          <div className="flex flex-1 flex-col gap-3">
-            {FEATURES.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                  style={{
-                    background: 'rgba(19, 178, 170, 0.15)',
-                    border: '1px solid rgba(19, 178, 170, 0.3)',
-                  }}
-                >
-                  <Icon size={16} style={{ color: '#13B2AA' }} aria-hidden />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-white">{label}</div>
-                  <div className="mt-0.5 text-xs leading-relaxed text-slate-400">
-                    {desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 border-t border-white/10 pt-4">
+          <div className="border-t border-white/10 pt-4">
             <p className="text-[11px] text-slate-500">
               © {BRAND.year} {BRAND.owner} · {BRAND.project}
             </p>
