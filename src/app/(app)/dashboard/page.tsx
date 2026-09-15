@@ -135,7 +135,7 @@ export default async function DashboardPage() {
     .reduce((sum, s) => sum + Number(s.pad_value ?? 0), 0)
   const invoiceTotal = (invoicedSteps ?? []).reduce((sum, h) => sum + Number(h.invoice_value ?? 0), 0)
   const expenseTotal = rabTotals.realisasi
-  const labaRugi = opnameTotal - expenseTotal
+  const labaRugi = nilaiSpkTotal - expenseTotal
 
   // Section 8.3 — one funnel stage per SPK: still out in the field (no
   // Desain Siteplan opened yet), in Design (an Active design not yet
@@ -228,11 +228,11 @@ export default async function DashboardPage() {
     accent: 'primary' | 'info' | 'navy' | 'gold' | 'orange'
   }[] = [
     { label: 'Total SPK', value: kpi?.total_spk ?? 0, href: '/spk', icon: FolderKanban, accent: 'primary' },
-    { label: 'Sedang Berjalan', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
-    { label: 'Di Lapangan', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
-    { label: 'Masuk Desain', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
-    { label: 'Proses Invoicing', value: routingOnGoingCount, href: '/routing', icon: Route, accent: 'orange' },
-    { label: 'Selesai', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
+    { label: 'On Going', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
+    { label: 'Survei Terestris', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
+    { label: 'Design Siteplan', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
+    { label: 'Invoicing', value: routingOnGoingCount, href: '/routing', icon: Route, accent: 'orange' },
+    { label: 'Invoiced', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
   ]
 
   const ACCENT_CLASS: Record<(typeof tiles)[number]['accent'], string> = {
@@ -248,45 +248,84 @@ export default async function DashboardPage() {
       <PageHeader title={`Selamat datang, ${user.fullName.split(' ')[0]}`} />
 
       {seeFinance ? (
-        <Card className="mb-5 overflow-hidden rounded-2xl">
-          <CardHeader>
-            <div>
-              <CardTitle>Nilai SPK</CardTitle>
-              <CardDescription>Dibaca live dari SPK, Desain, Routing, dan RAB — bukan diinput manual</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="grid content-start gap-4">
-            <div>
-              <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
-              <div className="tnum mt-1 text-4xl font-black text-slate-900">
-                {formatRupiah(nilaiSpkTotal)}
+        <div className="mb-5 grid gap-5 lg:grid-cols-2">
+          <Card className="overflow-hidden rounded-2xl">
+            <CardHeader>
+              <div>
+                <CardTitle>Nilai SPK</CardTitle>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                { label: 'Opname', value: opnameTotal, tone: 'text-info' },
-                { label: 'PAD', value: padTotal, tone: 'text-warning' },
-                { label: 'Invoice', value: invoiceTotal, tone: 'text-success' },
-                { label: 'Total Expense', value: expenseTotal, tone: 'text-danger' },
-                {
-                  label: 'Posisi Laba Rugi',
-                  value: labaRugi,
-                  tone: labaRugi < 0 ? 'text-danger' : 'text-success',
-                },
-              ].map((m) => (
-                <div key={m.label}>
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase">{m.label}</div>
-                  <div className={cn('tnum mt-0.5 text-base font-black', m.tone)}>
-                    {formatRupiah(m.value)}
-                  </div>
+            </CardHeader>
+            <CardContent className="grid content-start gap-4">
+              <div>
+                <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
+                <div className="tnum mt-1 text-4xl font-black text-slate-900">
+                  {formatRupiah(nilaiSpkTotal)}
                 </div>
-              ))}
-            </div>
-            <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
-              Rincian per SPK
-            </Link>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {[
+                  { label: 'Opname', value: opnameTotal, tone: 'text-info' },
+                  { label: 'PAD', value: padTotal, tone: 'text-warning' },
+                  { label: 'Invoice', value: invoiceTotal, tone: 'text-success' },
+                  { label: 'Total Expense', value: expenseTotal, tone: 'text-danger' },
+                  {
+                    label: 'Posisi Laba Rugi',
+                    value: labaRugi,
+                    tone: labaRugi < 0 ? 'text-danger' : 'text-success',
+                  },
+                ].map((m) => (
+                  <div key={m.label}>
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase">{m.label}</div>
+                    <div className={cn('tnum mt-0.5 text-base font-black', m.tone)}>
+                      {formatRupiah(m.value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
+                Rincian per SPK
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden rounded-2xl">
+            <CardHeader>
+              <div>
+                <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
+                <CardDescription>{rabLeaf.length} kode akun</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
+              <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
+              <div className="grid gap-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Anggaran</span>
+                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                    {formatRupiah(rabTotals.anggaran)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Realisasi</span>
+                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                    {formatRupiah(rabTotals.realisasi)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Terpakai</span>
+                  <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                    {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                  </Badge>
+                </div>
+                <Link
+                  href="/financial/rab"
+                  className="mt-1 text-xs font-bold text-primary hover:underline"
+                >
+                  Rincian per kode akun
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <Card className="mb-5 overflow-hidden rounded-2xl">
           <CardContent className="p-5">
@@ -496,67 +535,22 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {seeFinance && (
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          {topCategories.length > 0 && (
-            <Card className="overflow-hidden rounded-2xl">
-              <CardHeader>
-                <div>
-                  <CardTitle>Pengeluaran {formatMonthLabel(currentBulan)}</CardTitle>
-                  <CardDescription>
-                    Total{' '}
-                    <span className="tnum font-bold text-slate-900">
-                      {formatRupiah(monthTotal)}
-                    </span>{' '}
-                    · top {topCategories.length} kategori
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <TopCategoriesChart data={topCategories} />
-            </Card>
-          )}
-
-          <Card
-            className={cn(
-              'overflow-hidden rounded-2xl',
-              topCategories.length === 0 && 'lg:col-span-2',
-            )}
-          >
+      {seeFinance && topCategories.length > 0 && (
+        <div className="mt-5">
+          <Card className="overflow-hidden rounded-2xl">
             <CardHeader>
               <div>
-                <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
-                <CardDescription>{rabLeaf.length} kode akun</CardDescription>
+                <CardTitle>Pengeluaran {formatMonthLabel(currentBulan)}</CardTitle>
+                <CardDescription>
+                  Total{' '}
+                  <span className="tnum font-bold text-slate-900">
+                    {formatRupiah(monthTotal)}
+                  </span>{' '}
+                  · top {topCategories.length} kategori
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
-              <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-              <div className="grid gap-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Anggaran</span>
-                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                    {formatRupiah(rabTotals.anggaran)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Realisasi</span>
-                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                    {formatRupiah(rabTotals.realisasi)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Terpakai</span>
-                  <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
-                    {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
-                  </Badge>
-                </div>
-                <Link
-                  href="/financial/rab"
-                  className="mt-1 text-xs font-bold text-primary hover:underline"
-                >
-                  Rincian per kode akun
-                </Link>
-              </div>
-            </CardContent>
+            <TopCategoriesChart data={topCategories} />
           </Card>
         </div>
       )}

@@ -119,7 +119,10 @@ const STAGE_BAR_COLOR = 'var(--color-info)'
 
 /** How many on-going designs sit at each stage of one phase, as horizontal
  *  bars in the phase's own fixed stage order (not sorted by count) — the
- *  order itself is the point, showing where the pipeline backs up. */
+ *  order itself is the point, showing where the pipeline backs up. Height
+ *  and the Y-axis width both scale with the data: a fixed size clipped or
+ *  overlapped the longer stage names ("Pembuatan Peta Inventaris dan Stake
+ *  Out", "Manager Engineering & Project"). */
 export function DesignStageChart({ data }: { data: { label: string; count: number }[] }) {
   const chartData = [...data].reverse()
   const total = data.reduce((sum, d) => sum + d.count, 0)
@@ -132,16 +135,21 @@ export function DesignStageChart({ data }: { data: { label: string; count: numbe
     )
   }
 
+  const longestLabel = Math.max(...chartData.map((d) => d.label.length))
+  const axisWidth = Math.min(Math.max(longestLabel * 6, 90), 220)
+  const height = Math.max(chartData.length * 34, 160)
+
   return (
-    <div className="h-52 px-2 pt-1 pb-1">
+    <div style={{ height }} className="px-2 pt-1 pb-1">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
           <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
           <YAxis
             type="category"
             dataKey="label"
-            width={132}
-            tick={{ fontSize: 11 }}
+            width={axisWidth}
+            interval={0}
+            tick={{ fontSize: 10 }}
             tickLine={false}
             axisLine={false}
           />
