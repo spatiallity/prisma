@@ -42,6 +42,12 @@ export function RowActions({
     function onClick(e: MouseEvent) {
       const target = e.target as Node
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      // A menu item (e.g. DeleteButton) can open its own dialog, portaled
+      // separately from menuRef — closing the menu on a click inside THAT
+      // dialog would unmount it (and its <form>) mid-click, cancelling the
+      // submit before the browser dispatches it ("Form submission canceled
+      // because the form is not connected").
+      if (target instanceof Element && target.closest('[role="dialog"]')) return
       setOpen(false)
     }
     // A dropdown anchored to a scrolled-past trigger is worse than none —
