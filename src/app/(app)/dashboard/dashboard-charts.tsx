@@ -14,60 +14,6 @@ import {
 } from 'recharts'
 import { formatRupiah, formatRupiahCompact } from '@/lib/utils'
 
-/** Nilai SPK → Opname → PAD → Invoice, as horizontal bars in that fixed
- *  order — never sorted by value, since the whole point is watching the
- *  drop-off from one milestone to the next. */
-export function ValueFunnelChart({ data }: { data: { label: string; value: number }[] }) {
-  const chartData = [...data].reverse()
-  const max = Math.max(...data.map((d) => d.value), 1)
-
-  return (
-    <div className="h-56 px-2 pt-1 pb-1">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
-          <XAxis type="number" domain={[0, max]} tickFormatter={(v) => formatRupiahCompact(v)} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis type="category" dataKey="label" width={72} tick={{ fontSize: 12, fontWeight: 700 }} tickLine={false} axisLine={false} />
-          <Tooltip
-            formatter={(value) => [formatRupiah(Number(value)), '']}
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            cursor={{ fill: 'var(--color-slate-50)' }}
-          />
-          <Bar dataKey="value" fill="var(--color-primary)" radius={[0, 6, 6, 0]} barSize={28} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
-
-/** Invoice value actually billed, per month — the one figure on this page
- *  that moves over time rather than sitting at a snapshot. */
-export function MonthlyInvoiceChart({ data }: { data: { label: string; value: number }[] }) {
-  if (data.every((d) => d.value === 0)) {
-    return (
-      <div className="flex h-56 items-center justify-center text-xs text-muted-foreground">
-        Belum ada invoice tercatat
-      </div>
-    )
-  }
-
-  return (
-    <div className="h-56 px-2 pt-2 pb-1">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-          <YAxis tickFormatter={(v) => formatRupiahCompact(v)} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={56} />
-          <Tooltip
-            formatter={(value) => [formatRupiah(Number(value)), 'Invoice']}
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            cursor={{ fill: 'var(--color-slate-50)' }}
-          />
-          <Bar dataKey="value" fill="var(--color-success)" radius={[4, 4, 0, 0]} barSize={28} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
-
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'var(--color-slate-400)',
   'On Going': 'var(--color-primary)',

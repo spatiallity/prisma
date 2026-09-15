@@ -17,34 +17,24 @@ import { SpkCell } from '@/components/ui/spk-cell'
 import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatDateTime, formatRupiah, formatRupiahCompact } from '@/lib/utils'
+import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
 import { daysLeft, spkStatusLabel } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { PHASE_LABEL, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
 import type { SpkStatus, DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
-import {
-  RabDonutChart,
-  SpkStatusChart,
-  TopCategoriesChart,
-  DesignStageChart,
-  ValueFunnelChart,
-  MonthlyInvoiceChart,
-} from './dashboard-charts'
+import { RabDonutChart, SpkStatusChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
-const MONTH_LABEL = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-]
-
 /**
  * Section 8 — rebuilt around one question first: what is the SPK book
- * actually worth, and how much of that has turned into Opname, PAD, and
- * Invoice so far. Everything else (field/design/routing funnel, pipeline
- * breakdowns, bottleneck) supports that headline. Every figure is read live
- * off spks/designs/spk_routing/routing_history; none of it is entered here.
+ * actually worth, how much of that has turned into Opname/PAD/Invoice, and
+ * where that leaves the project against what's been spent. Everything else
+ * (field/design/routing pipeline, bottleneck) supports that headline. Every
+ * figure is read live off spks/designs/spk_routing/routing_history/finance;
+ * none of it is entered here.
  */
 export default async function DashboardPage() {
   const user = await requireUser()
@@ -93,7 +83,7 @@ export default async function DashboardPage() {
     supabase.from('v_routing_lead_time').select('*'),
     supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
     seeFinance
-      ? supabase.from('routing_history').select('invoice_value, invoice_date').eq('step_name', 'Invoiced')
+      ? supabase.from('routing_history').select('invoice_value').eq('step_name', 'Invoiced')
       : Promise.resolve({ data: [] }),
   ])
 
@@ -116,11 +106,26 @@ export default async function DashboardPage() {
     (status) => ({ status, label: spkStatusLabel(status), count: statusCounts.get(status) ?? 0 }),
   )
 
-  // Section 8.1 — the headline: money, by milestone reached. Contract value
+  // Section 8.1 — total realized spend across every RAB account, all-time
+  // (not just this month) — computed here, ahead of the money headline
+  // below, since Laba Rugi needs it.
+  const rabLeaf = filterLeafAccounts(akunSummary ?? [])
+  const rabTotals = rabLeaf.reduce(
+    (acc, a) => ({
+      anggaran: acc.anggaran + Number(a.anggaran_rp ?? 0),
+      realisasi: acc.realisasi + Number(a.realisasi_total),
+    }),
+    { anggaran: 0, realisasi: 0 },
+  )
+  const rabPercent =
+    rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
+
+  // Section 8.2 — the headline: money, by milestone reached. Contract value
   // on every SPK, Opname/PAD value only where actually marked, Invoice value
   // read straight off the routing document's own Invoiced step (same source
   // Financial Report uses) rather than the deprecated standalone invoices
-  // table. Outstanding is simply what hasn't been invoiced yet.
+  // table. Laba Rugi is what Opname says the work is worth minus what's
+  // actually been spent getting there.
   const nilaiSpkTotal = (spkFunnel ?? []).reduce((sum, s) => sum + Number(s.contract_value ?? 0), 0)
   const opnameTotal = (spkFunnel ?? [])
     .filter((s) => s.opname_marked_at)
@@ -129,34 +134,10 @@ export default async function DashboardPage() {
     .filter((s) => s.pad_marked_at)
     .reduce((sum, s) => sum + Number(s.pad_value ?? 0), 0)
   const invoiceTotal = (invoicedSteps ?? []).reduce((sum, h) => sum + Number(h.invoice_value ?? 0), 0)
-  const outstandingTotal = Math.max(nilaiSpkTotal - invoiceTotal, 0)
+  const expenseTotal = rabTotals.realisasi
+  const labaRugi = opnameTotal - expenseTotal
 
-  const valueFunnelData = [
-    { label: 'Nilai SPK', value: nilaiSpkTotal },
-    { label: 'Opname', value: opnameTotal },
-    { label: 'PAD', value: padTotal },
-    { label: 'Invoice', value: invoiceTotal },
-  ]
-
-  // Invoice value by month, oldest to newest, capped to the most recent 8
-  // months that actually have one — the one figure here that moves over
-  // time instead of sitting at a snapshot.
-  const invoiceByMonth = new Map<string, number>()
-  for (const step of invoicedSteps ?? []) {
-    if (!step.invoice_date) continue
-    const d = new Date(step.invoice_date)
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
-    invoiceByMonth.set(key, (invoiceByMonth.get(key) ?? 0) + Number(step.invoice_value ?? 0))
-  }
-  const monthlyInvoiceData = [...invoiceByMonth.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .slice(-8)
-    .map(([key, value]) => {
-      const [y, m] = key.split('-')
-      return { label: `${MONTH_LABEL[Number(m) - 1]} '${y.slice(2)}`, value }
-    })
-
-  // Section 8.2 — one funnel stage per SPK: still out in the field (no
+  // Section 8.3 — one funnel stage per SPK: still out in the field (no
   // Desain Siteplan opened yet), in Design (an Active design not yet
   // approved), or in Routing/Invoicing (a document not yet Completed).
   // Deliberately not mutually exclusive across the three the way status
@@ -193,7 +174,7 @@ export default async function DashboardPage() {
     count: routingStepCounts.get(step.name) ?? 0,
   }))
 
-  // Section 8.3 — how many on-going designs sit at each stage, siteplan and
+  // Section 8.4 — how many on-going designs sit at each stage, siteplan and
   // finalisasi charted side by side (finalisasi only exists once siteplan is
   // Finish, so its counts are naturally the smaller, later half).
   const stageCounts = new Map<string, number>()
@@ -216,17 +197,6 @@ export default async function DashboardPage() {
       .map((stage) => ({ stage, label: stage, count: stageCounts.get(stage) ?? 0 })),
   }
 
-  const rabLeaf = filterLeafAccounts(akunSummary ?? [])
-  const rabTotals = rabLeaf.reduce(
-    (acc, a) => ({
-      anggaran: acc.anggaran + Number(a.anggaran_rp ?? 0),
-      realisasi: acc.realisasi + Number(a.realisasi_total),
-    }),
-    { anggaran: 0, realisasi: 0 },
-  )
-  const rabPercent =
-    rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
-
   // This month's spend, broken down by account — same kode_akun → uraian
   // lookup the RAB summary above already has, just resummed per bulan.
   const uraianByAkun = new Map((akunSummary ?? []).map((a) => [a.kode_akun, a.uraian]))
@@ -248,22 +218,21 @@ export default async function DashboardPage() {
   )
   const critical = ranked.filter((b) => b.severity === 'critical').length
 
-  // Section 8.4 — six SPK counts: overall book, then the three funnel
+  // Section 8.5 — six SPK counts: overall book, then the three funnel
   // stages (field/design/routing), not mutually exclusive with each other.
   const tiles: {
     label: string
     value: number
-    foot: string
     href: string
     icon: LucideIcon
     accent: 'primary' | 'info' | 'navy' | 'gold' | 'orange'
   }[] = [
-    { label: 'Total SPK', value: kpi?.total_spk ?? 0, foot: `${kpi?.spk_selesai ?? 0} selesai`, href: '/spk', icon: FolderKanban, accent: 'primary' },
-    { label: 'Sedang Berjalan', value: kpi?.spk_on_going ?? 0, foot: 'aktif dikerjakan', href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
-    { label: 'Di Lapangan', value: fieldOnGoingCount, foot: 'belum masuk desain', href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
-    { label: 'Masuk Desain', value: designOnGoingCount, foot: 'desain belum selesai', href: '/design', icon: PencilRuler, accent: 'navy' },
-    { label: 'Proses Invoicing', value: routingOnGoingCount, foot: 'routing belum selesai', href: '/routing', icon: Route, accent: 'orange' },
-    { label: 'Selesai', value: kpi?.spk_selesai ?? 0, foot: 'proyek tuntas', href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
+    { label: 'Total SPK', value: kpi?.total_spk ?? 0, href: '/spk', icon: FolderKanban, accent: 'primary' },
+    { label: 'Sedang Berjalan', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
+    { label: 'Di Lapangan', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
+    { label: 'Masuk Desain', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
+    { label: 'Proses Invoicing', value: routingOnGoingCount, href: '/routing', icon: Route, accent: 'orange' },
+    { label: 'Selesai', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
   ]
 
   const ACCENT_CLASS: Record<(typeof tiles)[number]['accent'], string> = {
@@ -283,43 +252,39 @@ export default async function DashboardPage() {
           <CardHeader>
             <div>
               <CardTitle>Nilai SPK</CardTitle>
-              <CardDescription>Dibaca live dari SPK, Desain, dan Routing — bukan diinput manual</CardDescription>
+              <CardDescription>Dibaca live dari SPK, Desain, Routing, dan RAB — bukan diinput manual</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-            <div className="grid content-start gap-4">
-              <div>
-                <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
-                <div
-                  className="tnum mt-1 text-4xl font-black text-slate-900"
-                  title={formatRupiah(nilaiSpkTotal)}
-                >
-                  {formatRupiahCompact(nilaiSpkTotal)}
-                </div>
+          <CardContent className="grid content-start gap-4">
+            <div>
+              <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
+              <div className="tnum mt-1 text-4xl font-black text-slate-900">
+                {formatRupiah(nilaiSpkTotal)}
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { label: 'Opname', value: opnameTotal, tone: 'text-info' },
-                  { label: 'PAD', value: padTotal, tone: 'text-warning' },
-                  { label: 'Invoice', value: invoiceTotal, tone: 'text-success' },
-                  { label: 'Outstanding', value: outstandingTotal, tone: 'text-danger' },
-                ].map((m) => (
-                  <div key={m.label}>
-                    <div className="text-[11px] font-bold text-muted-foreground uppercase">{m.label}</div>
-                    <div
-                      className={cn('tnum mt-0.5 truncate text-lg font-black', m.tone)}
-                      title={formatRupiah(m.value)}
-                    >
-                      {formatRupiahCompact(m.value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
-                Rincian per SPK
-              </Link>
             </div>
-            <ValueFunnelChart data={valueFunnelData} />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                { label: 'Opname', value: opnameTotal, tone: 'text-info' },
+                { label: 'PAD', value: padTotal, tone: 'text-warning' },
+                { label: 'Invoice', value: invoiceTotal, tone: 'text-success' },
+                { label: 'Total Expense', value: expenseTotal, tone: 'text-danger' },
+                {
+                  label: 'Posisi Laba Rugi',
+                  value: labaRugi,
+                  tone: labaRugi < 0 ? 'text-danger' : 'text-success',
+                },
+              ].map((m) => (
+                <div key={m.label}>
+                  <div className="text-[11px] font-bold text-muted-foreground uppercase">{m.label}</div>
+                  <div className={cn('tnum mt-0.5 text-base font-black', m.tone)}>
+                    {formatRupiah(m.value)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
+              Rincian per SPK
+            </Link>
           </CardContent>
         </Card>
       ) : (
@@ -355,26 +320,11 @@ export default async function DashboardPage() {
                 <div className="tnum mt-2 text-3xl font-black text-slate-900">
                   {tile.value}
                 </div>
-                <div className="mt-1 text-xs font-semibold text-muted-foreground">
-                  {tile.foot}
-                </div>
               </CardContent>
             </Card>
           </Link>
         ))}
       </div>
-
-      {seeFinance && monthlyInvoiceData.length > 0 && (
-        <Card className="mb-5 overflow-hidden rounded-2xl">
-          <CardHeader>
-            <div>
-              <CardTitle>Invoice per Bulan</CardTitle>
-              <CardDescription>Nilai invoice tercatat, {monthlyInvoiceData.length} bulan terakhir</CardDescription>
-            </div>
-          </CardHeader>
-          <MonthlyInvoiceChart data={monthlyInvoiceData} />
-        </Card>
-      )}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="grid content-start gap-5 lg:col-span-2">
@@ -555,11 +505,8 @@ export default async function DashboardPage() {
                   <CardTitle>Pengeluaran {formatMonthLabel(currentBulan)}</CardTitle>
                   <CardDescription>
                     Total{' '}
-                    <span
-                      className="tnum font-bold text-slate-900"
-                      title={formatRupiah(monthTotal)}
-                    >
-                      {formatRupiahCompact(monthTotal)}
+                    <span className="tnum font-bold text-slate-900">
+                      {formatRupiah(monthTotal)}
                     </span>{' '}
                     · top {topCategories.length} kategori
                   </CardDescription>
@@ -586,20 +533,14 @@ export default async function DashboardPage() {
               <div className="grid gap-2">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-sm text-muted-foreground">Anggaran</span>
-                  <span
-                    className="tnum truncate font-bold whitespace-nowrap text-slate-900"
-                    title={formatRupiah(rabTotals.anggaran)}
-                  >
-                    {formatRupiahCompact(rabTotals.anggaran)}
+                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                    {formatRupiah(rabTotals.anggaran)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-sm text-muted-foreground">Realisasi</span>
-                  <span
-                    className="tnum truncate font-bold whitespace-nowrap text-slate-900"
-                    title={formatRupiah(rabTotals.realisasi)}
-                  >
-                    {formatRupiahCompact(rabTotals.realisasi)}
+                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                    {formatRupiah(rabTotals.realisasi)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-3">
