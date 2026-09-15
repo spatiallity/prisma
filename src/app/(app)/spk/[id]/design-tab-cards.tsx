@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { DesignDetailModal } from '../../design/design-detail-modal'
 import { cn, formatDate } from '@/lib/utils'
-import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, daysInStage } from '@/lib/design'
+import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import type { PicOption } from '../../design/forms'
 
@@ -61,9 +61,9 @@ export function DesignTabCards({
             const stageRevisions = designRevisions.filter((r) => r.stage === stage)
             return {
               key: stage,
-              label: stage,
+              label: stageDisplayLabel(stage),
               state: now ? 'current' : done ? 'done' : 'pending',
-              badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? design.current_stage : undefined),
+              badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? stageDisplayLabel(design.current_stage) : undefined),
               sub:
                 stageRevisions.length > 0 ? (
                   <ul className="grid gap-1">
@@ -103,7 +103,7 @@ export function DesignTabCards({
                 {isDraft ? (
                   <EmptyState
                     title="Belum dimulai"
-                    description={`Menunggu tahap ${design.current_stage} dimulai.`}
+                    description={`Menunggu tahap ${stageDisplayLabel(design.current_stage)} dimulai.`}
                   />
                 ) : (
                   <>

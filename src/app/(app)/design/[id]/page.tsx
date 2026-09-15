@@ -165,7 +165,7 @@ export default async function DesignDetailPage({
               <CardTitle>Belum dimulai</CardTitle>
               <CardDescription>
                 {PHASE_LABEL[design.phase]} terbuka otomatis, menunggu tahap{' '}
-                {design.current_stage} dimulai.
+                {stageDisplayLabel(design.current_stage)} dimulai.
               </CardDescription>
             </div>
           </CardHeader>
@@ -211,7 +211,7 @@ export default async function DesignDetailPage({
               Posisi sekarang
             </div>
             <div className="mt-1 truncate text-lg font-black text-slate-900">
-              {design.current_stage}
+              {stageDisplayLabel(design.current_stage)}
             </div>
             <div className="text-xs text-muted-foreground">
               {currentRounds > 0 ? `Revisi ke-${currentRounds}` : 'Submission pertama'}
@@ -237,7 +237,7 @@ export default async function DesignDetailPage({
               const state = now ? 'current' : done ? 'done' : 'pending'
               return {
                 key: stage,
-                label: stage,
+                label: stageDisplayLabel(stage),
                 state,
                 badge: chainBadge(state),
               }
@@ -399,7 +399,7 @@ export default async function DesignDetailPage({
               <CardHeader>
                 <div>
                   <CardTitle>Review</CardTitle>
-                  <CardDescription>{design.current_stage}</CardDescription>
+                  <CardDescription>{stageDisplayLabel(design.current_stage)}</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>

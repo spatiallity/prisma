@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
 import { formatDate } from '@/lib/utils'
-import { PHASE_STAGES, STAGE_ORDER, daysBetween, daysInStage } from '@/lib/design'
+import { PHASE_STAGES, STAGE_ORDER, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
 
@@ -83,7 +83,7 @@ export function DesignDetailModal({
 
     return {
       key: stage,
-      label: stage,
+      label: stageDisplayLabel(stage),
       state,
       locked: !now && !done,
       summary:
