@@ -54,8 +54,15 @@ export function RowActions({
       setOpen(false)
     }
     // A dropdown anchored to a scrolled-past trigger is worse than none —
-    // close instead of drifting out of place.
+    // close instead of drifting out of place. But a menu item can have
+    // opened its own dialog (e.g. DeleteButton's confirm) — that dialog is
+    // portaled inside these very children, so closing the menu underneath
+    // it would unmount the dialog (and its form) out from under the user.
+    // Even an incidental scroll (the browser auto-scrolling a just-clicked
+    // element into view, a nested table's own horizontal scrollbar) must
+    // not kill a confirm dialog the user is mid-click on.
     function onScrollOrResize() {
+      if (document.querySelector('[role="dialog"]')) return
       setOpen(false)
     }
     document.addEventListener('click', onClick)
