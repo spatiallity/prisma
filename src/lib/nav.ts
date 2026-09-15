@@ -135,18 +135,18 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    // Contract → PAD → Invoice: the client-payment chain (SUCOFINDO's
-    // receivable side), separate from Financial's spending side. PAD is
-    // still just a mark on the SPK itself (Financial tab of Detail SPK),
-    // not a routed document — this is a read-only list of who's been
-    // marked. Payment was dropped from this chain. Financial Report lives
-    // here too now that the standalone Reports menu is gone.
+    // Contract/PAD/Invoice used to be a manually-tracked client-payment
+    // chain; that's now driven by the SPK itself (Nilai SPK), the design
+    // Opname stage, and the routing document's PAD/Invoiced steps, so these
+    // three standalone lists are hidden — routes, permissions and data are
+    // untouched, so re-adding is just uncommenting. Financial Report is the
+    // one surface left, reworked to read that same live data.
     label: 'Client Payment',
     icon: Receipt,
     items: [
-      { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
-      { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
-      { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
+      // { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
+      // { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
+      // { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
       { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },

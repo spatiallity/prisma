@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
-import { formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { PHASE_STAGES, STAGE_ORDER } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
@@ -91,8 +91,8 @@ export function DesignDetailModal({
           <ul className="grid gap-2">
             {stageRevisions.map((revision) => (
               <li key={revision.id}>
-                Revisi {revision.revision_no} · {formatDateTime(revision.started_at)}
-                {revision.completed_at && ` → ${formatDateTime(revision.completed_at)}`}
+                Revisi {revision.revision_no} · {formatDate(revision.started_at)}
+                {revision.completed_at && ` → ${formatDate(revision.completed_at)}`}
                 <br />
                 {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'Drafter belum ditentukan'}
                 {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
@@ -121,6 +121,7 @@ export function DesignDetailModal({
               entry={latestEntry}
               picName={picName}
               pics={pics}
+              onSaved={() => setOpenKey(null)}
             />
           ) : undefined
         ) : undefined,

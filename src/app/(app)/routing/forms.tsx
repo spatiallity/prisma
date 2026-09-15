@@ -35,14 +35,21 @@ function Submit({
   label,
   icon,
   variant = 'primary',
+  name,
+  value,
 }: {
   label: string
   icon?: React.ReactNode
   variant?: 'primary' | 'secondary'
+  /** Set both to make this button's own name=value pair distinguish which
+   *  of several submit buttons in one form was clicked (e.g. Lanjut vs
+   *  Masih Revisi both posting to the same action). */
+  name?: string
+  value?: string
 }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant={variant} disabled={pending}>
+    <Button type="submit" name={name} value={value} variant={variant} disabled={pending}>
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -142,11 +149,13 @@ export type RoutingStepEntry = {
 }
 
 /**
- * Section 23 — the popup version of step review: Tanggal mulai and Tanggal
- * selesai directly on the step, no Lanjut/Revisi picker up front. Leaving
- * Tanggal selesai blank keeps the step open; filling it closes it and, in
- * the accordion above, unlocks the next row. A revision note stays available
- * as a small secondary action rather than a mode that replaces this form.
+ * Section 23 — the popup version of step review. A step still open (not yet
+ * Completed) gets two plain outcomes instead of a mode picker or a separate
+ * revision sub-form: Lanjut ke Tahap Selanjutnya (the default — closes it,
+ * Tanggal selesai required) or Masih Revisi (stays open, status Returned,
+ * the same Catatan field says what needs fixing — required for this one).
+ * An already-Completed step just gets Simpan, correcting the fields in
+ * place without touching its status.
  */
 export function RoutingStepDateForm({
   routingId,
@@ -169,141 +178,94 @@ export function RoutingStepDateForm({
 }) {
   const [state, formAction] = useActionState(updateRoutingStepDates, initialState)
   useActionToast(state, onSaved)
-  const [showRevision, setShowRevision] = useState(false)
   const today = new Date().toISOString().slice(0, 10)
   const picListId = useId()
   const isInvoiced = stepName === 'Invoiced'
+  const isDone = entry.status === 'Completed'
 
-  return (
-    <div className="grid gap-3">
-      <form action={formAction} className="grid gap-3">
-        <Feedback state={state} />
-        <input type="hidden" name="routing_id" value={routingId} />
-        <input type="hidden" name="step_id" value={stepId} />
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tanggal mulai" htmlFor="rd_started" required>
-            <Input
-              id="rd_started"
-              name="started_at"
-              type="date"
-              defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
-              required
-            />
-          </Field>
-          <Field label="Tanggal selesai" htmlFor="rd_completed">
-            <Input
-              id="rd_completed"
-              name="completed_at"
-              type="date"
-              defaultValue={entry.completed_at?.slice(0, 10) ?? ''}
-            />
-          </Field>
-        </div>
-
-        <Field label="PIC Pertamina" htmlFor="rd_pic">
-          <Input id="rd_pic" name="pic_name" list={picListId} defaultValue={entry.pic_name ?? ''} autoComplete="off" />
-          <datalist id={picListId}>
-            {PIC_PERTAMINA_SUGGESTIONS.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        </Field>
-
-        <Field label="Catatan" htmlFor="rd_note">
-          <Textarea
-            id="rd_note"
-            name="note"
-            rows={3}
-            defaultValue={entry.note ?? ''}
-            placeholder={'Satu poin per baris, misalnya:\n- dokumen kurang lengkap\n- perlu tanda tangan ulang'}
-          />
-        </Field>
-
-        {isInvoiced && (
-          <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <Field label="Nomor invoice" htmlFor="rd_inv_number" required>
-              <Input
-                id="rd_inv_number"
-                name="invoice_number"
-                defaultValue={entry.invoice_number ?? ''}
-                placeholder="INV-2026-014"
-              />
-            </Field>
-            <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
-              <Input
-                id="rd_inv_value"
-                name="invoice_value"
-                inputMode="numeric"
-                defaultValue={entry.invoice_value ?? ''}
-              />
-            </Field>
-            <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
-              <Input
-                id="rd_inv_date"
-                name="invoice_date"
-                type="date"
-                defaultValue={entry.invoice_date ?? ''}
-              />
-            </Field>
-          </div>
-        )}
-
-        <div>
-          <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} />
-        </div>
-      </form>
-
-      {!showRevision ? (
-        <button
-          type="button"
-          onClick={() => setShowRevision(true)}
-          className="text-left text-xs font-bold text-warning hover:underline"
-        >
-          + Catat revisi
-        </button>
-      ) : (
-        <RoutingRevisionNoteForm routingId={routingId} stepId={stepId} onSaved={() => setShowRevision(false)} />
-      )}
+  const invoiceFields = isInvoiced && (
+    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+      <Field label="Nomor invoice" htmlFor="rd_inv_number" required>
+        <Input id="rd_inv_number" name="invoice_number" defaultValue={entry.invoice_number ?? ''} placeholder="INV-2026-014" />
+      </Field>
+      <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
+        <Input id="rd_inv_value" name="invoice_value" inputMode="numeric" defaultValue={entry.invoice_value ?? ''} />
+      </Field>
+      <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
+        <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? ''} />
+      </Field>
     </div>
   )
-}
-
-/** A revision round logged against the current step — never blocks or moves
- *  it, just records what needs fixing and when it comes back. */
-export function RoutingRevisionNoteForm({
-  routingId,
-  stepId,
-  onSaved,
-}: {
-  routingId: string
-  stepId: string
-  onSaved?: () => void
-}) {
-  const [state, formAction] = useActionState(addRoutingRevision, initialState)
-  useActionToast(state, onSaved)
-  const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <form action={formAction} className="grid gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3">
+    <form action={formAction} className="grid gap-3">
       <Feedback state={state} />
       <input type="hidden" name="routing_id" value={routingId} />
       <input type="hidden" name="step_id" value={stepId} />
-      <Field label="Catatan revisi" htmlFor="rv_note" required>
-        <Textarea
-          id="rv_note"
-          name="note"
-          rows={3}
+
+      <Field label="Tanggal mulai" htmlFor="rd_started" required>
+        <Input
+          id="rd_started"
+          name="started_at"
+          type="date"
+          defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
           required
-          placeholder={'Satu poin per baris, misalnya:\n- dokumen kurang lengkap'}
         />
       </Field>
-      <Field label="Disubmit ulang tanggal" htmlFor="rv_resubmit" required>
-        <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />
+
+      <Field label="PIC Pertamina" htmlFor="rd_pic">
+        <Input id="rd_pic" name="pic_name" list={picListId} defaultValue={entry.pic_name ?? ''} autoComplete="off" />
+        <datalist id={picListId}>
+          {PIC_PERTAMINA_SUGGESTIONS.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
       </Field>
-      <div>
-        <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} />
-      </div>
+
+      <Field label="Catatan" htmlFor="rd_note" required={!isDone}>
+        <Textarea
+          id="rd_note"
+          name="note"
+          rows={3}
+          defaultValue={entry.note ?? ''}
+          placeholder={
+            isDone
+              ? undefined
+              : 'Kalau masih revisi, tulis apa yang perlu diperbaiki. Satu poin per baris, misalnya:\n- dokumen kurang lengkap\n- perlu tanda tangan ulang'
+          }
+        />
+      </Field>
+
+      {isDone ? (
+        <>
+          <Field label="Tanggal selesai" htmlFor="rd_completed">
+            <Input id="rd_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? ''} />
+          </Field>
+          {invoiceFields}
+          <div>
+            <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid gap-3 border-t border-slate-200 pt-3">
+            <Field label="Tanggal selesai" htmlFor="rd_completed" required>
+              <Input id="rd_completed" name="completed_at" type="date" defaultValue={today} required />
+            </Field>
+            {invoiceFields}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Submit
+              label="Lanjutkan ke Tahap Selanjutnya"
+              icon={<ArrowRight size={16} aria-hidden />}
+              name="decision"
+              value="lanjut"
+            />
+            <Submit label="Masih Revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} name="decision" value="revisi" />
+          </div>
+        </>
+      )}
     </form>
   )
 }

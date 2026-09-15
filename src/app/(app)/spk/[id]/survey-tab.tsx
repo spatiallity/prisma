@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
 import { OpnamePadRow } from './opname-pad-mark'
 import { JointCheckDateRow } from './joint-check-date'
@@ -31,7 +31,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       badge: chainBadge(surveyDone ? 'done' : 'current'),
       sub: surveyDone ? (
         <>
-          {formatDateTime(spk!.terrain_survey_completed_at)}
+          {formatDate(spk!.terrain_survey_completed_at)}
           {marker?.full_name && ` · ${marker.full_name}`}
         </>
       ) : undefined,

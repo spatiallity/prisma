@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatDateTime } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { ROUTING_TONE, formatDays, stageTone } from '@/lib/routing'
 import { StepReviewForm } from '../forms'
 
@@ -200,8 +200,8 @@ export default async function RoutingDetailPage({
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {step.pic_name ?? 'PIC belum ditentukan'}
-                        {step.started_at && ` · mulai ${formatDateTime(step.started_at)}`}
-                        {step.completed_at && ` → ${formatDateTime(step.completed_at)}`}
+                        {step.started_at && ` · mulai ${formatDate(step.started_at)}`}
+                        {step.completed_at && ` → ${formatDate(step.completed_at)}`}
                         {!step.started_at && step.status === 'Pending' && ' · belum mulai'}
                       </div>
                       {step.note && (

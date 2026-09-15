@@ -74,9 +74,13 @@ function StepCell({
   )
 }
 
-/** The full chain, each step its own accordion row — shown as one popup
- *  instead of a separate page. Expand a row to fill its Tanggal mulai/selesai;
- *  the next row unlocks once this one has a Tanggal selesai. */
+/** The full chain, each step its own accordion row, plus Opname/PAD at the
+ *  top — one popup instead of a separate page, and the only edit control on
+ *  the row (the table's own Opname/PAD columns are read-only display). A
+ *  virtual row (no spk_routing document yet) still opens this to mark
+ *  Opname/PAD; it just has no accordion since there's no document yet.
+ *  Expand a step row to fill its Tanggal mulai/selesai; the next one
+ *  unlocks once this one has a Tanggal selesai. */
 function RoutingDetailModal({
   open,
   onOpenChange,
@@ -86,6 +90,10 @@ function RoutingDetailModal({
   history,
   revisionsByStep,
   mayEdit,
+  opnameMarkedAt,
+  opnameValue,
+  padMarkedAt,
+  padValue,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -95,6 +103,10 @@ function RoutingDetailModal({
   history: Record<number, HistoryCell>
   revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
+  opnameMarkedAt: string | null
+  opnameValue: number | null
+  padMarkedAt: string | null
+  padValue: number | null
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null)
   const lastDocId = useRef<string | null>(null)
@@ -102,13 +114,14 @@ function RoutingDetailModal({
   const current = doc ? steps.find((s) => history[s.sequence] && history[s.sequence].status !== 'Completed') : undefined
 
   useEffect(() => {
-    if (doc && doc.id !== lastDocId.current) {
-      lastDocId.current = doc.id
+    const key = doc?.id ?? null
+    if (key !== lastDocId.current) {
+      lastDocId.current = key
       setOpenKey(current?.id ?? null)
     }
   }, [doc, current])
 
-  if (!doc) return null
+  if (!spk) return null
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
@@ -151,13 +164,14 @@ function RoutingDetailModal({
         </>
       ),
       content:
-        mayEdit && cell ? (
+        mayEdit && doc && cell ? (
           <RoutingStepDateForm
             routingId={doc.id}
             stepId={cell.id}
             stepName={step.name}
             entry={cell}
             previousCompletedAt={previousCell?.completed_at}
+            onSaved={() => setOpenKey(null)}
           />
         ) : undefined,
     }
@@ -167,19 +181,65 @@ function RoutingDetailModal({
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title={spk?.site_code ?? spk?.spk_number ?? 'Routing'}
-      description={spk?.work_name}
+      title={spk.site_code ?? spk.spk_number ?? 'Routing'}
+      description={spk.work_name}
       size="lg"
     >
       <div className="grid gap-4">
-        {spk && (
-          <div className="flex justify-end">
-            <Link href={`/spk/${spk.id}`} className="text-sm font-bold text-primary hover:underline">
-              Buka Detail SPK
-            </Link>
+        <div className="flex justify-end">
+          <Link href={`/spk/${spk.id}`} className="text-sm font-bold text-primary hover:underline">
+            Buka Detail SPK
+          </Link>
+        </div>
+
+        <div className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Opname</div>
+              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Done' : 'Draft'}</Badge>
+              {opnameMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(opnameMarkedAt)}</div>}
+            </div>
+            {mayEdit && (
+              <OpnamePadRow
+                label="Opname"
+                spkId={spk.id}
+                markedAt={opnameMarkedAt}
+                markAction={markOpname}
+                unmarkAction={unmarkOpname}
+                valueLabel="Nilai Opname"
+                value={opnameValue}
+              />
+            )}
           </div>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">PAD</div>
+              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Done' : 'Draft'}</Badge>
+              {padMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(padMarkedAt)}</div>}
+            </div>
+            {mayEdit && (
+              <OpnamePadRow
+                label="PAD"
+                spkId={spk.id}
+                markedAt={padMarkedAt}
+                disabled={!opnameMarkedAt}
+                disabledHint="Opname dulu"
+                markAction={markPad}
+                unmarkAction={unmarkPad}
+                valueLabel="Nilai PAD"
+                value={padValue}
+              />
+            )}
+          </div>
+        </div>
+
+        {doc ? (
+          <AccordionChain steps={accordionSteps} openKey={openKey} onToggle={toggle} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Belum dirutekan — dokumen invoice muncul di sini begitu Opname selesai.
+          </p>
         )}
-        <AccordionChain steps={accordionSteps} openKey={openKey} onToggle={toggle} />
       </div>
     </Modal>
   )
@@ -222,13 +282,12 @@ export function RoutingMatrix({
   padBySpk: Record<string, string | null>
   padValueBySpk: Record<string, number | null>
 }) {
-  const [openDocId, setOpenDocId] = useState<string | null>(null)
-  const openDoc = docs.find((d) => d.id === openDocId) ?? null
+  const [openRowId, setOpenRowId] = useState<string | null>(null)
+  const openRow = rowsWithVirtual(docs, virtualSpkIds).find((r) => r.id === openRowId) ?? null
+  const openDoc = openRow && !isVirtual(openRow) ? openRow : null
+  const openSpkId = openRow?.spk_id
 
-  const rows: MatrixRow[] = [
-    ...docs,
-    ...virtualSpkIds.map((spkId): VirtualDoc => ({ id: `virtual-${spkId}`, spk_id: spkId, virtual: true })),
-  ]
+  const rows = rowsWithVirtual(docs, virtualSpkIds)
 
   const columns: DataTableColumn<MatrixRow>[] = [
     {
@@ -255,27 +314,13 @@ export function RoutingMatrix({
       label: 'Opname',
       align: 'center',
       className: 'text-muted-foreground',
-      stopRowClick: true,
       sortAccessor: (row) => (opnameBySpk[row.spk_id] ? 1 : 0),
       render: (row) => {
         const markedAt = opnameBySpk[row.spk_id]
         return (
-          <div className="flex items-center justify-center gap-1.5">
-            <div>
-              <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
-              {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
-            </div>
-            {mayEdit && (
-              <OpnamePadRow
-                label="Opname"
-                spkId={row.spk_id}
-                markedAt={markedAt}
-                markAction={markOpname}
-                unmarkAction={unmarkOpname}
-                valueLabel="Nilai Opname"
-                value={opnameValueBySpk[row.spk_id] ?? null}
-              />
-            )}
+          <div>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+            {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
       },
@@ -285,29 +330,13 @@ export function RoutingMatrix({
       label: 'PAD',
       align: 'center',
       className: 'text-muted-foreground',
-      stopRowClick: true,
       sortAccessor: (row) => (padBySpk[row.spk_id] ? 1 : 0),
       render: (row) => {
         const markedAt = padBySpk[row.spk_id]
         return (
-          <div className="flex items-center justify-center gap-1.5">
-            <div>
-              <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
-              {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
-            </div>
-            {mayEdit && (
-              <OpnamePadRow
-                label="PAD"
-                spkId={row.spk_id}
-                markedAt={markedAt}
-                disabled={!opnameBySpk[row.spk_id]}
-                disabledHint="Opname dulu"
-                markAction={markPad}
-                unmarkAction={unmarkPad}
-                valueLabel="Nilai PAD"
-                value={padValueBySpk[row.spk_id] ?? null}
-              />
-            )}
+          <div>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+            {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
       },
@@ -346,17 +375,16 @@ export function RoutingMatrix({
       label: 'Aksi',
       align: 'right',
       stopRowClick: true,
-      render: (row) =>
-        isVirtual(row) ? null : (
-          <button
-            type="button"
-            onClick={() => setOpenDocId(row.id)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-            aria-label="Detail"
-          >
-            <Pencil size={14} aria-hidden />
-          </button>
-        ),
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setOpenRowId(row.id)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+          aria-label="Detail"
+        >
+          <Pencil size={14} aria-hidden />
+        </button>
+      ),
     },
   ]
 
@@ -366,7 +394,7 @@ export function RoutingMatrix({
         columns={columns}
         rows={rows}
         rowKey={(row) => row.id}
-        onRowClick={(row) => !isVirtual(row) && setOpenDocId(row.id)}
+        onRowClick={(row) => setOpenRowId(row.id)}
         searchAccessor={(row) => {
           const spk = spkById[row.spk_id]
           return [spk?.spk_number, spk?.site_code].filter(Boolean).join(' ')
@@ -377,15 +405,26 @@ export function RoutingMatrix({
         pageSize={100}
       />
       <RoutingDetailModal
-        open={openDocId !== null}
-        onOpenChange={(v) => !v && setOpenDocId(null)}
+        open={openRowId !== null}
+        onOpenChange={(v) => !v && setOpenRowId(null)}
         doc={openDoc}
-        spk={openDoc ? spkById[openDoc.spk_id] : undefined}
+        spk={openSpkId ? spkById[openSpkId] : undefined}
         steps={steps}
         history={openDoc ? (historyByDoc[openDoc.id] ?? {}) : {}}
         revisionsByStep={revisionsByStep}
         mayEdit={mayEdit}
+        opnameMarkedAt={openSpkId ? (opnameBySpk[openSpkId] ?? null) : null}
+        opnameValue={openSpkId ? (opnameValueBySpk[openSpkId] ?? null) : null}
+        padMarkedAt={openSpkId ? (padBySpk[openSpkId] ?? null) : null}
+        padValue={openSpkId ? (padValueBySpk[openSpkId] ?? null) : null}
       />
     </>
   )
+}
+
+function rowsWithVirtual(docs: RoutingDoc[], virtualSpkIds: string[]): MatrixRow[] {
+  return [
+    ...docs,
+    ...virtualSpkIds.map((spkId): VirtualDoc => ({ id: `virtual-${spkId}`, spk_id: spkId, virtual: true })),
+  ]
 }

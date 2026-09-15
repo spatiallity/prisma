@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
+import { PHASE_STAGES } from '@/lib/design'
 import type { DesignPhase } from '@/lib/supabase/types'
 
 /** `?stage=` on the Desain Siteplan/Finalisasi Desain lists: omitted (or
@@ -23,7 +23,11 @@ export async function loadDesignQueue(
   if (validStage) {
     designsQuery = designsQuery.eq('current_stage', validStage)
   } else if (stageFilter !== 'all') {
-    designsQuery = designsQuery.neq('current_stage', PHASE_TERMINAL_STAGE[phase])
+    // "Ongoing" means not actually approved yet — not "hasn't reached the
+    // terminal stage's name". Opname is reachable long before it's marked
+    // done (its own Tanggal selesai + Nilai Opname), so a design sitting in
+    // Opname, still unapproved, stays in the working set until then.
+    designsQuery = designsQuery.is('approved_at', null)
   }
 
   const [{ data: designs, error }, { data: allDesigns }, { data: spks }, { data: pics }] =

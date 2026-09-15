@@ -159,13 +159,16 @@ export async function advanceStep(
 }
 
 /**
- * Section 23 — the popup version of step review: fill Tanggal mulai and
- * Tanggal selesai directly on the step instead of a Lanjut/Revisi toggle.
- * Leaving Tanggal selesai blank keeps the step at In Progress; filling it
- * closes the step (status is derived from the two dates, not typed). The
- * previous step must already be Completed — mirrors the gate the popup's
- * accordion enforces client-side, so this can't be raced by opening two
- * steps' forms at once.
+ * Section 23 — the popup version of step review. `decision` (set by which
+ * button was clicked) tells this apart from a plain field correction:
+ *  - "revisi": stays open, status Returned, Catatan required (what needs
+ *    fixing) — no separate revision sub-form or table any more.
+ *  - "lanjut": closes the step, Tanggal selesai required.
+ *  - omitted: a past (already Completed) step's Simpan — just corrects the
+ *    fields, status untouched.
+ * The previous step must already be Completed — mirrors the gate the
+ * popup's accordion enforces client-side, so this can't be raced by opening
+ * two steps' forms at once.
  */
 export async function updateRoutingStepDates(
   _prev: RoutingState,
@@ -197,10 +200,36 @@ export async function updateRoutingStepDates(
   }
 
   const startedRaw = text(formData, 'started_at')
-  const completedRaw = text(formData, 'completed_at')
   if (!startedRaw) return { error: 'Tanggal mulai wajib diisi.' }
-
   const startedAt = new Date(`${startedRaw}T12:00:00`).toISOString()
+
+  const decision = text(formData, 'decision')
+
+  if (decision === 'revisi') {
+    const note = text(formData, 'note')
+    if (!note) return { error: 'Catatan wajib diisi kalau masih revisi.' }
+
+    const { error } = await supabase
+      .from('routing_history')
+      .update({
+        started_at: startedAt,
+        completed_at: null,
+        status: 'Returned' satisfies RoutingStatus,
+        pic_name: nullable(formData, 'pic_name') ?? undefined,
+        note,
+      })
+      .eq('id', stepId)
+    if (error) return { error: error.message }
+
+    revalidatePath('/routing')
+    revalidatePath(`/routing/${routingId}`)
+    return { error: null, success: 'Dicatat sebagai revisi.' }
+  }
+
+  const completedRaw = text(formData, 'completed_at')
+  if (decision === 'lanjut' && !completedRaw) {
+    return { error: 'Tanggal selesai wajib diisi.' }
+  }
   const completedAt = completedRaw ? new Date(`${completedRaw}T12:00:00`).toISOString() : null
   const status: RoutingStatus = completedAt ? 'Completed' : 'In Progress'
 
@@ -236,13 +265,15 @@ export async function updateRoutingStepDates(
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
-  return { error: null, success: 'Tahap diperbarui.' }
+  return { error: null, success: decision === 'lanjut' ? 'Tahap selesai, lanjut ke tahap berikutnya.' : 'Tahap diperbarui.' }
 }
 
 /**
- * Section 23 — a review round that isn't ready to pass yet. Doesn't move or
- * block the step; it just logs what needs fixing and when it comes back, so
- * a step can collect as many rounds as it needs before Lanjut.
+ * Section 23 — a review round that isn't ready to pass yet, logged to its
+ * own table without moving or closing the step. Superseded in the popup by
+ * updateRoutingStepDates' "revisi" decision (one Catatan field, no separate
+ * sub-form) — kept here for the standalone /routing/[id] page's older
+ * Lanjut/Revisi review form.
  */
 export async function addRoutingRevision(
   _prev: RoutingState,

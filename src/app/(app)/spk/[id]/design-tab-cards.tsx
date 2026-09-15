@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { DesignDetailModal } from '../../design/design-detail-modal'
-import { cn, formatDateTime } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, daysInStage } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import type { PicOption } from '../../design/forms'
@@ -69,7 +69,7 @@ export function DesignTabCards({
                   <ul className="grid gap-1">
                     {stageRevisions.map((revision) => (
                       <li key={revision.id}>
-                        Revisi {revision.revision_no} · {formatDateTime(revision.started_at)}
+                        Revisi {revision.revision_no} · {formatDate(revision.started_at)}
                         <br />
                         {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'PIC belum ditentukan'}
                         {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}

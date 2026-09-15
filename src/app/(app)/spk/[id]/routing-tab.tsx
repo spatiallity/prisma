@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
-import { formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { RoutingStepEdit } from '../../routing/routing-step-edit'
 
 /** The Routing tab of Detail SPK: every document this SPK has in flight,
@@ -102,8 +102,8 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             sub: cell && (
               <>
                 {cell.pic_name ?? 'PIC belum ditentukan'}
-                {cell.started_at && ` · mulai ${formatDateTime(cell.started_at)}`}
-                {cell.completed_at && ` → ${formatDateTime(cell.completed_at)}`}
+                {cell.started_at && ` · mulai ${formatDate(cell.started_at)}`}
+                {cell.completed_at && ` → ${formatDate(cell.completed_at)}`}
                 {cell.note && <div className="mt-0.5 text-slate-700">{cell.note}</div>}
               </>
             ),

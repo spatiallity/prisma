@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { DesignStage, RoutingStatus, StageStatus } from '@/lib/supabase/types'
@@ -139,10 +138,15 @@ async function autoOpenRoutingOnOpname(
   spkId: string,
   opnameDate: string,
   userId: string,
+  opnameValue: number | null,
 ) {
   await supabase
     .from('spks')
-    .update({ opname_marked_at: opnameDate, opname_marked_by: userId })
+    .update({
+      opname_marked_at: opnameDate,
+      opname_marked_by: userId,
+      ...(opnameValue != null ? { opname_value: opnameValue } : {}),
+    })
     .eq('id', spkId)
     .is('opname_marked_at', null)
 
@@ -262,8 +266,9 @@ export async function createDesign(
   )
 
   revalidatePath('/design')
+  revalidatePath('/design/siteplan')
   revalidatePath(`/spk/${spkId}`)
-  redirect(`/design/${design.id}`)
+  return { error: null, success: 'Record desain dibuka.' }
 }
 
 /**
@@ -454,26 +459,22 @@ export async function advanceStage(
   }
 
   // Approval is a property of the design itself, not of one revision — set
-  // once its phase reaches its own terminal stage (Finish for Desain
-  // Siteplan, Acc PIC Pertamina for Finalisasi Desain).
-  if (stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
-    await supabase
-      .from('designs')
-      .update({ approved_at: now, approved_by: user.id })
-      .eq('id', designId)
-    if (stage === 'Opname') {
-      await autoOpenRoutingOnOpname(
-        supabase,
-        designRow.spk_id,
-        todayMulti(formData, ['completed_at', 'tanggal']),
-        user.id,
-      )
+  // once its phase reaches its own terminal stage. Opname is the one
+  // exception: reaching it just opens the stage (Tanggal mulai) the same as
+  // any other — it isn't "done" until its own Tanggal selesai is filled via
+  // completeStage, which is what actually sets approved_at and opens routing.
+  if (stage !== 'Opname') {
+    if (stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
+      await supabase
+        .from('designs')
+        .update({ approved_at: now, approved_by: user.id })
+        .eq('id', designId)
+    } else {
+      await supabase
+        .from('designs')
+        .update({ approved_at: null, approved_by: null })
+        .eq('id', designId)
     }
-  } else {
-    await supabase
-      .from('designs')
-      .update({ approved_at: null, approved_by: null })
-      .eq('id', designId)
   }
 
   const progressDate = todayMulti(formData, ['completed_at', 'tanggal'])
@@ -500,6 +501,80 @@ export async function advanceStage(
   revalidatePath(`/design/${designId}`)
   revalidatePath(`/spk/${designRow.spk_id}`)
   return { error: null, success: `Desain dipindahkan ke ${stage}.` }
+}
+
+/**
+ * Section 27 — closes a terminal stage that has nowhere further to advance
+ * to (Opname on Desain Siteplan). Unlike advanceStage this never opens a new
+ * revision; it just sets this one's Tanggal selesai, marks the design
+ * approved, and — for Opname specifically — records the Nilai Opname and
+ * auto-opens routing via autoOpenRoutingOnOpname.
+ */
+export async function completeStage(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  const user = await requirePermission('design', 'edit')
+
+  const designId = text(formData, 'design_id')
+  const entryId = text(formData, 'entry_id')
+  if (!designId || !entryId) return { error: 'Entri tidak dikenali.' }
+
+  const supabase = await createClient()
+
+  const { data: designRow } = await supabase
+    .from('designs')
+    .select('spk_id, phase')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
+  const { data: entry } = await supabase
+    .from('design_revisions')
+    .select('stage')
+    .eq('id', entryId)
+    .maybeSingle()
+  if (!entry) return { error: 'Entri tidak ditemukan.' }
+
+  const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
+
+  const { error } = await supabase
+    .from('design_revisions')
+    .update({ completed_at: now })
+    .eq('id', entryId)
+  if (error) return { error: error.message }
+
+  if (entry.stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
+    await supabase
+      .from('designs')
+      .update({ approved_at: now, approved_by: user.id })
+      .eq('id', designId)
+  }
+
+  if (entry.stage === 'Opname') {
+    const valueRaw = text(formData, 'opname_value')
+    await autoOpenRoutingOnOpname(
+      supabase,
+      designRow.spk_id,
+      todayMulti(formData, ['completed_at', 'tanggal']),
+      user.id,
+      valueRaw ? Number(valueRaw) : null,
+    )
+  }
+
+  await syncSpkActivityStage(
+    supabase,
+    designRow.spk_id,
+    entry.stage,
+    'Selesai',
+    todayMulti(formData, ['completed_at', 'tanggal']),
+    user.id,
+  )
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${designRow.spk_id}`)
+  return { error: null, success: `${entry.stage} selesai.` }
 }
 
 /**

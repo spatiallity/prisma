@@ -10,7 +10,7 @@ import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chai
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
-import { cn, formatDate, formatDateTime } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
 import {
   DeleteRevisionEntryButton,
@@ -308,8 +308,8 @@ export default async function DesignDetailPage({
                           : 'PIC belum ditentukan'}
                         {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
                         {' · '}
-                        {formatDateTime(revision.started_at)}
-                        {revision.completed_at && ` → ${formatDateTime(revision.completed_at)}`}
+                        {formatDate(revision.started_at)}
+                        {revision.completed_at && ` → ${formatDate(revision.completed_at)}`}
                       </div>
                       {revision.notes && (
                         <p className="mt-1.5 text-sm text-slate-700">{revision.notes}</p>
@@ -388,7 +388,7 @@ export default async function DesignDetailPage({
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Disetujui</span>
                 <span className="tnum font-bold text-slate-900">
-                  {design.approved_at ? formatDateTime(design.approved_at) : '—'}
+                  {design.approved_at ? formatDate(design.approved_at) : '—'}
                 </span>
               </div>
             </CardContent>

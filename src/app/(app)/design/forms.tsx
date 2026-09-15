@@ -15,6 +15,7 @@ import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import {
   addDesignRevision,
   advanceStage,
+  completeStage,
   createDesign,
   deleteRevisionEntry,
   startDesign,
@@ -410,10 +411,13 @@ export function StageEntryForm({
 }) {
   const [saveState, saveAction] = useActionState(updateRevisionEntry, initialState)
   const [advanceState, advanceAction] = useActionState(advanceStage, initialState)
+  const [completeState, completeAction] = useActionState(completeStage, initialState)
   useActionToast(saveState, onSaved)
   useActionToast(advanceState, onSaved)
+  useActionToast(completeState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
   const nextOptions = isCurrent ? DESIGN_NEXT_STAGES[stage] : []
+  const isTerminal = isCurrent && nextOptions.length === 0
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
   const [showAll, setShowAll] = useState(false)
   const allOptions = PHASE_STAGES[phase].filter((s) => s !== stage)
@@ -421,7 +425,7 @@ export function StageEntryForm({
 
   return (
     <form className="grid gap-3">
-      <Feedback state={saveState.error ? saveState : advanceState} />
+      <Feedback state={saveState.error ? saveState : advanceState.error ? advanceState : completeState} />
       <input type="hidden" name="design_id" value={designId} />
       <input type="hidden" name="entry_id" value={entry.id} />
       <input type="hidden" name="stage" value={target} />
@@ -453,6 +457,24 @@ export function StageEntryForm({
           placeholder={'Satu poin per baris, misalnya:\n- revisi kontur\n- ukuran kertas A1'}
         />
       </Field>
+
+      {isTerminal && (
+        <div className="grid gap-3 border-t border-slate-200 pt-3">
+          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`} required>
+            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" defaultValue={today} required />
+          </Field>
+          {stage === 'Opname' && (
+            <Field label="Nilai Opname" htmlFor={`se_${entry.id}_opname_value`}>
+              <Input
+                id={`se_${entry.id}_opname_value`}
+                name="opname_value"
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </Field>
+          )}
+        </div>
+      )}
 
       {isCurrent && nextOptions.length > 0 && (
         <div className="grid gap-3 border-t border-slate-200 pt-3">
@@ -514,6 +536,9 @@ export function StageEntryForm({
             icon={<ArrowRight size={16} aria-hidden />}
             formAction={advanceAction}
           />
+        )}
+        {isTerminal && (
+          <Submit label="Selesaikan" icon={<ArrowRight size={16} aria-hidden />} formAction={completeAction} />
         )}
       </div>
     </form>

@@ -7,7 +7,7 @@ import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { RowActions } from '@/components/ui/row-actions'
 import { SpkCell } from '@/components/ui/spk-cell'
-import { formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
+import { formatDate, formatRupiah } from '@/lib/utils'
 import { SPK_STATUS_TONE, daysLeft, formatArea, workTypeCategory } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
 import type { SpkStage } from '@/lib/spk-stage'
@@ -39,14 +39,8 @@ export function SpkTable({
     {
       key: 'work_name',
       label: 'Pekerjaan',
-      className: 'max-w-xs',
-      sortAccessor: (row) => row.work_name,
-      render: (row) => (
-        <>
-          <span className="line-clamp-2 font-bold text-slate-900">{row.work_name}</span>
-          <div className="text-xs text-muted-foreground">{workTypeCategory(row.work_type)}</div>
-        </>
-      ),
+      sortAccessor: (row) => workTypeCategory(row.work_type),
+      render: (row) => <span className="font-bold text-slate-900">{workTypeCategory(row.work_type)}</span>,
     },
     {
       key: 'location',
@@ -109,7 +103,7 @@ export function SpkTable({
           <>
             <span className="font-bold text-slate-900">{stage.label}</span>
             {stage.date && (
-              <div className="tnum text-xs text-muted-foreground">{formatDateTime(stage.date)}</div>
+              <div className="tnum text-xs text-muted-foreground">{formatDate(stage.date)}</div>
             )}
           </>
         )
