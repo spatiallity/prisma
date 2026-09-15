@@ -378,7 +378,14 @@ export function RoutingMatrix({
         const status = invoiceDraftedBySpk[row.spk_id] ?? 'not_yet'
         const tone = status === 'done' ? 'success' : status === 'in_progress' ? 'warning' : 'neutral'
         const label = status === 'done' ? 'Done' : status === 'in_progress' ? 'In Progress' : 'Not Yet'
-        return <Badge tone={tone}>{label}</Badge>
+        const step1 = historyByDoc[row.id]?.[1]
+        const date = status === 'done' ? step1?.completed_at : step1?.started_at
+        return (
+          <div>
+            <Badge tone={tone}>{label}</Badge>
+            {date && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(date)}</div>}
+          </div>
+        )
       },
     },
     ...steps.map(
