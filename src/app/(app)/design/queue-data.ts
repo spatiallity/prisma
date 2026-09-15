@@ -28,7 +28,7 @@ export async function loadDesignQueue(
 
   const [{ data: designs, error }, { data: allDesigns }, { data: spks }, { data: pics }] =
     await Promise.all([
-      designsQuery.order('updated_at', { ascending: true }),
+      designsQuery.order('updated_at', { ascending: false }),
       supabase.from('designs').select('id, phase, spk_id').eq('status', 'Active'),
       supabase
         .from('spks')

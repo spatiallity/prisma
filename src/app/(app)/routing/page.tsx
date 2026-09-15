@@ -42,7 +42,9 @@ export async function RoutingMonitor({
       supabase.from('v_routing_lead_time').select('*'),
       supabase
         .from('spks')
-        .select('id, spk_number, site_code, work_name, status, opname_marked_at')
+        .select(
+          'id, spk_number, site_code, work_name, status, opname_marked_at, opname_value, pad_marked_at, pad_value',
+        )
         .order('spk_number'),
       supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
       // Finalisasi Desain opens (any stage) once Desain Siteplan hits Finish —
@@ -52,6 +54,9 @@ export async function RoutingMonitor({
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
   const opnameBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.opname_marked_at]))
+  const opnameValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.opname_value]))
+  const padBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_marked_at]))
+  const padValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_value]))
 
   // Section 27 — an SPK ready for routing but not yet routed (no spk_routing
   // row) still needs to show up as "Drafting Invoice: Not Yet" so it isn't
@@ -181,6 +186,9 @@ export async function RoutingMonitor({
             overdueByDoc={Object.fromEntries(overdueByDoc)}
             mayEdit={mayEdit}
             opnameBySpk={opnameBySpk}
+            opnameValueBySpk={opnameValueBySpk}
+            padBySpk={padBySpk}
+            padValueBySpk={padValueBySpk}
             virtualSpkIds={step ? [] : virtualSpkIds}
           />
         ) : (
@@ -264,6 +272,9 @@ type HistoryCell = {
   completed_at: string | null
   pic_name: string | null
   note: string | null
+  invoice_number: string | null
+  invoice_value: number | null
+  invoice_date: string | null
 }
 
 /** Fetches the full step history for the filtered docs and shapes it into
@@ -276,6 +287,9 @@ async function RoutingMatrixSection({
   overdueByDoc,
   mayEdit,
   opnameBySpk,
+  opnameValueBySpk,
+  padBySpk,
+  padValueBySpk,
   virtualSpkIds,
 }: {
   docs: RoutingDoc[]
@@ -285,6 +299,9 @@ async function RoutingMatrixSection({
   overdueByDoc: Record<string, boolean>
   mayEdit: boolean
   opnameBySpk: Record<string, string | null>
+  opnameValueBySpk: Record<string, number | null>
+  padBySpk: Record<string, string | null>
+  padValueBySpk: Record<string, number | null>
   /** SPKs eligible for routing (Finalisasi Desain opened) with no spk_routing
    *  row yet — shown as placeholder rows so they aren't invisible while
    *  waiting to be routed. */
@@ -304,7 +321,9 @@ async function RoutingMatrixSection({
     docIds.length
       ? supabase
           .from('routing_history')
-          .select('id, spk_routing_id, sequence, status, started_at, completed_at, pic_name, note')
+          .select(
+            'id, spk_routing_id, sequence, status, started_at, completed_at, pic_name, note, invoice_number, invoice_value, invoice_date',
+          )
           .in('spk_routing_id', docIds)
       : Promise.resolve({ data: [] }),
   ])
@@ -351,6 +370,9 @@ async function RoutingMatrixSection({
       mayEdit={mayEdit}
       invoiceDraftedBySpk={invoiceDraftedBySpk}
       opnameBySpk={opnameBySpk}
+      opnameValueBySpk={opnameValueBySpk}
+      padBySpk={padBySpk}
+      padValueBySpk={padValueBySpk}
     />
   )
 }

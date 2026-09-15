@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
-import { AccordionChain, type AccordionStep } from '@/components/ui/step-chain'
+import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
 import { formatDateTime } from '@/lib/utils'
 import { PHASE_STAGES, STAGE_ORDER } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
-import { StageAdvanceForm, StartDesignForm, EditRevisionEntryButton, type PicOption } from './forms'
+import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
 
 type Revision = {
   id: string
@@ -27,10 +27,11 @@ type DesignLite = {
 }
 
 /** The chain for one design, plus its review form — a popup instead of a
- *  separate page, matching the routing document popup. Each stage is its own
- *  accordion row instead of one form for "the current stage" plus a
- *  Lanjut/Revisi picker: expand a row to fill it in, the next one unlocks
- *  once this one has a Tanggal selesai. */
+ *  separate page. Each stage is its own accordion row: past stages stay
+ *  editable in place (Simpan corrects Drafter/PIC Pertamina/Catatan/Tanggal
+ *  mulai without moving anything), the current stage also gets Lanjutkan ke
+ *  Tahap Selanjutnya, and a row only unlocks once the one before it is
+ *  reached. */
 export function DesignDetailModal({
   open,
   onOpenChange,
@@ -69,7 +70,6 @@ export function DesignDetailModal({
   const isDraft = revisions.length === 0
   const reached = new Set(revisions.map((r) => r.stage))
   const currentOrder = STAGE_ORDER[design.current_stage]
-  const currentEntry = revisions.find((r) => !r.completed_at) ?? null
   const stages = PHASE_STAGES[design.phase]
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
@@ -79,6 +79,7 @@ export function DesignDetailModal({
     const now = stage === design.current_stage
     const state = now ? 'current' : done ? 'done' : 'pending'
     const stageRevisions = revisions.filter((r) => r.stage === stage)
+    const latestEntry = stageRevisions[stageRevisions.length - 1]
 
     return {
       key: stage,
@@ -87,15 +88,15 @@ export function DesignDetailModal({
       locked: !now && !done,
       summary:
         stageRevisions.length > 0 ? (
-          <ul className="grid gap-1">
+          <ul className="grid gap-2">
             {stageRevisions.map((revision) => (
               <li key={revision.id}>
                 Revisi {revision.revision_no} · {formatDateTime(revision.started_at)}
                 {revision.completed_at && ` → ${formatDateTime(revision.completed_at)}`}
                 <br />
-                {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'PIC belum ditentukan'}
+                {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'Drafter belum ditentukan'}
                 {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
-                {revision.notes && ` · ${revision.notes}`}
+                <NotesList text={revision.notes} />
               </li>
             ))}
           </ul>
@@ -103,30 +104,25 @@ export function DesignDetailModal({
           'Belum dimulai.'
         ) : undefined,
       content:
-        mayEdit && now ? (
-          isDraft ? (
+        mayEdit && (now || done) ? (
+          isDraft && now ? (
             <StartDesignForm
               designId={design.id}
               phase={design.phase}
               currentStage={design.current_stage}
               pics={pics}
             />
-          ) : (
-            <div className="grid gap-3">
-              {currentEntry && (
-                <div className="flex justify-end">
-                  <EditRevisionEntryButton designId={design.id} pics={pics} entry={currentEntry} />
-                </div>
-              )}
-              <StageAdvanceForm
-                designId={design.id}
-                phase={design.phase}
-                currentStage={design.current_stage}
-                pics={pics}
-                defaultPicPertamina={currentEntry?.pic_pertamina ?? null}
-              />
-            </div>
-          )
+          ) : latestEntry ? (
+            <StageEntryForm
+              designId={design.id}
+              phase={design.phase}
+              stage={stage}
+              isCurrent={now}
+              entry={latestEntry}
+              picName={picName}
+              pics={pics}
+            />
+          ) : undefined
         ) : undefined,
     }
   })

@@ -14,7 +14,8 @@ export const STAGE_TONE: Record<
   'Revisi Desain Awal': 'warning',
   'Pembuatan Peta Inventaris dan Stake Out': 'info',
   Finalisasi: 'info',
-  Finish: 'success',
+  Finish: 'info',
+  Opname: 'success',
   'Pembuatan Finalisasi Desain': 'neutral',
   'Review Internal': 'warning',
   'Sinkronisasi Hasil Finalisasi': 'info',
@@ -30,11 +31,12 @@ export const STAGE_ORDER: Record<DesignStage, number> = {
   'Pembuatan Peta Inventaris dan Stake Out': 4,
   Finalisasi: 5,
   Finish: 6,
-  'Pembuatan Finalisasi Desain': 7,
-  'Review Internal': 8,
-  'Sinkronisasi Hasil Finalisasi': 9,
-  'Review PIC Pertamina': 10,
-  'Acc PIC Pertamina': 11,
+  Opname: 7,
+  'Pembuatan Finalisasi Desain': 8,
+  'Review Internal': 9,
+  'Sinkronisasi Hasil Finalisasi': 10,
+  'Review PIC Pertamina': 11,
+  'Acc PIC Pertamina': 12,
 }
 
 /**
@@ -55,6 +57,7 @@ export const PHASE_STAGES: Record<DesignPhase, DesignStage[]> = {
     'Pembuatan Peta Inventaris dan Stake Out',
     'Finalisasi',
     'Finish',
+    'Opname',
   ],
   finalisasi: [
     'Pembuatan Finalisasi Desain',
@@ -72,24 +75,29 @@ export const PHASE_FIRST_STAGE: Record<DesignPhase, DesignStage> = {
   finalisasi: 'Pembuatan Finalisasi Desain',
 }
 
-/** The stage that means "this phase is done" — reaching it sets approved_at. */
+/** The stage that means "this phase is done" — reaching it sets approved_at.
+ *  Finish itself still auto-opens Finalisasi Desain (see the DB trigger) but
+ *  isn't the end of the record any more — Opname is, and completing it
+ *  auto-opens the routing document (see advanceStage). */
 export const PHASE_TERMINAL_STAGE: Record<DesignPhase, DesignStage> = {
-  siteplan: 'Finish',
+  siteplan: 'Opname',
   finalisasi: 'Acc PIC Pertamina',
 }
 
 /** The stage(s) Lanjut may move to from a given stage — exactly one for
  *  almost every stage, so the review form can default to it without asking.
- *  The two exceptions: Review Desain Awal either passes (→ Stake Out) or
- *  needs fixing (→ Revisi Desain Awal), and Revisi Desain Awal always loops
- *  back to Review for another look. A terminal stage has none. */
+ *  The exceptions: Review Desain Awal always goes to Revisi Desain Awal
+ *  first (a pass is the rare manual override, not the default), and Revisi
+ *  Desain Awal loops back to Review for another look. A terminal stage has
+ *  none. */
 export const DESIGN_NEXT_STAGES: Record<DesignStage, DesignStage[]> = {
   'Pembuatan Desain Awal': ['Review Desain Awal'],
-  'Review Desain Awal': ['Pembuatan Peta Inventaris dan Stake Out', 'Revisi Desain Awal'],
+  'Review Desain Awal': ['Revisi Desain Awal', 'Pembuatan Peta Inventaris dan Stake Out'],
   'Revisi Desain Awal': ['Review Desain Awal'],
   'Pembuatan Peta Inventaris dan Stake Out': ['Finalisasi'],
   Finalisasi: ['Finish'],
-  Finish: [],
+  Finish: ['Opname'],
+  Opname: [],
   'Pembuatan Finalisasi Desain': ['Review Internal'],
   'Review Internal': ['Sinkronisasi Hasil Finalisasi'],
   'Sinkronisasi Hasil Finalisasi': ['Review PIC Pertamina'],

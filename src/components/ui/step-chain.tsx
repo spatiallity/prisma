@@ -93,6 +93,26 @@ export function chainStatusLabel(state: ChainStep['state']) {
   }
 }
 
+/** Renders a Catatan textarea's text as bullet points — one per line, blank
+ *  lines dropped, a leading "-"/"•" stripped since the bullet itself already
+ *  supplies it. Used everywhere a stage/step's notes are shown, so a
+ *  paragraph typed with line breaks reads as a list, not one run-on line. */
+export function NotesList({ text }: { text: string | null | undefined }) {
+  if (!text) return null
+  const lines = text
+    .split('\n')
+    .map((line) => line.replace(/^[\s]*[-•]\s*/, '').trim())
+    .filter(Boolean)
+  if (lines.length === 0) return null
+  return (
+    <ul className="mt-1 grid list-disc gap-0.5 pl-4">
+      {lines.map((line, i) => (
+        <li key={i}>{line}</li>
+      ))}
+    </ul>
+  )
+}
+
 export type AccordionStep = {
   key: string
   label: string

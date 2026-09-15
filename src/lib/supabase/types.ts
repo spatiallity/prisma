@@ -78,6 +78,7 @@ export type DesignStage =
   | 'Pembuatan Peta Inventaris dan Stake Out'
   | 'Finalisasi'
   | 'Finish'
+  | 'Opname'
   // Finalisasi Desain
   | 'Pembuatan Finalisasi Desain'
   | 'Review Internal'
@@ -92,6 +93,7 @@ export const DESIGN_STAGES: DesignStage[] = [
   'Pembuatan Peta Inventaris dan Stake Out',
   'Finalisasi',
   'Finish',
+  'Opname',
   'Pembuatan Finalisasi Desain',
   'Review Internal',
   'Sinkronisasi Hasil Finalisasi',
@@ -453,6 +455,10 @@ export type RoutingHistoryRow = Timestamps & {
   duration_days: number | null
   sla_days: number | null
   note: string | null
+  /** Only meaningful on the Invoiced step. */
+  invoice_number: string | null
+  invoice_value: number | null
+  invoice_date: string | null
   created_by: string | null
 }
 
@@ -965,6 +971,9 @@ export type Database = {
         | 'completed_at'
         | 'sla_days'
         | 'note'
+        | 'invoice_number'
+        | 'invoice_value'
+        | 'invoice_date'
         | 'created_by'
       >
       routing_step_revisions: Table<RoutingStepRevisionRow, 'id' | 'created_at' | 'created_by'>

@@ -4,7 +4,7 @@ import { useActionState, useId, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { ArrowRight, Pencil, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select } from '@/components/ui/field'
+import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
@@ -37,14 +37,18 @@ function Submit({
   label,
   icon,
   variant = 'primary',
+  formAction,
 }: {
   label: string
   icon?: React.ReactNode
   variant?: 'primary' | 'secondary'
+  /** Routes this button's submit to a different action than the form's own
+   *  — used when one form offers two outcomes (Simpan vs Lanjutkan). */
+  formAction?: (formData: FormData) => void
 }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant={variant} disabled={pending}>
+    <Button type="submit" variant={variant} disabled={pending} formAction={formAction}>
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -212,7 +216,7 @@ export function NewDesignForm({
           <SpkCombobox id="d_spk" spks={spks} />
         </Field>
 
-        <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
+        <PicField label="Drafter" pics={pics} placeholder="Nama Drafter" />
 
         <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
@@ -229,7 +233,7 @@ export function NewDesignForm({
         </Field>
 
         <Field label="Catatan" htmlFor="d_notes" className="sm:col-span-2">
-          <Input id="d_notes" name="notes" />
+          <Textarea id="d_notes" name="notes" rows={3} />
         </Field>
       </div>
 
@@ -330,7 +334,7 @@ export function StageReviewForm({
             <Input id="a_date" name="tanggal" type="date" defaultValue={today} required />
           </Field>
 
-          <PicField label="PIC tahap ini" pics={pics} placeholder="Sama seperti sebelumnya" />
+          <PicField label="Drafter" pics={pics} placeholder="Sama seperti sebelumnya" />
 
           <PicPertaminaField
             label="PIC Pertamina"
@@ -339,7 +343,7 @@ export function StageReviewForm({
           />
 
           <Field label="Catatan" htmlFor="a_notes">
-            <Input id="a_notes" name="notes" placeholder="Hasil review…" />
+            <Textarea id="a_notes" name="notes" rows={3} placeholder="Hasil review…" />
           </Field>
 
           <div>
@@ -369,96 +373,148 @@ export function StageReviewForm({
 }
 
 /**
- * Section 21 — the popup version of stage review: fill Tanggal selesai and
- * hit Lanjut. The target stage defaults to the one true next stage (see
- * DESIGN_NEXT_STAGES) so there's no picker to fill in for the common case;
- * Review Desain Awal is the one stage with a real fork (pass or revisi), and
- * "Pilih tahap lain" stays tucked away for the rare manual correction.
+ * Section 21 — one form per stage row in the accordion, for the stage's
+ * latest entry whether it's the current one or already reached. Two buttons
+ * instead of a mode picker: Simpan corrects this entry in place (date,
+ * Drafter, PIC Pertamina, Catatan) without moving anything; Lanjutkan closes
+ * it and opens the next stage, shown only on the current stage and only when
+ * one exists. The target stage defaults to the one true next stage (see
+ * DESIGN_NEXT_STAGES) so there's no picker for the common case — Review
+ * Desain Awal is the one real fork, and "Pilih tahap lain" stays tucked away
+ * for the rare manual correction.
  */
-export function StageAdvanceForm({
+export function StageEntryForm({
   designId,
   phase,
-  currentStage,
+  stage,
+  isCurrent,
+  entry,
+  picName,
   pics,
-  defaultPicPertamina,
+  onSaved,
 }: {
   designId: string
   phase: DesignPhase
-  currentStage: DesignStage
+  stage: DesignStage
+  isCurrent: boolean
+  entry: {
+    id: string
+    started_at: string | null
+    pic_id: string | null
+    pic_pertamina: string | null
+    notes: string | null
+  }
+  picName: Record<string, string>
   pics: PicOption[]
-  defaultPicPertamina: string | null
+  onSaved?: () => void
 }) {
+  const [saveState, saveAction] = useActionState(updateRevisionEntry, initialState)
   const [advanceState, advanceAction] = useActionState(advanceStage, initialState)
-  useActionToast(advanceState)
+  useActionToast(saveState, onSaved)
+  useActionToast(advanceState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
-  const nextOptions = DESIGN_NEXT_STAGES[currentStage]
+  const nextOptions = isCurrent ? DESIGN_NEXT_STAGES[stage] : []
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
   const [showAll, setShowAll] = useState(false)
-
-  if (nextOptions.length === 0) return null
-
-  const allOptions = PHASE_STAGES[phase].filter((stage) => stage !== currentStage)
+  const allOptions = PHASE_STAGES[phase].filter((s) => s !== stage)
+  const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : ''
 
   return (
-    <form action={advanceAction} className="grid gap-3">
-      <Feedback state={advanceState} />
+    <form className="grid gap-3">
+      <Feedback state={saveState.error ? saveState : advanceState} />
       <input type="hidden" name="design_id" value={designId} />
+      <input type="hidden" name="entry_id" value={entry.id} />
       <input type="hidden" name="stage" value={target} />
 
-      <Field label="Tanggal selesai" htmlFor="adv_date" required>
-        <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
+      <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`} required>
+        <Input
+          id={`se_${entry.id}_start`}
+          name="tanggal"
+          type="date"
+          defaultValue={entry.started_at?.slice(0, 10) ?? today}
+          required
+        />
       </Field>
 
-      {nextOptions.length > 1 ? (
-        <Field label="Hasil review" htmlFor="adv_target">
-          <Select id="adv_target" value={target} onChange={(e) => setTarget(e.target.value)}>
-            {nextOptions.map((stage) => (
-              <option key={stage} value={stage}>
-                {stage === 'Revisi Desain Awal' ? 'Perlu revisi' : `Lanjut — ${stage}`}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Lanjut ke <strong className="text-slate-900">{target}</strong>
-        </p>
-      )}
-
-      <PicField label="PIC tahap ini" pics={pics} placeholder="Sama seperti sebelumnya" />
+      <PicField label="Drafter" pics={pics} defaultValue={drafterName} placeholder="Nama Drafter" />
 
       <PicPertaminaField
         label="PIC Pertamina"
-        defaultValue={defaultPicPertamina ?? ''}
-        placeholder="Sama seperti sebelumnya"
+        defaultValue={entry.pic_pertamina ?? ''}
+        placeholder="Reviewer Pertamina"
       />
 
-      <Field label="Catatan" htmlFor="adv_notes">
-        <Input id="adv_notes" name="notes" placeholder="Hasil review…" />
+      <Field label="Catatan" htmlFor={`se_${entry.id}_notes`}>
+        <Textarea
+          id={`se_${entry.id}_notes`}
+          name="notes"
+          rows={3}
+          defaultValue={entry.notes ?? ''}
+          placeholder={'Satu poin per baris, misalnya:\n- revisi kontur\n- ukuran kertas A1'}
+        />
       </Field>
 
-      {!showAll ? (
-        <button
-          type="button"
-          onClick={() => setShowAll(true)}
-          className="text-left text-xs font-bold text-primary hover:underline"
-        >
-          Pilih tahap lain…
-        </button>
-      ) : (
-        <Field label="Pindah ke tahap lain" htmlFor="adv_other">
-          <Select id="adv_other" value={target} onChange={(e) => setTarget(e.target.value)}>
-            {allOptions.map((stage) => (
-              <option key={stage} value={stage}>
-                {stage}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      {isCurrent && nextOptions.length > 0 && (
+        <div className="grid gap-3 border-t border-slate-200 pt-3">
+          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`} required>
+            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" defaultValue={today} required />
+          </Field>
+
+          {nextOptions.length > 1 ? (
+            <Field label="Hasil review" htmlFor={`se_${entry.id}_target`}>
+              <Select
+                id={`se_${entry.id}_target`}
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+              >
+                {nextOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s === 'Revisi Desain Awal' ? 'Perlu revisi' : `Lanjut — ${s}`}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Lanjut ke <strong className="text-slate-900">{target}</strong>
+            </p>
+          )}
+
+          {!showAll ? (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="text-left text-xs font-bold text-primary hover:underline"
+            >
+              Pilih tahap lain…
+            </button>
+          ) : (
+            <Field label="Pindah ke tahap lain" htmlFor={`se_${entry.id}_other`}>
+              <Select
+                id={`se_${entry.id}_other`}
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+              >
+                {allOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+        </div>
       )}
 
-      <div>
-        <Submit label="Selesai &amp; lanjutkan" icon={<ArrowRight size={16} aria-hidden />} />
+      <div className="flex flex-wrap gap-2">
+        <Submit label="Simpan" variant="secondary" formAction={saveAction} />
+        {isCurrent && nextOptions.length > 0 && (
+          <Submit
+            label="Lanjutkan ke Tahap Selanjutnya"
+            icon={<ArrowRight size={16} aria-hidden />}
+            formAction={advanceAction}
+          />
+        )}
       </div>
     </form>
   )
@@ -508,7 +564,7 @@ export function StartDesignForm({
         </Field>
       )}
 
-      <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
+      <PicField label="Drafter" pics={pics} placeholder="Nama Drafter" />
 
       <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
@@ -519,8 +575,10 @@ export function StartDesignForm({
   )
 }
 
-/** Fixes tanggal/PIC/catatan on one history row — never the stage itself
- *  (see updateRevisionEntry in actions.ts for why). */
+/** Fixes tanggal/Drafter/catatan on one history row — never the stage itself
+ *  (see updateRevisionEntry in actions.ts for why). Still used standalone on
+ *  the /design/[id] page; the popup now edits a stage's entry inline via
+ *  StageEntryForm instead of this nested modal. */
 export function EditRevisionEntryButton({
   designId,
   pics,
@@ -570,7 +628,7 @@ export function EditRevisionEntryButton({
           />
         </Field>
 
-        <PicField label="PIC" pics={pics} placeholder="Nama PIC" />
+        <PicField label="Drafter" pics={pics} placeholder="Nama Drafter" />
 
         <PicPertaminaField
           label="PIC Pertamina"
@@ -579,7 +637,7 @@ export function EditRevisionEntryButton({
         />
 
         <Field label="Catatan" htmlFor="e_notes">
-          <Input id="e_notes" name="notes" defaultValue={entry.notes ?? ''} />
+          <Textarea id="e_notes" name="notes" rows={3} defaultValue={entry.notes ?? ''} />
         </Field>
 
         <div className="flex justify-end gap-2">

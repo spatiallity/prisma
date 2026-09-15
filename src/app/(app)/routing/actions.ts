@@ -181,13 +181,14 @@ export async function updateRoutingStepDates(
 
   const { data: steps, error: readError } = await supabase
     .from('routing_history')
-    .select('id, sequence, status')
+    .select('id, sequence, status, step_name')
     .eq('spk_routing_id', routingId)
     .order('sequence')
   if (readError) return { error: readError.message }
 
   const index = (steps ?? []).findIndex((s) => s.id === stepId)
   if (index === -1) return { error: 'Tahap tidak ditemukan.' }
+  const step = steps![index]
   const previous = index > 0 ? steps![index - 1] : null
   // Gate on status, not completed_at: older, bulk-imported rows can carry
   // status 'Completed' with no completed_at ever recorded.
@@ -203,6 +204,17 @@ export async function updateRoutingStepDates(
   const completedAt = completedRaw ? new Date(`${completedRaw}T12:00:00`).toISOString() : null
   const status: RoutingStatus = completedAt ? 'Completed' : 'In Progress'
 
+  // The Invoiced step's whole point is capturing the invoice itself — closing
+  // it without those fields would leave a "Done" badge with nothing behind it.
+  const invoiceNumber = nullable(formData, 'invoice_number')
+  const invoiceValueRaw = nullable(formData, 'invoice_value')
+  const invoiceDate = nullable(formData, 'invoice_date')
+  if (step.step_name === 'Invoiced' && completedAt) {
+    if (!invoiceNumber || !invoiceValueRaw || !invoiceDate) {
+      return { error: 'Nomor invoice, nilai invoice, dan tanggal invoice wajib diisi.' }
+    }
+  }
+
   const { error } = await supabase
     .from('routing_history')
     .update({
@@ -211,6 +223,13 @@ export async function updateRoutingStepDates(
       status,
       pic_name: nullable(formData, 'pic_name') ?? undefined,
       note: nullable(formData, 'note') ?? undefined,
+      ...(step.step_name === 'Invoiced'
+        ? {
+            invoice_number: invoiceNumber,
+            invoice_value: invoiceValueRaw ? Number(invoiceValueRaw) : null,
+            invoice_date: invoiceDate,
+          }
+        : {}),
     })
     .eq('id', stepId)
   if (error) return { error: error.message }

@@ -4,7 +4,7 @@ import { useActionState, useId, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { ArrowRight, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Field, Input, Select } from '@/components/ui/field'
+import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { Combobox } from '@/components/ui/combobox'
@@ -93,7 +93,7 @@ export function NewRoutingForm({
         </Field>
 
         <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2">
-          <Input id="r_notes" name="notes" />
+          <Textarea id="r_notes" name="notes" rows={3} />
         </Field>
       </div>
 
@@ -136,6 +136,9 @@ export type RoutingStepEntry = {
   completed_at: string | null
   pic_name: string | null
   note: string | null
+  invoice_number: string | null
+  invoice_value: number | null
+  invoice_date: string | null
 }
 
 /**
@@ -148,12 +151,20 @@ export type RoutingStepEntry = {
 export function RoutingStepDateForm({
   routingId,
   stepId,
+  stepName,
   entry,
+  previousCompletedAt,
   onSaved,
 }: {
   routingId: string
   stepId: string
+  /** "Invoiced" shows the invoice number/value/date fields; every other
+   *  step doesn't. */
+  stepName: string
   entry: RoutingStepEntry
+  /** The step before this one's Tanggal selesai — Tanggal mulai defaults to
+   *  it (not "today") so consecutive stages stay continuous. */
+  previousCompletedAt?: string | null
   onSaved?: () => void
 }) {
   const [state, formAction] = useActionState(updateRoutingStepDates, initialState)
@@ -161,6 +172,7 @@ export function RoutingStepDateForm({
   const [showRevision, setShowRevision] = useState(false)
   const today = new Date().toISOString().slice(0, 10)
   const picListId = useId()
+  const isInvoiced = stepName === 'Invoiced'
 
   return (
     <div className="grid gap-3">
@@ -175,7 +187,7 @@ export function RoutingStepDateForm({
               id="rd_started"
               name="started_at"
               type="date"
-              defaultValue={entry.started_at?.slice(0, 10) ?? today}
+              defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
               required
             />
           </Field>
@@ -199,8 +211,43 @@ export function RoutingStepDateForm({
         </Field>
 
         <Field label="Catatan" htmlFor="rd_note">
-          <Input id="rd_note" name="note" defaultValue={entry.note ?? ''} placeholder="Hasil pemeriksaan…" />
+          <Textarea
+            id="rd_note"
+            name="note"
+            rows={3}
+            defaultValue={entry.note ?? ''}
+            placeholder={'Satu poin per baris, misalnya:\n- dokumen kurang lengkap\n- perlu tanda tangan ulang'}
+          />
         </Field>
+
+        {isInvoiced && (
+          <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <Field label="Nomor invoice" htmlFor="rd_inv_number" required>
+              <Input
+                id="rd_inv_number"
+                name="invoice_number"
+                defaultValue={entry.invoice_number ?? ''}
+                placeholder="INV-2026-014"
+              />
+            </Field>
+            <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
+              <Input
+                id="rd_inv_value"
+                name="invoice_value"
+                inputMode="numeric"
+                defaultValue={entry.invoice_value ?? ''}
+              />
+            </Field>
+            <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
+              <Input
+                id="rd_inv_date"
+                name="invoice_date"
+                type="date"
+                defaultValue={entry.invoice_date ?? ''}
+              />
+            </Field>
+          </div>
+        )}
 
         <div>
           <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} />
@@ -243,7 +290,13 @@ export function RoutingRevisionNoteForm({
       <input type="hidden" name="routing_id" value={routingId} />
       <input type="hidden" name="step_id" value={stepId} />
       <Field label="Catatan revisi" htmlFor="rv_note" required>
-        <Input id="rv_note" name="note" required placeholder="Yang perlu diperbaiki…" />
+        <Textarea
+          id="rv_note"
+          name="note"
+          rows={3}
+          required
+          placeholder={'Satu poin per baris, misalnya:\n- dokumen kurang lengkap'}
+        />
       </Field>
       <Field label="Disubmit ulang tanggal" htmlFor="rv_resubmit" required>
         <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />
@@ -311,7 +364,7 @@ export function StepReviewForm({
             </datalist>
           </Field>
           <Field label="Catatan" htmlFor="adv_note">
-            <Input id="adv_note" name="note" placeholder="Hasil pemeriksaan…" />
+            <Textarea id="adv_note" name="note" rows={3} placeholder="Hasil pemeriksaan…" />
           </Field>
           <div>
             <Submit label="Selesai &amp; teruskan" icon={<ArrowRight size={16} aria-hidden />} />
@@ -322,7 +375,7 @@ export function StepReviewForm({
           <input type="hidden" name="routing_id" value={routingId} />
           <input type="hidden" name="step_id" value={stepId} />
           <Field label="Catatan revisi" htmlFor="rv_note" required>
-            <Input id="rv_note" name="note" required placeholder="Yang perlu diperbaiki…" />
+            <Textarea id="rv_note" name="note" rows={3} required placeholder="Yang perlu diperbaiki…" />
           </Field>
           <Field label="Disubmit ulang tanggal" htmlFor="rv_resubmit" required>
             <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />

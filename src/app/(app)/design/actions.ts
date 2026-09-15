@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import type { DesignStage, StageStatus } from '@/lib/supabase/types'
+import type { DesignStage, RoutingStatus, StageStatus } from '@/lib/supabase/types'
 import { PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
 
 export type DesignState = { error: string | null; success?: string }
@@ -29,6 +29,26 @@ function pickedOrNow(formData: FormData, key: string) {
 
 function today(formData: FormData, key: string) {
   return text(formData, key) || new Date().toISOString().slice(0, 10)
+}
+
+function todayMulti(formData: FormData, keys: string[]) {
+  for (const key of keys) {
+    const raw = text(formData, key)
+    if (raw) return raw
+  }
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Same as pickedOrNow, but tries each key in order — the merged stage-entry
+ *  form submits the closing date as `completed_at` (distinct from the Mulai
+ *  field, also present in that same form as `tanggal`), while the older
+ *  standalone review form still only ever sends `tanggal`. */
+function pickedOrNowMulti(formData: FormData, keys: string[]) {
+  for (const key of keys) {
+    const raw = text(formData, key)
+    if (raw) return new Date(`${raw}T12:00:00`).toISOString()
+  }
+  return new Date().toISOString()
 }
 
 /**
@@ -104,6 +124,71 @@ async function syncSpkActivityStage(
     source: 'manual',
     recorded_by: userId,
   })
+}
+
+/**
+ * Section 27 — completing Opname is the real-world signal an SPK is ready
+ * for routing: it opens the spk_routing document (if none exists yet) from
+ * whatever routing template is active, mirroring createRouting's own setup.
+ * Also keeps spks.opname_marked_at in sync so the Financial tab, the PAD
+ * gate, and Routing Monitor's Opname column — all built around that one
+ * field before this stage existed — read the same event as their source.
+ */
+async function autoOpenRoutingOnOpname(
+  supabase: Supabase,
+  spkId: string,
+  opnameDate: string,
+  userId: string,
+) {
+  await supabase
+    .from('spks')
+    .update({ opname_marked_at: opnameDate, opname_marked_by: userId })
+    .eq('id', spkId)
+    .is('opname_marked_at', null)
+
+  const { data: existingRouting } = await supabase
+    .from('spk_routing')
+    .select('id')
+    .eq('spk_id', spkId)
+    .limit(1)
+  if (existingRouting && existingRouting.length > 0) return
+
+  const { data: template } = await supabase
+    .from('routing_templates')
+    .select('id')
+    .eq('status', 'Active')
+    .order('code')
+    .limit(1)
+    .maybeSingle()
+  if (!template) return
+
+  const { data: steps } = await supabase
+    .from('routing_template_steps')
+    .select('*')
+    .eq('template_id', template.id)
+    .order('sequence')
+  if (!steps || steps.length === 0) return
+
+  const { data: routing, error } = await supabase
+    .from('spk_routing')
+    .insert({ spk_id: spkId, template_id: template.id, document_type: 'Invoice', created_by: userId })
+    .select('id')
+    .single()
+  if (error || !routing) return
+
+  const now = new Date().toISOString()
+  const rows = steps.map((step, index) => ({
+    spk_routing_id: routing.id,
+    template_step_id: step.id,
+    step_name: step.name,
+    sequence: step.sequence,
+    sla_days: step.sla_days,
+    pic_name: step.default_pic_role,
+    status: (index === 0 ? 'In Progress' : 'Pending') as RoutingStatus,
+    started_at: index === 0 ? now : null,
+    created_by: userId,
+  }))
+  await supabase.from('routing_history').insert(rows)
 }
 
 /**
@@ -296,7 +381,7 @@ export async function advanceStage(
     return { error: `Desain sudah berada di tahap ${stage}.` }
   }
 
-  const now = pickedOrNow(formData, 'tanggal')
+  const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
   // A blank PIC field carries the previous stage's PIC forward, matching the
   // "sama seperti sebelumnya" placeholder — only a typed name changes it.
   const typedPicName = text(formData, 'pic_name')
@@ -376,6 +461,14 @@ export async function advanceStage(
       .from('designs')
       .update({ approved_at: now, approved_by: user.id })
       .eq('id', designId)
+    if (stage === 'Opname') {
+      await autoOpenRoutingOnOpname(
+        supabase,
+        designRow.spk_id,
+        todayMulti(formData, ['completed_at', 'tanggal']),
+        user.id,
+      )
+    }
   } else {
     await supabase
       .from('designs')
@@ -383,7 +476,7 @@ export async function advanceStage(
       .eq('id', designId)
   }
 
-  const progressDate = today(formData, 'tanggal')
+  const progressDate = todayMulti(formData, ['completed_at', 'tanggal'])
   if (current) {
     await syncSpkActivityStage(
       supabase,
@@ -462,8 +555,14 @@ export async function updateRevisionEntry(
   if (!entryId) return { error: 'Entri tidak dikenali.' }
 
   const supabase = await createClient()
+  const { data: entry } = await supabase
+    .from('design_revisions')
+    .select('pic_id')
+    .eq('id', entryId)
+    .maybeSingle()
+
   const typedPicName = text(formData, 'pic_name')
-  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
+  const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : (entry?.pic_id ?? null)
 
   const { error } = await supabase
     .from('design_revisions')
@@ -505,7 +604,7 @@ export async function deleteRevisionEntry(
 
   const { data: designRow } = await supabase
     .from('designs')
-    .select('spk_id')
+    .select('spk_id, phase')
     .eq('id', designId)
     .maybeSingle()
   if (!designRow) return { error: 'Desain tidak ditemukan.' }
@@ -543,7 +642,7 @@ export async function deleteRevisionEntry(
   await syncSpkActivityStage(supabase, designRow.spk_id, latest.stage, 'Belum Mulai', today10, user.id)
   await syncSpkActivityStage(supabase, designRow.spk_id, previous.stage, 'Dalam Pengerjaan', today10, user.id)
 
-  if (latest.stage === 'Finish' || latest.stage === 'Acc PIC Pertamina') {
+  if (latest.stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
     await supabase
       .from('designs')
       .update({ approved_at: null, approved_by: null })

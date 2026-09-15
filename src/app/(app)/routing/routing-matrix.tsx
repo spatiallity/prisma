@@ -6,9 +6,11 @@ import { Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { AccordionChain, type AccordionStep } from '@/components/ui/step-chain'
+import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
 import { cn, formatDate } from '@/lib/utils'
 import { RoutingStepDateForm } from './forms'
+import { OpnamePadRow } from '../spk/[id]/opname-pad-mark'
+import { markOpname, markPad, unmarkOpname, unmarkPad } from '../spk/actions'
 import type { Database } from '@/lib/supabase/types'
 
 type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
@@ -26,6 +28,9 @@ type HistoryCell = {
   completed_at: string | null
   pic_name: string | null
   note: string | null
+  invoice_number: string | null
+  invoice_value: number | null
+  invoice_date: string | null
 }
 type Revision = { id: string; note: string | null; resubmit_at: string }
 
@@ -131,13 +136,13 @@ function RoutingDetailModal({
           {cell.pic_name ?? 'PIC belum ditentukan'}
           {cell.started_at && ` · mulai ${formatDate(cell.started_at)}`}
           {cell.completed_at && ` → ${formatDate(cell.completed_at)}`}
-          {cell.note && <div className="mt-1 text-sm text-slate-700">{cell.note}</div>}
+          <NotesList text={cell.note} />
           {revisions.length > 0 && (
             <ul className="mt-2 grid gap-1.5 border-l-2 border-warning/40 pl-3">
               {revisions.map((revision, i) => (
                 <li key={revision.id} className="text-xs">
-                  <span className="font-bold text-warning">Revisi {i + 1}</span>{' '}
-                  <span className="text-slate-700">{revision.note}</span>
+                  <span className="font-bold text-warning">Revisi {i + 1}</span>
+                  <NotesList text={revision.note} />
                   <span className="text-muted-foreground"> · disubmit ulang {formatDate(revision.resubmit_at)}</span>
                 </li>
               ))}
@@ -145,7 +150,16 @@ function RoutingDetailModal({
           )}
         </>
       ),
-      content: mayEdit && cell ? <RoutingStepDateForm routingId={doc.id} stepId={cell.id} entry={cell} /> : undefined,
+      content:
+        mayEdit && cell ? (
+          <RoutingStepDateForm
+            routingId={doc.id}
+            stepId={cell.id}
+            stepName={step.name}
+            entry={cell}
+            previousCompletedAt={previousCell?.completed_at}
+          />
+        ) : undefined,
     }
   })
 
@@ -187,6 +201,9 @@ export function RoutingMatrix({
   mayEdit,
   invoiceDraftedBySpk,
   opnameBySpk,
+  opnameValueBySpk,
+  padBySpk,
+  padValueBySpk,
 }: {
   docs: RoutingDoc[]
   /** SPKs eligible for routing with no spk_routing document yet. */
@@ -201,6 +218,9 @@ export function RoutingMatrix({
   mayEdit: boolean
   invoiceDraftedBySpk: Record<string, boolean>
   opnameBySpk: Record<string, string | null>
+  opnameValueBySpk: Record<string, number | null>
+  padBySpk: Record<string, string | null>
+  padValueBySpk: Record<string, number | null>
 }) {
   const [openDocId, setOpenDocId] = useState<string | null>(null)
   const openDoc = docs.find((d) => d.id === openDocId) ?? null
@@ -235,13 +255,59 @@ export function RoutingMatrix({
       label: 'Opname',
       align: 'center',
       className: 'text-muted-foreground',
+      stopRowClick: true,
       sortAccessor: (row) => (opnameBySpk[row.spk_id] ? 1 : 0),
       render: (row) => {
         const markedAt = opnameBySpk[row.spk_id]
         return (
-          <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
-            {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
+          <div className="flex items-center justify-center gap-1.5">
+            <div>
+              <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+              {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
+            </div>
+            {mayEdit && (
+              <OpnamePadRow
+                label="Opname"
+                spkId={row.spk_id}
+                markedAt={markedAt}
+                markAction={markOpname}
+                unmarkAction={unmarkOpname}
+                valueLabel="Nilai Opname"
+                value={opnameValueBySpk[row.spk_id] ?? null}
+              />
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'pad',
+      label: 'PAD',
+      align: 'center',
+      className: 'text-muted-foreground',
+      stopRowClick: true,
+      sortAccessor: (row) => (padBySpk[row.spk_id] ? 1 : 0),
+      render: (row) => {
+        const markedAt = padBySpk[row.spk_id]
+        return (
+          <div className="flex items-center justify-center gap-1.5">
+            <div>
+              <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+              {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
+            </div>
+            {mayEdit && (
+              <OpnamePadRow
+                label="PAD"
+                spkId={row.spk_id}
+                markedAt={markedAt}
+                disabled={!opnameBySpk[row.spk_id]}
+                disabledHint="Opname dulu"
+                markAction={markPad}
+                unmarkAction={unmarkPad}
+                valueLabel="Nilai PAD"
+                value={padValueBySpk[row.spk_id] ?? null}
+              />
+            )}
           </div>
         )
       },

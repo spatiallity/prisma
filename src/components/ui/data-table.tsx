@@ -44,6 +44,7 @@ export function DataTable<T>({
   selectedKeys,
   onSelectionChange,
   pageSize = 25,
+  showRowNumber = true,
 }: {
   columns: DataTableColumn<T>[]
   rows: T[]
@@ -62,6 +63,9 @@ export function DataTable<T>({
   onSelectionChange?: (keys: Set<string>) => void
   /** Rows per page. Pass Infinity for a short list that never needs paging. */
   pageSize?: number
+  /** A leading, unsortable "No" column numbering the visible rows in view
+   *  order (accounting for the current page) — on by default everywhere. */
+  showRowNumber?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
@@ -163,6 +167,7 @@ export function DataTable<T>({
         <Table>
           <thead>
             <tr>
+              {showRowNumber && <Th className="w-10 tnum">No</Th>}
               {selectable && (
                 <Th className="w-8">
                   <input
@@ -212,12 +217,17 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
+            {visible.map((row, index) => (
               <Tr
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={onRowClick ? 'cursor-pointer' : undefined}
               >
+                {showRowNumber && (
+                  <Td className="tnum text-muted-foreground">
+                    {(pageSize === Infinity ? 0 : safePage * pageSize) + index + 1}
+                  </Td>
+                )}
                 {selectable && (
                   <Td onClick={(e) => e.stopPropagation()}>
                     <input
