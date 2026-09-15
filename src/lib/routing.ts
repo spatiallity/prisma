@@ -15,6 +15,20 @@ export const ROUTING_TONE: Record<
 /** Stages a document can still move from — Completed is the end of the line. */
 export const OPEN_STATUSES: RoutingStatus[] = ['Pending', 'In Progress', 'Returned']
 
+export function routingStatusLabel(status: RoutingStatus) {
+  switch (status) {
+    case 'Pending':
+      return 'Draft'
+    case 'In Progress':
+    case 'Returned':
+      return 'Sedang Berjalan'
+    case 'Completed':
+      return 'Selesai'
+    case 'Rejected':
+      return 'Dibatalkan'
+  }
+}
+
 /** 2,4 hari — one decimal is as precise as a lead time needs to read. */
 export function formatDays(value: number | null | undefined) {
   if (value === null || value === undefined) return '—'

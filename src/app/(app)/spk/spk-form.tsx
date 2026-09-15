@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useActionToast } from '@/components/ui/toast'
 import { SPK_STATUSES, type SpkRow } from '@/lib/supabase/types'
-import { LOCATION_TYPE_OPTIONS, WORK_TYPE_OPTIONS } from '@/lib/spk'
+import { LOCATION_TYPE_OPTIONS, WORK_TYPE_OPTIONS, spkStatusLabel } from '@/lib/spk'
 import type { SpkFormState } from './actions'
 
 const initialState: SpkFormState = { error: null }
@@ -140,7 +140,7 @@ export function SpkForm({
             <Select id="status" name="status" defaultValue={spk?.status ?? 'Draft'}>
               {SPK_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {spkStatusLabel(status)}
                 </option>
               ))}
             </Select>

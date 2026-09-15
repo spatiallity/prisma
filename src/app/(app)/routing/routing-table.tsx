@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { cn, formatDate } from '@/lib/utils'
-import { ROUTING_TONE, formatDays } from '@/lib/routing'
+import { ROUTING_TONE, formatDays, routingStatusLabel } from '@/lib/routing'
 import type { Database } from '@/lib/supabase/types'
 
 type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
@@ -55,7 +55,7 @@ export function RoutingTable({
       className: 'text-muted-foreground',
       sortAccessor: (row) => currentByDoc[row.id]?.step_name ?? null,
       render: (row) =>
-        currentByDoc[row.id]?.step_name ?? (row.status === 'Completed' ? 'Done' : '—'),
+        currentByDoc[row.id]?.step_name ?? (row.status === 'Completed' ? 'Selesai' : '—'),
     },
     {
       key: 'pic',
@@ -114,7 +114,7 @@ export function RoutingTable({
         const late = currentByDoc[row.id]?.is_overdue ?? false
         return (
           <Badge tone={late ? 'danger' : ROUTING_TONE[row.status]}>
-            {late ? 'Lewat SLA' : row.status}
+            {late ? 'Lewat SLA' : routingStatusLabel(row.status)}
           </Badge>
         )
       },

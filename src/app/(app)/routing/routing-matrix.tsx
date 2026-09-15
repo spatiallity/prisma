@@ -54,18 +54,18 @@ function StepCell({
   if (cell.status === 'Completed') {
     return (
       <div>
-        <Badge tone="success">Done</Badge>
+        <Badge tone="success">Selesai</Badge>
         {cell.completed_at && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.completed_at)}</div>}
       </div>
     )
   }
 
-  if (!isCurrent) return <Badge tone="neutral">Not Yet</Badge>
+  if (!isCurrent) return <Badge tone="neutral">Draft</Badge>
 
   return (
     <div>
       <Badge tone={isOverdue ? 'danger' : cell.status === 'Returned' ? 'warning' : 'primary'}>
-        {isOverdue ? 'Lewat SLA' : cell.status === 'Returned' ? 'Revisi' : 'In Progress'}
+        {isOverdue ? 'Lewat SLA' : cell.status === 'Returned' ? 'Revisi' : 'Sedang Berjalan'}
       </Badge>
       {cell.started_at && (
         <div className={cn('tnum text-xs', isOverdue ? 'font-bold text-danger' : 'text-muted-foreground')}>
@@ -119,7 +119,8 @@ function RoutingDetailModal({
     const key = doc?.id ?? null
     if (key !== lastDocId.current) {
       lastDocId.current = key
-      setOpenKey(current?.id ?? null)
+      const frame = requestAnimationFrame(() => setOpenKey(current?.id ?? null))
+      return () => cancelAnimationFrame(frame)
     }
   }, [doc, current])
 
@@ -210,7 +211,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Opname</div>
-              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Done' : 'Not Yet'}</Badge>
+              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Selesai' : 'Draft'}</Badge>
               {opnameMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(opnameMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -228,7 +229,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">PAD</div>
-              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Done' : 'Not Yet'}</Badge>
+              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Selesai' : 'Draft'}</Badge>
               {padMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(padMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -251,7 +252,7 @@ function RoutingDetailModal({
           <AccordionChain steps={accordionSteps} openKey={openKey} onToggle={toggle} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Belum dirutekan — dokumen invoice muncul di sini begitu Opname selesai.
+            Belum dirutekan. SPK ini sudah siap masuk persiapan dokumen invoice.
           </p>
         )}
       </div>
@@ -277,7 +278,6 @@ export function RoutingMatrix({
   opnameValueBySpk,
   padBySpk,
   padValueBySpk,
-  stepFilter,
 }: {
   docs: RoutingDoc[]
   /** SPKs eligible for routing with no spk_routing document yet. */
@@ -302,15 +302,10 @@ export function RoutingMatrix({
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
 
-  useEffect(() => {
-    setOpenRowId(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepFilter])
-  const openRow = rowsWithVirtual(docs, virtualSpkIds).find((r) => r.id === openRowId) ?? null
+  const rows = rowsWithVirtual(docs, virtualSpkIds)
+  const openRow = rows.find((r) => r.id === openRowId) ?? null
   const openDoc = openRow && !isVirtual(openRow) ? openRow : null
   const openSpkId = openRow?.spk_id
-
-  const rows = rowsWithVirtual(docs, virtualSpkIds)
 
   const columns: DataTableColumn<MatrixRow>[] = [
     {
@@ -342,7 +337,7 @@ export function RoutingMatrix({
         const markedAt = opnameBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Not Yet'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Draft'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
@@ -358,7 +353,7 @@ export function RoutingMatrix({
         const markedAt = padBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Not Yet'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Draft'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { SpkStatus } from '@/lib/supabase/types'
-import { WORK_TYPE_TEMPLATE_CODE } from '@/lib/spk'
+import { WORK_TYPE_TEMPLATE_CODE, spkStatusLabel } from '@/lib/spk'
 import { pickFormValues } from '@/lib/form-values'
 
 export type SpkFormState = {
@@ -249,7 +249,7 @@ export async function setSpkStatus(
 
   revalidatePath('/spk')
   revalidatePath(`/spk/${id}`)
-  return { error: null, success: `Status SPK diubah menjadi ${status}.` }
+  return { error: null, success: `Status SPK diubah menjadi ${spkStatusLabel(status)}.` }
 }
 
 /**
@@ -411,7 +411,7 @@ export async function unmarkTerrainSurvey(
   revalidatePath(`/spk/${id}`)
   revalidatePath('/spk')
   revalidatePath('/dashboard')
-  return { error: null, success: 'Survei Terestris dikembalikan ke On Going.' }
+  return { error: null, success: 'Survei Terestris dikembalikan ke Sedang Berjalan.' }
 }
 
 /** Pengecekan Bersama — just a date on the SPK, same as Opname/PAD. */

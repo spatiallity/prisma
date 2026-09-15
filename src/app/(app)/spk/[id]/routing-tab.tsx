@@ -4,6 +4,8 @@ import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
+import { routingStatusLabel } from '@/lib/routing'
+import type { RoutingStatus } from '@/lib/supabase/types'
 import { RoutingStepEdit } from '../../routing/routing-step-edit'
 
 /** The Routing tab of Detail SPK: every document this SPK has in flight,
@@ -57,7 +59,7 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
 
   type HistoryCell = {
     id: string
-    status: string
+    status: RoutingStatus
     started_at: string | null
     completed_at: string | null
     pic_name: string | null
@@ -98,7 +100,7 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             key: step.id,
             label: step.name,
             state,
-            badge: cell && chainBadge(state, cell.status),
+            badge: cell && chainBadge(state, routingStatusLabel(cell.status)),
             sub: cell && (
               <>
                 {cell.pic_name ?? 'PIC belum ditentukan'}

@@ -38,7 +38,10 @@ export function Modal({
   const setOpen = onOpenChange ?? setInternalOpen
   const [mounted, setMounted] = React.useState(false)
 
-  React.useEffect(() => setMounted(true), [])
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   React.useEffect(() => {
     if (!open) return

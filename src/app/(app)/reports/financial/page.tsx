@@ -54,7 +54,7 @@ export default async function FinancialReportPage() {
         opnameValue: s.opname_value != null ? Number(s.opname_value) : null,
         padMarkedAt: s.pad_marked_at,
         padValue: s.pad_value != null ? Number(s.pad_value) : null,
-        invoiceDone: invoice?.status === 'Completed',
+        invoiceDone: invoice?.status === 'Completed' && !!invoice.invoice_date,
         invoiceNumber: invoice?.invoice_number ?? null,
         invoiceValue: invoice?.invoice_value != null ? Number(invoice.invoice_value) : null,
         invoiceDate: invoice?.invoice_date ?? null,

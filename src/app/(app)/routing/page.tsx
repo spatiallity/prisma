@@ -11,6 +11,7 @@ import { can } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import type { Database, RoutingLeadTimeView } from '@/lib/supabase/types'
 import { formatDays } from '@/lib/routing'
+import { canStartRouting } from '@/lib/workflow-rules'
 import { AddRoutingButton } from './forms'
 import { RoutingTable } from './routing-table'
 import { RoutingMatrix } from './routing-matrix'
@@ -36,20 +37,17 @@ export async function RoutingMonitor({
 
   const supabase = await createClient()
 
-  const [{ data: documents, error }, { data: lead }, { data: spks }, { data: templates }, { data: finalisasiDesigns }] =
+  const [{ data: documents, error }, { data: lead }, { data: spks }, { data: templates }] =
     await Promise.all([
       supabase.from('spk_routing').select('*').order('created_at', { ascending: false }),
       supabase.from('v_routing_lead_time').select('*'),
       supabase
         .from('spks')
         .select(
-          'id, spk_number, site_code, work_name, status, opname_marked_at, opname_value, pad_marked_at, pad_value',
+          'id, spk_number, site_code, work_name, work_type, location_type, status, opname_marked_at, opname_value, pad_marked_at, pad_value',
         )
         .order('spk_number'),
       supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
-      // Finalisasi Desain opens (any stage) once Desain Siteplan hits Finish —
-      // that's the "eligible for routing" signal, whether or not it's routed yet.
-      supabase.from('designs').select('spk_id').eq('phase', 'finalisasi').eq('status', 'Active'),
     ])
 
   const spkById = Object.fromEntries((spks ?? []).map((s) => [s.id, s]))
@@ -58,13 +56,14 @@ export async function RoutingMonitor({
   const padBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_marked_at]))
   const padValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_value]))
 
-  // Section 27 — an SPK ready for routing but not yet routed (no spk_routing
-  // row) still needs to show up as "Drafting Invoice: Not Yet" so it isn't
-  // invisible while sitting between Desain and routing.
+  // An SPK with PAD and no spk_routing row sits in document preparation.
   const routedSpkIds = new Set((documents ?? []).map((d) => d.spk_id))
-  const virtualSpkIds = [...new Set((finalisasiDesigns ?? []).map((d) => d.spk_id))].filter(
-    (spkId) => !routedSpkIds.has(spkId),
+  const virtualSpkIds = (spks ?? []).filter(
+    (spk) =>
+      !routedSpkIds.has(spk.id) &&
+      canStartRouting(spk),
   )
+    .map((spk) => spk.id)
 
   // The stage a document is actually sitting in: the first one not finished.
   const currentByDoc = new Map<string, RoutingLeadTimeView>()
@@ -92,6 +91,14 @@ export async function RoutingMonitor({
     .sort((a, b) => (a.status === 'Completed' ? 1 : 0) - (b.status === 'Completed' ? 1 : 0))
 
   const overdueCount = filtered.filter((doc) => overdueByDoc.get(doc.id)).length
+  const summaryDocIds = new Set(
+    (documents ?? [])
+      .filter((doc) => doc.status !== 'Rejected')
+      .map((doc) => doc.id),
+  )
+  const currentBySummaryDoc = Object.fromEntries(
+    Object.entries(currentByDocPlain).filter(([docId]) => summaryDocIds.has(docId)),
+  )
 
   // History's table still shows PIC + revision count per current-at-the-time
   // step — only needed here, the matrix shows every step's own state instead.
@@ -130,6 +137,8 @@ export async function RoutingMonitor({
             <AddRoutingButton
               spks={(spks ?? [])
                 .filter((s) => s.status === 'Draft' || s.status === 'On Going')
+                .filter((s) => !routedSpkIds.has(s.id))
+                .filter((s) => canStartRouting(s))
                 .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
               templateId={defaultTemplateId}
             />
@@ -146,7 +155,7 @@ export async function RoutingMonitor({
       {mode === 'open' && (
         <StepSummaryCards
           templateId={defaultTemplateId}
-          currentByDoc={currentByDocPlain}
+          currentByDoc={currentBySummaryDoc}
           activeStep={step}
         />
       )}

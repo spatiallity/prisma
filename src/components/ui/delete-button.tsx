@@ -57,8 +57,10 @@ export function DeleteButton({
       toast.error(state.error)
     } else if (open) {
       submitted.current = false
-      setOpen(false)
-      toast.success(`${itemLabel[0].toUpperCase()}${itemLabel.slice(1)} dihapus.`)
+      queueMicrotask(() => {
+        setOpen(false)
+        toast.success(`${itemLabel[0].toUpperCase()}${itemLabel.slice(1)} dihapus.`)
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, open])

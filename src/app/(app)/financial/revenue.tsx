@@ -70,7 +70,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
           .order('payment_date', { ascending: false, nullsFirst: false }),
         supabase
           .from('invoices')
-          .select('id, invoice_number, invoice_value')
+          .select('id, spk_id, invoice_number, invoice_value')
           .neq('status', 'Cancelled'),
       ])
       rows = (data ?? []).map((r) => ({
@@ -86,6 +86,7 @@ export async function RevenueDocuments({ kind }: { kind: RevenueKind }) {
       }))
       parents = (invoices ?? []).map((i) => ({
         id: i.id,
+        spkId: i.spk_id,
         label: `${i.invoice_number ?? 'Invoice'} — ${formatRupiah(i.invoice_value)}`,
       }))
       break

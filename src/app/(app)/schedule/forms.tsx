@@ -76,7 +76,7 @@ export function DailyPlanForm({
   if (options.spks.length === 0 && !editing) {
     return (
       <Alert tone="warning">
-        Belum ada SPK berstatus Draft atau On Going untuk dijadwalkan.
+        Belum ada SPK berstatus Draft atau Sedang Berjalan untuk dijadwalkan.
       </Alert>
     )
   }

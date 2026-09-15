@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { DOC_STATUS_TONE } from '@/lib/financial'
+import { DOC_STATUS_TONE, financialDisplayStatus, financialStatusLabel } from '@/lib/financial'
 import { markOpname, markPad, unmarkOpname, unmarkPad } from '../actions'
 import { OpnamePadRow } from './opname-pad-mark'
 import { EditRevenueButton } from '../../financial/revenue-form'
@@ -41,7 +41,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   const spkChoice = spk ? [{ id: spkId, label: `${spk.spk_number} — ${spk.work_name}` }] : []
   const opnameDone = !!spk?.opname_marked_at
   const padDone = !!spk?.pad_marked_at
-  const hasInvoice = !!invoices && invoices.length > 0
+  const invoiceDone = (invoices ?? []).some((invoice) => invoice.status === 'Approved' && !!invoice.invoice_date)
 
   const steps: ChainStep[] = [
     {
@@ -104,41 +104,44 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
     {
       key: 'invoice',
       label: 'Invoice',
-      state: hasInvoice ? 'done' : padDone ? 'current' : 'pending',
-      badge: chainBadge(hasInvoice ? 'done' : padDone ? 'current' : 'pending'),
+      state: invoiceDone ? 'done' : padDone ? 'current' : 'pending',
+      badge: chainBadge(invoiceDone ? 'done' : padDone ? 'current' : 'pending'),
       sub: (
         <div className="mt-1 grid gap-2">
-          {(invoices ?? []).map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-slate-900">{inv.invoice_number ?? 'Invoice'}</span>
-                  <Badge tone={DOC_STATUS_TONE[inv.status]}>{inv.status}</Badge>
+          {(invoices ?? []).map((inv) => {
+            const status = financialDisplayStatus(inv.status, { invoiceDate: inv.invoice_date })
+            return (
+              <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-900">{inv.invoice_number ?? 'Invoice'}</span>
+                    <Badge tone={DOC_STATUS_TONE[status]}>{financialStatusLabel(status)}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(inv.invoice_date)} · {formatRupiah(inv.invoice_value)}
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(inv.invoice_date)} · {formatRupiah(inv.invoice_value)}
-                </div>
+                {mayEdit && (
+                  <EditRevenueButton
+                    kind="invoice"
+                    spks={spkChoice}
+                    parents={[]}
+                    initial={{
+                      id: inv.id,
+                      spkId,
+                      number: inv.invoice_number,
+                      value: Number(inv.invoice_value),
+                      date: inv.invoice_date,
+                      status: inv.status,
+                      extra: null,
+                      notes: inv.notes,
+                      dueDate: inv.due_date,
+                    }}
+                  />
+                )}
               </div>
-              {mayEdit && (
-                <EditRevenueButton
-                  kind="invoice"
-                  spks={spkChoice}
-                  parents={[]}
-                  initial={{
-                    id: inv.id,
-                    spkId,
-                    number: inv.invoice_number,
-                    value: Number(inv.invoice_value),
-                    date: inv.invoice_date,
-                    status: inv.status,
-                    extra: null,
-                    notes: inv.notes,
-                    dueDate: inv.due_date,
-                  }}
-                />
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       ),
     },

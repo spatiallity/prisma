@@ -5,7 +5,12 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { RowActions } from '@/components/ui/row-actions'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { DOC_STATUS_TONE, type REVENUE_META } from '@/lib/financial'
+import {
+  DOC_STATUS_TONE,
+  financialDisplayStatus,
+  financialStatusLabel,
+  type REVENUE_META,
+} from '@/lib/financial'
 import type { FinancialDocStatus } from '@/lib/supabase/types'
 import { EditRevenueButton, RevenueDeleteButton, RevenueStatusToggle, type Choice } from './revenue-form'
 import type { RevenueKind } from '@/lib/financial'
@@ -100,8 +105,16 @@ export function RevenueTable({
           {
             key: 'status',
             label: 'Status',
-            sortAccessor: (row: DocRow) => row.status,
-            render: (row: DocRow) => <Badge tone={DOC_STATUS_TONE[row.status]}>{row.status}</Badge>,
+            sortAccessor: (row: DocRow) =>
+              financialDisplayStatus(row.status, {
+                invoiceDate: kind === 'invoice' ? row.date : 'filled',
+              }),
+            render: (row: DocRow) => {
+              const status = financialDisplayStatus(row.status, {
+                invoiceDate: kind === 'invoice' ? row.date : 'filled',
+              })
+              return <Badge tone={DOC_STATUS_TONE[status]}>{financialStatusLabel(status)}</Badge>
+            },
           } satisfies DataTableColumn<DocRow>,
         ]),
     ...(mayEdit

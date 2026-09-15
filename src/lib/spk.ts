@@ -16,10 +16,23 @@ export const SPK_STATUS_TONE: Record<
 export const STATUS_FILTERS = [
   { key: 'all', label: 'Semua', status: null },
   { key: 'draft', label: 'Draft', status: 'Draft' as SpkStatus },
-  { key: 'ongoing', label: 'On Going', status: 'On Going' as SpkStatus },
+  { key: 'ongoing', label: 'Sedang Berjalan', status: 'On Going' as SpkStatus },
   { key: 'selesai', label: 'Selesai', status: 'Selesai' as SpkStatus },
   { key: 'arsip', label: 'Arsip', status: 'Archived' as SpkStatus },
 ]
+
+export function spkStatusLabel(status: SpkStatus) {
+  switch (status) {
+    case 'On Going':
+      return 'Sedang Berjalan'
+    case 'Archived':
+      return 'Arsip'
+    case 'Cancelled':
+      return 'Dibatalkan'
+    default:
+      return status
+  }
+}
 
 export function statusFromFilterKey(key: string | undefined): SpkStatus | null {
   return STATUS_FILTERS.find((f) => f.key === key)?.status ?? null

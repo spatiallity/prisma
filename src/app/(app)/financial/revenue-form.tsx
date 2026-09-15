@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,7 @@ import { Alert } from '@/components/ui/alert'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
-import { FINANCIAL_DOC_STATUSES } from '@/lib/supabase/types'
-import { REVENUE_META, type RevenueKind } from '@/lib/financial'
+import { DOC_STATUS_OPTIONS, REVENUE_META, type RevenueKind } from '@/lib/financial'
 import {
   deleteRevenueDoc,
   saveRevenueDoc,
@@ -22,7 +21,7 @@ import type { DocRow } from './revenue-table'
 
 const initialState: FinancialState = { error: null }
 
-export type Choice = { id: string; label: string }
+export type Choice = { id: string; label: string; spkId?: string | null }
 
 function Feedback({ state }: { state: FinancialState }) {
   if (state.error) return <Alert tone="danger">{state.error}</Alert>
@@ -30,8 +29,7 @@ function Feedback({ state }: { state: FinancialState }) {
   return null
 }
 
-function Submit({ label }: { label: string }) {
-  const { pending } = useFormStatus()
+function Submit({ label, pending }: { label: string; pending?: boolean }) {
   return (
     <Button type="submit" disabled={pending}>
       <Plus size={16} aria-hidden />
@@ -59,15 +57,19 @@ export function RevenueForm({
   /** Editing an existing document instead of creating a new one. */
   initial?: DocRow & { amendmentNo?: number; dueDate?: string | null; parentId?: string | null; dendaValue?: number | null }
 }) {
-  const [state, formAction] = useActionState(initial ? updateRevenueDoc : saveRevenueDoc, initialState)
+  const [state, formAction, pending] = useActionState(initial ? updateRevenueDoc : saveRevenueDoc, initialState)
+  const [selectedSpkId, setSelectedSpkId] = useState(initial?.spkId ?? '')
   const meta = REVENUE_META[kind]
   useActionToast(state, onSaved)
+  const parentLabel = 'Invoice'
+  const filteredParents = useMemo(() => {
+    if (kind !== 'payment' || !selectedSpkId) return parents
+    return parents.filter((parent) => !parent.spkId || parent.spkId === selectedSpkId)
+  }, [kind, parents, selectedSpkId])
 
   if (spks.length === 0) {
     return <Alert tone="warning">Belum ada SPK untuk dicatat dokumennya.</Alert>
   }
-
-  const parentLabel = 'Invoice'
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -77,7 +79,14 @@ export function RevenueForm({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="SPK" htmlFor="f_spk" required className="lg:col-span-2">
-          <Select id="f_spk" name="spk_id" required defaultValue={initial?.spkId}>
+          <Select
+            id="f_spk"
+            name="spk_id"
+            required
+            value={selectedSpkId}
+            onChange={(event) => setSelectedSpkId(event.target.value)}
+          >
+            <option value="">Pilih SPK</option>
             {spks.map((spk) => (
               <option key={spk.id} value={spk.id}>
                 {spk.label}
@@ -111,9 +120,9 @@ export function RevenueForm({
 
         <Field label="Status" htmlFor="f_status">
           <Select id="f_status" name="status" defaultValue={initial?.status ?? 'Draft'}>
-            {FINANCIAL_DOC_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status}
+            {DOC_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
               </option>
             ))}
           </Select>
@@ -149,7 +158,7 @@ export function RevenueForm({
           >
             <Select id="f_parent" name="parent_id" defaultValue={initial?.parentId ?? ''}>
               <option value="">— tidak ditautkan —</option>
-              {parents.map((parent) => (
+              {filteredParents.map((parent) => (
                 <option key={parent.id} value={parent.id}>
                   {parent.label}
                 </option>
@@ -164,7 +173,7 @@ export function RevenueForm({
       </div>
 
       <div>
-        <Submit label={initial ? 'Simpan perubahan' : `Simpan ${meta.label}`} />
+        <Submit label={initial ? 'Simpan perubahan' : `Simpan ${meta.label}`} pending={pending} />
       </div>
     </form>
   )

@@ -96,6 +96,7 @@ export async function loadDesignQueue(
       entry.design_id,
       {
         startedAt: entry.started_at,
+        picId: entry.pic_id,
         picPertamina: entry.pic_pertamina,
         rounds: roundsPerEntry[entry.id] ?? 0,
       },

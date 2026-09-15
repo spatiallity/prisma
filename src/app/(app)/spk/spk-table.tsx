@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { RowActions } from '@/components/ui/row-actions'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea, workTypeCategory } from '@/lib/spk'
+import { SPK_STATUS_TONE, daysLeft, formatArea, spkStatusLabel, workTypeCategory } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
 import type { SpkStage } from '@/lib/spk-stage'
 import { deleteSpk } from './actions'
@@ -113,7 +113,7 @@ export function SpkTable({
       key: 'status',
       label: 'Status',
       sortAccessor: (row) => row.status,
-      render: (row) => <Badge tone={SPK_STATUS_TONE[row.status]}>{row.status}</Badge>,
+      render: (row) => <Badge tone={SPK_STATUS_TONE[row.status]}>{spkStatusLabel(row.status)}</Badge>,
     },
     ...(mayEdit
       ? [

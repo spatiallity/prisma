@@ -11,7 +11,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea } from '@/lib/spk'
+import { SPK_STATUS_TONE, daysLeft, formatArea, spkStatusLabel } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
 import { SurveyTab } from './survey-tab'
 import { DesignTab } from './design-tab'
@@ -114,7 +114,7 @@ export default async function SpkDetailPage({
                   {spk.site_code ?? spk.spk_number}
                 </h1>
                 <Badge tone="info">{spk.spk_number}</Badge>
-                <Badge tone={SPK_STATUS_TONE[spk.status]}>{spk.status}</Badge>
+                <Badge tone={SPK_STATUS_TONE[spk.status]}>{spkStatusLabel(spk.status)}</Badge>
               </div>
               <p className="mt-1 text-sm font-medium text-muted-foreground">
                 {spk.work_name}
@@ -206,7 +206,7 @@ export default async function SpkDetailPage({
                 label={hasRoutingStarted ? 'Posisi dokumen' : 'Sisa waktu'}
                 value={
                   hasRoutingStarted ? (
-                    (stage?.label ?? 'Done')
+                    (stage?.label ?? 'Selesai')
                   ) : remaining === null ? (
                     '—'
                   ) : remaining < 0 ? (

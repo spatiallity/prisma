@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -17,6 +17,7 @@ type DesignRow = Database['public']['Tables']['designs']['Row']
 type SpkLite = { id: string; spk_number: string; site_code: string | null; work_name: string }
 type CurrentStage = {
   startedAt: string | null
+  picId: string | null
   picPertamina: string | null
   rounds: number
 }
@@ -41,7 +42,6 @@ export function DesignTable({
   siteplanApprovedBySpk,
   pics = [],
   mayEdit = false,
-  stageFilter,
 }: {
   phase: DesignPhase
   designs: DesignRow[]
@@ -61,11 +61,6 @@ export function DesignTable({
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const openDesign = designs.find((d) => d.id === openId) ?? null
-
-  useEffect(() => {
-    setOpenId(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageFilter])
 
   const columns: DataTableColumn<DesignRow>[] = [
     {
@@ -95,15 +90,21 @@ export function DesignTable({
         currentByDesign[row.id] ? (
           <Badge tone={STAGE_TONE[row.current_stage]}>{row.current_stage}</Badge>
         ) : (
-          <Badge tone="neutral">Not Yet</Badge>
+          <Badge tone="neutral">Draft</Badge>
         ),
     },
     {
       key: 'pic',
       label: 'Drafter',
       className: 'text-muted-foreground',
-      sortAccessor: (row) => (row.pic_id ? (picName[row.pic_id] ?? null) : null),
-      render: (row) => (row.pic_id ? (picName[row.pic_id] ?? '—') : '—'),
+      sortAccessor: (row) => {
+        const picId = currentByDesign[row.id]?.picId ?? row.pic_id
+        return picId ? (picName[picId] ?? null) : null
+      },
+      render: (row) => {
+        const picId = currentByDesign[row.id]?.picId ?? row.pic_id
+        return picId ? (picName[picId] ?? '—') : '—'
+      },
     },
     {
       key: 'pic_pertamina',
@@ -122,7 +123,7 @@ export function DesignTable({
         }
       : {
           key: 'siteplan_approved',
-          label: 'Desain Awal Approved',
+          label: 'Desain Awal Selesai',
           className: 'tnum text-muted-foreground',
           sortAccessor: (row) => siteplanApprovedBySpk?.[row.spk_id] ?? null,
           render: (row) => {

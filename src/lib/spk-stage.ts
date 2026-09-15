@@ -1,4 +1,5 @@
 import type { createClient } from '@/lib/supabase/server'
+import type { DesignStage } from '@/lib/supabase/types'
 import { PHASE_LABEL } from '@/lib/design'
 
 export type SpkStage = { label: string; date: string | null }
@@ -20,6 +21,9 @@ export async function loadStageBySpk(
     start_date: string | null
     terrain_survey_completed_at: string | null
     joint_check_date: string | null
+    work_name?: string | null
+    work_type?: string | null
+    location_type?: string | null
   }[],
 ): Promise<Record<string, SpkStage>> {
   const spkIds = spks.map((s) => s.id)
@@ -35,7 +39,7 @@ export async function loadStageBySpk(
         .order('invoice_date', { ascending: false, nullsFirst: false }),
       supabase
         .from('designs')
-        .select('id, spk_id, phase, current_stage')
+        .select('id, spk_id, phase, current_stage, approved_at')
         .in('spk_id', spkIds)
         .eq('status', 'Active'),
       supabase.from('spk_routing').select('*').in('spk_id', spkIds),
@@ -53,7 +57,10 @@ export async function loadStageBySpk(
     : { data: [] }
   const startedDesignIds = new Set((startedDesignRevisions ?? []).map((r) => r.design_id))
 
-  const designBySpk = new Map<string, { id: string; phase: 'siteplan' | 'finalisasi'; current_stage: string }>()
+  const designBySpk = new Map<
+    string,
+    { id: string; phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null }
+  >()
   for (const d of designs ?? []) {
     const existing = designBySpk.get(d.spk_id)
     // Prefer finalisasi over siteplan — it only exists once siteplan is done.
@@ -76,6 +83,7 @@ export async function loadStageBySpk(
       continue
     }
 
+    const design = designBySpk.get(spk.id)
     const routingDoc = routingBySpk.get(spk.id)
     if (routingDoc) {
       if (routingDoc.status === 'Completed') {
@@ -99,7 +107,6 @@ export async function loadStageBySpk(
       continue
     }
 
-    const design = designBySpk.get(spk.id)
     if (design) {
       const started = startedDesignIds.has(design.id)
       stageBySpk[spk.id] = started
@@ -117,7 +124,7 @@ export async function loadStageBySpk(
       continue
     }
 
-    stageBySpk[spk.id] = { label: 'Survei Terestris: On Going', date: null }
+    stageBySpk[spk.id] = { label: 'Survei Terestris: Sedang Berjalan', date: null }
   }
 
   return stageBySpk

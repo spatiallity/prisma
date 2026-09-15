@@ -24,7 +24,10 @@ export function RowActions({
   const menuRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   useEffect(() => {
     if (!open) return

@@ -68,6 +68,37 @@ export const DOC_STATUS_TONE: Record<
   Cancelled: 'neutral',
 }
 
+export const DOC_STATUS_OPTIONS: { value: FinancialDocStatus; label: string }[] = [
+  { value: 'Draft', label: 'Draft' },
+  { value: 'Submitted', label: 'Sedang Berjalan' },
+  { value: 'Approved', label: 'Selesai' },
+  { value: 'Cancelled', label: 'Dibatalkan' },
+]
+
+export function financialStatusLabel(status: FinancialDocStatus) {
+  switch (status) {
+    case 'Submitted':
+      return 'Sedang Berjalan'
+    case 'Approved':
+      return 'Selesai'
+    case 'Rejected':
+    case 'Cancelled':
+      return 'Dibatalkan'
+    default:
+      return 'Draft'
+  }
+}
+
+export function financialDisplayStatus(
+  status: FinancialDocStatus,
+  opts?: { invoiceDate?: string | null },
+) {
+  if (status === 'Approved' && opts && !opts.invoiceDate) {
+    return 'Submitted' satisfies FinancialDocStatus
+  }
+  return status
+}
+
 /** −12,4% — signed percentages carry a sign and one decimal. */
 export function formatPercentSigned(value: number | null | undefined) {
   if (value === null || value === undefined) return '—'

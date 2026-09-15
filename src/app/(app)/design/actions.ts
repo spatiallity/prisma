@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import type { DesignStage, RoutingStatus, StageStatus } from '@/lib/supabase/types'
+import type { DesignStage, StageStatus } from '@/lib/supabase/types'
 import { PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
 
 export type DesignState = { error: string | null; success?: string }
@@ -126,14 +126,13 @@ async function syncSpkActivityStage(
 }
 
 /**
- * Section 27 — completing Opname is the real-world signal an SPK is ready
- * for routing: it opens the spk_routing document (if none exists yet) from
- * whatever routing template is active, mirroring createRouting's own setup.
- * Also keeps spks.opname_marked_at in sync so the Financial tab, the PAD
- * gate, and Routing Monitor's Opname column — all built around that one
- * field before this stage existed — read the same event as their source.
+ * Section 27 — completing Opname keeps spks.opname_marked_at in sync so the
+ * Financial tab, PAD gate, and Routing Monitor's Opname column read the same
+ * event as their source. Routing itself is now opened only from the routing
+ * module once document invoice really enters Pertamina review; this lets SPK
+ * sit in finalisasi/drafting invoice without polluting Routing Monitor.
  */
-async function autoOpenRoutingOnOpname(
+async function markOpnameFromDesign(
   supabase: Supabase,
   spkId: string,
   opnameDate: string,
@@ -149,50 +148,6 @@ async function autoOpenRoutingOnOpname(
     })
     .eq('id', spkId)
     .is('opname_marked_at', null)
-
-  const { data: existingRouting } = await supabase
-    .from('spk_routing')
-    .select('id')
-    .eq('spk_id', spkId)
-    .limit(1)
-  if (existingRouting && existingRouting.length > 0) return
-
-  const { data: template } = await supabase
-    .from('routing_templates')
-    .select('id')
-    .eq('status', 'Active')
-    .order('code')
-    .limit(1)
-    .maybeSingle()
-  if (!template) return
-
-  const { data: steps } = await supabase
-    .from('routing_template_steps')
-    .select('*')
-    .eq('template_id', template.id)
-    .order('sequence')
-  if (!steps || steps.length === 0) return
-
-  const { data: routing, error } = await supabase
-    .from('spk_routing')
-    .insert({ spk_id: spkId, template_id: template.id, document_type: 'Invoice', created_by: userId })
-    .select('id')
-    .single()
-  if (error || !routing) return
-
-  const now = new Date().toISOString()
-  const rows = steps.map((step, index) => ({
-    spk_routing_id: routing.id,
-    template_step_id: step.id,
-    step_name: step.name,
-    sequence: step.sequence,
-    sla_days: step.sla_days,
-    pic_name: step.default_pic_role,
-    status: (index === 0 ? 'In Progress' : 'Pending') as RoutingStatus,
-    started_at: index === 0 ? now : null,
-    created_by: userId,
-  }))
-  await supabase.from('routing_history').insert(rows)
 }
 
 /**
@@ -508,8 +463,7 @@ export async function advanceStage(
  * Section 27 — closes a terminal stage that has nowhere further to advance
  * to (Opname on Desain Siteplan). Unlike advanceStage this never opens a new
  * revision; it just sets this one's Tanggal selesai, marks the design
- * approved, and — for Opname specifically — records the Nilai Opname and
- * auto-opens routing via autoOpenRoutingOnOpname.
+ * approved, and — for Opname specifically — records the Nilai Opname.
  */
 export async function completeStage(
   _prev: DesignState,
@@ -557,7 +511,7 @@ export async function completeStage(
 
   if (entry.stage === 'Opname') {
     const valueRaw = text(formData, 'opname_value')
-    await autoOpenRoutingOnOpname(
+    await markOpnameFromDesign(
       supabase,
       designRow.spk_id,
       todayMulti(formData, ['completed_at', 'tanggal']),
@@ -576,6 +530,7 @@ export async function completeStage(
   )
 
   revalidatePath('/design')
+  revalidatePath('/routing')
   revalidatePath(`/design/${designId}`)
   revalidatePath(`/spk/${designRow.spk_id}`)
   return { error: null, success: `${entry.stage} selesai.` }

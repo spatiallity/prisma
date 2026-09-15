@@ -1,7 +1,6 @@
 'use client'
 
 import { useActionState, useId, useState } from 'react'
-import { useFormStatus } from 'react-dom'
 import { ArrowRight, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
@@ -37,19 +36,22 @@ function Submit({
   variant = 'primary',
   name,
   value,
+  pending = false,
+  disabled = false,
 }: {
   label: string
   icon?: React.ReactNode
   variant?: 'primary' | 'secondary'
+  pending?: boolean
+  disabled?: boolean
   /** Set both to make this button's own name=value pair distinguish which
    *  of several submit buttons in one form was clicked (e.g. Lanjut vs
    *  Masih Revisi both posting to the same action). */
   name?: string
   value?: string
 }) {
-  const { pending } = useFormStatus()
   return (
-    <Button type="submit" name={name} value={value} variant={variant} disabled={pending}>
+    <Button type="submit" name={name} value={value} variant={variant} disabled={disabled || pending}>
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -67,7 +69,7 @@ export function NewRoutingForm({
   templateId: string | null
   onSaved?: () => void
 }) {
-  const [state, formAction] = useActionState(createRouting, initialState)
+  const [state, formAction, pending] = useActionState(createRouting, initialState)
   useActionToast(state, onSaved)
   const today = new Date().toISOString().slice(0, 10)
 
@@ -105,7 +107,7 @@ export function NewRoutingForm({
       </div>
 
       <div>
-        <Submit label="Rutekan invoice" icon={<Plus size={16} aria-hidden />} />
+        <Submit label="Rutekan invoice" icon={<Plus size={16} aria-hidden />} pending={pending} />
       </div>
     </form>
   )
@@ -176,7 +178,7 @@ export function RoutingStepDateForm({
   previousCompletedAt?: string | null
   onSaved?: () => void
 }) {
-  const [state, formAction] = useActionState(updateRoutingStepDates, initialState)
+  const [state, formAction, pending] = useActionState(updateRoutingStepDates, initialState)
   useActionToast(state, onSaved)
   const today = new Date().toISOString().slice(0, 10)
   const picListId = useId()
@@ -243,7 +245,7 @@ export function RoutingStepDateForm({
           </Field>
           {invoiceFields}
           <div>
-            <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} />
+            <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
           </div>
         </>
       ) : (
@@ -261,8 +263,16 @@ export function RoutingStepDateForm({
               icon={<ArrowRight size={16} aria-hidden />}
               name="decision"
               value="lanjut"
+              pending={pending}
             />
-            <Submit label="Masih Revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} name="decision" value="revisi" />
+            <Submit
+              label="Masih Revisi"
+              variant="secondary"
+              icon={<Undo2 size={16} aria-hidden />}
+              name="decision"
+              value="revisi"
+              pending={pending}
+            />
           </div>
         </>
       )}
@@ -288,8 +298,8 @@ export function StepReviewForm({
   onSaved?: () => void
 }) {
   const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
-  const [advanceState, advanceAction] = useActionState(advanceStep, initialState)
-  const [revisionState, revisionAction] = useActionState(addRoutingRevision, initialState)
+  const [advanceState, advanceAction, advancePending] = useActionState(advanceStep, initialState)
+  const [revisionState, revisionAction, revisionPending] = useActionState(addRoutingRevision, initialState)
   useActionToast(advanceState, onSaved)
   useActionToast(revisionState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
@@ -329,7 +339,7 @@ export function StepReviewForm({
             <Textarea id="adv_note" name="note" rows={3} placeholder="Hasil pemeriksaan…" />
           </Field>
           <div>
-            <Submit label="Selesai &amp; teruskan" icon={<ArrowRight size={16} aria-hidden />} />
+            <Submit label="Selesai &amp; teruskan" icon={<ArrowRight size={16} aria-hidden />} pending={advancePending} />
           </div>
         </form>
       ) : (
@@ -343,7 +353,7 @@ export function StepReviewForm({
             <Input id="rv_resubmit" name="resubmit_at" type="date" defaultValue={today} required />
           </Field>
           <div>
-            <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} />
+            <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} pending={revisionPending} />
           </div>
         </form>
       )}

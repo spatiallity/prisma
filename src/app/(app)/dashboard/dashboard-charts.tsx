@@ -27,7 +27,7 @@ function CountTooltip({
   payload,
 }: {
   active?: boolean
-  payload?: { name: string; value: number; payload: { fill: string } }[]
+  payload?: { name: string; value: number; payload: { fill: string; label?: string } }[]
 }) {
   if (!active || !payload?.length) return null
   const p = payload[0]
@@ -35,7 +35,7 @@ function CountTooltip({
     <div className="rounded-lg border border-slate-200 bg-surface px-3 py-2 text-xs shadow-lg">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.payload.fill }} aria-hidden />
-        <span className="text-muted-foreground">{p.name}</span>
+        <span className="text-muted-foreground">{p.payload.label ?? p.name}</span>
         <span className="tnum font-bold text-slate-900">{p.value}</span>
       </div>
     </div>
@@ -43,7 +43,7 @@ function CountTooltip({
 }
 
 /** Section 8 — status mix at a glance, next to the raw counts already on the tiles above. */
-export function SpkStatusChart({ data }: { data: { status: string; count: number }[] }) {
+export function SpkStatusChart({ data }: { data: { status: string; label: string; count: number }[] }) {
   const nonZero = data.filter((d) => d.count > 0)
   if (nonZero.length === 0) return null
 
@@ -54,7 +54,7 @@ export function SpkStatusChart({ data }: { data: { status: string; count: number
           <Pie
             data={nonZero}
             dataKey="count"
-            nameKey="status"
+            nameKey="label"
             innerRadius="55%"
             outerRadius="85%"
             paddingAngle={2}

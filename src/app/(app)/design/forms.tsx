@@ -1,7 +1,6 @@
 'use client'
 
 import { useActionState, useId, useMemo, useState } from 'react'
-import { useFormStatus } from 'react-dom'
 import { ArrowRight, Pencil, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
@@ -39,17 +38,20 @@ function Submit({
   icon,
   variant = 'primary',
   formAction,
+  pending = false,
+  disabled = false,
 }: {
   label: string
   icon?: React.ReactNode
   variant?: 'primary' | 'secondary'
+  pending?: boolean
+  disabled?: boolean
   /** Routes this button's submit to a different action than the form's own
    *  — used when one form offers two outcomes (Simpan vs Lanjutkan). */
   formAction?: (formData: FormData) => void
 }) {
-  const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant={variant} disabled={pending} formAction={formAction}>
+    <Button type="submit" variant={variant} disabled={disabled || pending} formAction={formAction}>
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -196,7 +198,7 @@ export function NewDesignForm({
   pics: PicOption[]
   onSaved?: () => void
 }) {
-  const [state, formAction] = useActionState(createDesign, initialState)
+  const [state, formAction, pending] = useActionState(createDesign, initialState)
   useActionToast(state, onSaved)
   const today = new Date().toISOString().slice(0, 10)
 
@@ -239,7 +241,7 @@ export function NewDesignForm({
       </div>
 
       <div>
-        <Submit label="Buka record desain" icon={<Plus size={16} aria-hidden />} />
+        <Submit label="Buka record desain" icon={<Plus size={16} aria-hidden />} pending={pending} />
       </div>
     </form>
   )
@@ -295,8 +297,8 @@ export function StageReviewForm({
   defaultPicPertamina: string | null
 }) {
   const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
-  const [advanceState, advanceAction] = useActionState(advanceStage, initialState)
-  const [revisionState, revisionAction] = useActionState(addDesignRevision, initialState)
+  const [advanceState, advanceAction, advancePending] = useActionState(advanceStage, initialState)
+  const [revisionState, revisionAction, revisionPending] = useActionState(addDesignRevision, initialState)
   useActionToast(advanceState)
   useActionToast(revisionState)
   const options = PHASE_STAGES[phase].filter((stage) => stage !== currentStage)
@@ -348,7 +350,7 @@ export function StageReviewForm({
           </Field>
 
           <div>
-            <Submit label="Selesai &amp; pindahkan" icon={<ArrowRight size={16} aria-hidden />} />
+            <Submit label="Selesai &amp; pindahkan" icon={<ArrowRight size={16} aria-hidden />} pending={advancePending} />
           </div>
         </form>
       ) : (
@@ -365,7 +367,7 @@ export function StageReviewForm({
           </Field>
 
           <div>
-            <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} />
+            <Submit label="Catat revisi" variant="secondary" icon={<Undo2 size={16} aria-hidden />} pending={revisionPending} />
           </div>
         </form>
       )}
@@ -409,9 +411,9 @@ export function StageEntryForm({
   pics: PicOption[]
   onSaved?: () => void
 }) {
-  const [saveState, saveAction] = useActionState(updateRevisionEntry, initialState)
-  const [advanceState, advanceAction] = useActionState(advanceStage, initialState)
-  const [completeState, completeAction] = useActionState(completeStage, initialState)
+  const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
+  const [advanceState, advanceAction, advancePending] = useActionState(advanceStage, initialState)
+  const [completeState, completeAction, completePending] = useActionState(completeStage, initialState)
   useActionToast(saveState, onSaved)
   useActionToast(advanceState, onSaved)
   useActionToast(completeState, onSaved)
@@ -422,6 +424,7 @@ export function StageEntryForm({
   const [showAll, setShowAll] = useState(false)
   const allOptions = PHASE_STAGES[phase].filter((s) => s !== stage)
   const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : ''
+  const anyPending = savePending || advancePending || completePending
 
   return (
     <form className="grid gap-3">
@@ -529,16 +532,24 @@ export function StageEntryForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Submit label="Simpan" variant="secondary" formAction={saveAction} />
+        <Submit label="Simpan" variant="secondary" formAction={saveAction} pending={savePending} disabled={anyPending} />
         {isCurrent && nextOptions.length > 0 && (
           <Submit
             label="Lanjutkan ke Tahap Selanjutnya"
             icon={<ArrowRight size={16} aria-hidden />}
             formAction={advanceAction}
+            pending={advancePending}
+            disabled={anyPending}
           />
         )}
         {isTerminal && (
-          <Submit label="Selesaikan" icon={<ArrowRight size={16} aria-hidden />} formAction={completeAction} />
+          <Submit
+            label="Selesaikan"
+            icon={<ArrowRight size={16} aria-hidden />}
+            formAction={completeAction}
+            pending={completePending}
+            disabled={anyPending}
+          />
         )}
       </div>
     </form>
@@ -561,7 +572,7 @@ export function StartDesignForm({
   currentStage: DesignStage
   pics: PicOption[]
 }) {
-  const [state, formAction] = useActionState(startDesign, initialState)
+  const [state, formAction, pending] = useActionState(startDesign, initialState)
   useActionToast(state)
   const today = new Date().toISOString().slice(0, 10)
 
@@ -594,7 +605,7 @@ export function StartDesignForm({
       <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
       <div>
-        <Submit label="Mulai pengerjaan" icon={<Plus size={16} aria-hidden />} />
+        <Submit label="Mulai pengerjaan" icon={<Plus size={16} aria-hidden />} pending={pending} />
       </div>
     </form>
   )
@@ -619,7 +630,7 @@ export function EditRevisionEntryButton({
   }
 }) {
   const [open, setOpen] = useState(false)
-  const [state, formAction] = useActionState(updateRevisionEntry, initialState)
+  const [state, formAction, pending] = useActionState(updateRevisionEntry, initialState)
   useActionToast(state, () => setOpen(false))
 
   return (
@@ -669,7 +680,7 @@ export function EditRevisionEntryButton({
           <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
             Batal
           </Button>
-          <Submit label="Simpan" />
+          <Submit label="Simpan" pending={pending} />
         </div>
       </form>
     </Modal>

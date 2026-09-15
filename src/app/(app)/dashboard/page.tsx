@@ -17,10 +17,11 @@ import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah, formatRupiahCompact } from '@/lib/utils'
-import { daysLeft } from '@/lib/spk'
+import { daysLeft, spkStatusLabel } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
+import type { SpkStatus } from '@/lib/supabase/types'
 import { RabDonutChart, SpkStatusChart, TopCategoriesChart } from './dashboard-charts'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -73,8 +74,9 @@ export default async function DashboardPage() {
   for (const row of spkStatuses ?? []) {
     statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1)
   }
-  const spkStatusChartData = ['Draft', 'On Going', 'Selesai', 'Archived', 'Cancelled'].map(
-    (status) => ({ status, count: statusCounts.get(status) ?? 0 }),
+  const spkStatusOrder: SpkStatus[] = ['Draft', 'On Going', 'Selesai', 'Archived', 'Cancelled']
+  const spkStatusChartData = spkStatusOrder.map(
+    (status) => ({ status, label: spkStatusLabel(status), count: statusCounts.get(status) ?? 0 }),
   )
 
   const rabLeaf = filterLeafAccounts(akunSummary ?? [])
@@ -121,7 +123,7 @@ export default async function DashboardPage() {
     accent: 'primary' | 'info' | 'navy' | 'gold' | 'orange'
   }[] = [
     { label: 'Total SPK', value: kpi?.total_spk ?? 0, foot: `${kpi?.spk_selesai ?? 0} selesai`, href: '/spk', icon: FolderKanban, accent: 'primary' },
-    { label: 'On Going', value: kpi?.spk_on_going ?? 0, foot: 'sedang berjalan', href: '/spk?status=ongoing', icon: Workflow, accent: 'info' },
+    { label: 'Sedang Berjalan', value: kpi?.spk_on_going ?? 0, foot: 'aktif dikerjakan', href: '/spk?status=ongoing', icon: Workflow, accent: 'info' },
     { label: 'Masuk Routing', value: kpi?.spk_routing ?? 0, foot: 'punya dokumen dirutekan', href: '/routing', icon: FileStack, accent: 'navy' },
     { label: 'PAD', value: kpi?.spk_pad ?? 0, foot: 'sudah ditandai PAD', href: '/spk', icon: FileCheck2, accent: 'gold' },
     { label: 'Invoice', value: kpi?.spk_invoice ?? 0, foot: 'sudah ditagihkan', href: '/financial/invoice', icon: Receipt, accent: 'orange' },
@@ -174,7 +176,7 @@ export default async function DashboardPage() {
           <Card className="overflow-hidden">
             <CardHeader>
               <div>
-                <CardTitle>SPK On Going</CardTitle>
+                <CardTitle>SPK Sedang Berjalan</CardTitle>
               </div>
               <Link href="/spk" className="text-xs font-bold text-primary hover:underline">
                 Semua SPK
@@ -234,7 +236,7 @@ export default async function DashboardPage() {
             ) : (
               <EmptyState
                 title="Belum ada SPK berjalan"
-                description="SPK berstatus On Going akan muncul di sini."
+                description="SPK berstatus Sedang Berjalan akan muncul di sini."
               />
             )}
           </Card>
@@ -246,7 +248,7 @@ export default async function DashboardPage() {
               <CardHeader>
                 <div>
                   <CardTitle>Sebaran status SPK</CardTitle>
-                  <CardDescription>{kpi?.total_spk ?? 0} SPK aktif (di luar Cancelled)</CardDescription>
+                  <CardDescription>{kpi?.total_spk ?? 0} SPK aktif di luar yang dibatalkan</CardDescription>
                 </div>
               </CardHeader>
               <SpkStatusChart data={spkStatusChartData} />

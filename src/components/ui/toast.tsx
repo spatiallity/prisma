@@ -24,7 +24,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false)
   const nextId = React.useRef(0)
 
-  React.useEffect(() => setMounted(true), [])
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const dismiss = React.useCallback((id: number) => {
     setToasts((current) => current.filter((t) => t.id !== id))
@@ -100,17 +103,18 @@ export function useActionToast(
   onSuccess?: () => void,
 ) {
   const { success, error } = useToast()
-  const seen = React.useRef<{ error?: string | null; success?: string }>({})
+  const seen = React.useRef<typeof state | null>(null)
 
   React.useEffect(() => {
-    if (state.error && state.error !== seen.current.error) {
+    if (state === seen.current) return
+    if (state.error) {
       error(state.error)
     }
-    if (state.success && state.success !== seen.current.success) {
+    if (state.success) {
       success(state.success)
       onSuccess?.()
     }
-    seen.current = { error: state.error, success: state.success }
+    seen.current = state
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.error, state.success])
+  }, [state])
 }

@@ -9,7 +9,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate } from '@/lib/utils'
-import { ROUTING_TONE, formatDays, stageTone } from '@/lib/routing'
+import { ROUTING_TONE, formatDays, routingStatusLabel, stageTone } from '@/lib/routing'
 import { StepReviewForm } from '../forms'
 
 export const metadata: Metadata = { title: 'Detail routing' }
@@ -94,7 +94,7 @@ export default async function RoutingDetailPage({
         }
         actions={
           <div className="flex items-center gap-2">
-            <Badge tone={ROUTING_TONE[routing.status]}>{routing.status}</Badge>
+            <Badge tone={ROUTING_TONE[routing.status]}>{routingStatusLabel(routing.status)}</Badge>
             {spk && (
               <Link
                 href={`/spk/${spk.id}`}
@@ -134,7 +134,7 @@ export default async function RoutingDetailPage({
               Posisi sekarang
             </div>
             <div className="mt-1 truncate text-lg font-black text-slate-900">
-              {current?.step_name ?? 'Done'}
+              {current?.step_name ?? 'Selesai'}
             </div>
           </CardContent>
         </Card>
@@ -227,7 +227,7 @@ export default async function RoutingDetailPage({
 
                     <div className="flex flex-col items-end gap-1 pb-5">
                       <Badge tone={stageTone(step.status, late)}>
-                        {late && step.status !== 'Completed' ? 'Lewat SLA' : step.status}
+                        {late && step.status !== 'Completed' ? 'Lewat SLA' : routingStatusLabel(step.status)}
                       </Badge>
                       <span
                         className={cn(

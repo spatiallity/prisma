@@ -21,7 +21,7 @@ export function AddAssignmentButton({
       open={open}
       onOpenChange={setOpen}
       title="Assignment baru"
-      description="Hanya SPK berstatus Draft atau On Going yang bisa ditugaskan."
+      description="Hanya SPK berstatus Draft atau Sedang Berjalan yang bisa ditugaskan."
       trigger={
         <Button type="button">
           <Plus size={16} aria-hidden />

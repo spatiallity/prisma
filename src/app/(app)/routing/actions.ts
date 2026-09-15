@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { RoutingStatus } from '@/lib/supabase/types'
+import { canStartRouting } from '@/lib/workflow-rules'
 
 export type RoutingState = { error: string | null; success?: string }
 
@@ -44,6 +45,26 @@ export async function createRouting(
   }
 
   const supabase = await createClient()
+
+  const { data: spk } = await supabase
+    .from('spks')
+    .select('work_name, work_type, location_type, pad_marked_at')
+    .eq('id', spkId)
+    .maybeSingle()
+
+  if (!spk) return { error: 'SPK tidak ditemukan.' }
+  if (!canStartRouting(spk)) {
+    return { error: 'Selesaikan PAD sebelum routing invoice.' }
+  }
+
+  const { data: existingRouting } = await supabase
+    .from('spk_routing')
+    .select('id')
+    .eq('spk_id', spkId)
+    .limit(1)
+  if (existingRouting && existingRouting.length > 0) {
+    return { error: 'SPK ini sudah punya dokumen routing.' }
+  }
 
   const { data: steps, error: stepsError } = await supabase
     .from('routing_template_steps')
