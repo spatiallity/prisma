@@ -115,6 +115,48 @@ export function RabDonutChart({ anggaran, realisasi }: { anggaran: number; reali
   )
 }
 
+const STAGE_BAR_COLOR = 'var(--color-info)'
+
+/** How many on-going designs sit at each stage of one phase, as horizontal
+ *  bars in the phase's own fixed stage order (not sorted by count) — the
+ *  order itself is the point, showing where the pipeline backs up. */
+export function DesignStageChart({ data }: { data: { label: string; count: number }[] }) {
+  const chartData = [...data].reverse()
+  const total = data.reduce((sum, d) => sum + d.count, 0)
+
+  if (total === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
+        Tidak ada yang sedang berjalan
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-52 px-2 pt-1 pb-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+          <YAxis
+            type="category"
+            dataKey="label"
+            width={132}
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            formatter={(value) => [value, 'SPK']}
+            contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            cursor={{ fill: 'var(--color-slate-50)' }}
+          />
+          <Bar dataKey="count" fill={STAGE_BAR_COLOR} radius={[0, 4, 4, 0]} barSize={16} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 /** Top 5 spending accounts this month, as horizontal bars — longest label wins the most width. */
 export function TopCategoriesChart({ data }: { data: { label: string; jumlah: number }[] }) {
   const chartData = [...data].reverse().map((d) => ({

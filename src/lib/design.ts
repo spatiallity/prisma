@@ -112,6 +112,13 @@ export function isDraft(revisionCount: number) {
   return revisionCount === 0
 }
 
+/** A siteplan design sitting at Finish hasn't actually reached Opname yet —
+ *  "Finish" alone reads as done when it isn't; badges/lists show this label
+ *  instead. Every other stage displays as-is. */
+export function stageDisplayLabel(stage: DesignStage) {
+  return stage === 'Finish' ? 'Menunggu Opname' : stage
+}
+
 /** Whole days a design has sat where it is — the Section 9 bottleneck signal. */
 export function daysInStage(since: string | null | undefined) {
   if (!since) return null

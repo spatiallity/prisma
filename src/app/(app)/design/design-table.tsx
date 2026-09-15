@@ -7,7 +7,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { RowActions } from '@/components/ui/row-actions'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { cn, formatDate } from '@/lib/utils'
-import { STAGE_TONE, daysInStage } from '@/lib/design'
+import { STAGE_TONE, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { Database, DesignPhase } from '@/lib/supabase/types'
 import { DesignDetailModal } from './design-detail-modal'
 import { deleteDesign } from './actions'
@@ -88,7 +88,7 @@ export function DesignTable({
       sortAccessor: (row) => (currentByDesign[row.id] ? row.current_stage : ''),
       render: (row) =>
         currentByDesign[row.id] ? (
-          <Badge tone={STAGE_TONE[row.current_stage]}>{row.current_stage}</Badge>
+          <Badge tone={STAGE_TONE[row.current_stage]}>{stageDisplayLabel(row.current_stage)}</Badge>
         ) : (
           <Badge tone="neutral">Draft</Badge>
         ),

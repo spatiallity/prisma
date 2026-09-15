@@ -1,6 +1,6 @@
 import type { createClient } from '@/lib/supabase/server'
 import type { DesignStage } from '@/lib/supabase/types'
-import { PHASE_LABEL } from '@/lib/design'
+import { PHASE_LABEL, stageDisplayLabel } from '@/lib/design'
 
 export type SpkStage = { label: string; date: string | null }
 
@@ -110,7 +110,7 @@ export async function loadStageBySpk(
     if (design) {
       const started = startedDesignIds.has(design.id)
       stageBySpk[spk.id] = started
-        ? { label: `Desain: ${design.current_stage}`, date: null }
+        ? { label: `Desain: ${stageDisplayLabel(design.current_stage)}`, date: null }
         : { label: `${PHASE_LABEL[design.phase]}: menunggu mulai`, date: null }
       continue
     }

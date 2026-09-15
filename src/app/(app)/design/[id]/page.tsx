@@ -11,7 +11,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate } from '@/lib/utils'
-import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, STAGE_TONE, daysInStage } from '@/lib/design'
+import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, STAGE_TONE, daysInStage, stageDisplayLabel } from '@/lib/design'
 import {
   DeleteRevisionEntryButton,
   EditRevisionEntryButton,
@@ -137,7 +137,7 @@ export default async function DesignDetailPage({
             {isDraft ? (
               <Badge tone="neutral">Draft</Badge>
             ) : (
-              <Badge tone={STAGE_TONE[design.current_stage]}>{design.current_stage}</Badge>
+              <Badge tone={STAGE_TONE[design.current_stage]}>{stageDisplayLabel(design.current_stage)}</Badge>
             )}
             {sibling && (
               <Link href={`/design/${sibling.id}`} className={linkButtonClass}>
@@ -347,7 +347,7 @@ export default async function DesignDetailPage({
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Tahap sekarang</span>
                 <Badge tone={STAGE_TONE[design.current_stage]}>
-                  {design.current_stage}
+                  {stageDisplayLabel(design.current_stage)}
                 </Badge>
               </div>
               <div className="flex justify-between gap-3">
