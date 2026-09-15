@@ -95,7 +95,7 @@ export function DesignTable({
         currentByDesign[row.id] ? (
           <Badge tone={STAGE_TONE[row.current_stage]}>{row.current_stage}</Badge>
         ) : (
-          <Badge tone="neutral">Draft</Badge>
+          <Badge tone="neutral">Not Yet</Badge>
         ),
     },
     {

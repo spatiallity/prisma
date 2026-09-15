@@ -79,12 +79,17 @@ export async function RoutingMonitor({
 
   const defaultTemplateId = templates?.[0]?.id ?? null
 
-  const filtered = (documents ?? []).filter((doc) => {
-    if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
-    if (doc.status === 'Completed' || doc.status === 'Rejected') return false
-    if (step && currentByDoc.get(doc.id)?.step_name !== step) return false
-    return true
-  })
+  const filtered = (documents ?? [])
+    .filter((doc) => {
+      if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
+      if (doc.status === 'Rejected') return false
+      if (step && currentByDoc.get(doc.id)?.step_name !== step) return false
+      return true
+    })
+    // Invoiced documents still belong here (Opname through Invoiced is one
+    // continuous view now), but sink to the bottom — they're done, not what
+    // needs attention.
+    .sort((a, b) => (a.status === 'Completed' ? 1 : 0) - (b.status === 'Completed' ? 1 : 0))
 
   const overdueCount = filtered.filter((doc) => overdueByDoc.get(doc.id)).length
 

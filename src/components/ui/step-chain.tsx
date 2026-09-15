@@ -76,9 +76,9 @@ export function StepChain({ steps }: { steps: ChainStep[] }) {
 }
 
 /** The one set of status words used everywhere a chain step's state is shown
- *  as text: Draft (not reached/not started), In Progress (the active step),
- *  Done, Rejected. Never "Selesai", "Sudah", "Berjalan", "On Going", or
- *  "Not Yet" — those were the same four states spelled differently per
+ *  as text: Not Yet (not reached/not started), In Progress (the active
+ *  step), Done, Rejected. Never "Draft", "Selesai", "Sudah", "Berjalan", or
+ *  "On Going" — those were the same four states spelled differently per
  *  module. */
 export function chainStatusLabel(state: ChainStep['state']) {
   switch (state) {
@@ -89,7 +89,7 @@ export function chainStatusLabel(state: ChainStep['state']) {
     case 'rejected':
       return 'Rejected'
     default:
-      return 'Draft'
+      return 'Not Yet'
   }
 }
 

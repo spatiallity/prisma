@@ -55,20 +55,18 @@ function StepCell({
     return (
       <div>
         <Badge tone="success">Done</Badge>
-        {cell.pic_name && <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name}</div>}
         {cell.completed_at && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.completed_at)}</div>}
       </div>
     )
   }
 
-  if (!isCurrent) return <Badge tone="neutral">Draft</Badge>
+  if (!isCurrent) return <Badge tone="neutral">Not Yet</Badge>
 
   return (
     <div>
       <Badge tone={isOverdue ? 'danger' : cell.status === 'Returned' ? 'warning' : 'primary'}>
         {isOverdue ? 'Lewat SLA' : cell.status === 'Returned' ? 'Revisi' : 'In Progress'}
       </Badge>
-      {cell.pic_name && <div className="mt-1 text-xs text-muted-foreground">{cell.pic_name}</div>}
       {cell.started_at && (
         <div className={cn('tnum text-xs', isOverdue ? 'font-bold text-danger' : 'text-muted-foreground')}>
           {formatDate(cell.started_at)}
@@ -212,7 +210,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Opname</div>
-              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Done' : 'Draft'}</Badge>
+              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Done' : 'Not Yet'}</Badge>
               {opnameMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(opnameMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -344,7 +342,7 @@ export function RoutingMatrix({
         const markedAt = opnameBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Draft'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Done' : 'Not Yet'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )

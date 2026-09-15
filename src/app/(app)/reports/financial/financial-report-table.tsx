@@ -83,7 +83,7 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       sortAccessor: (row) => (row.opnameMarkedAt ? 1 : 0),
       render: (row) => (
         <>
-          <Badge tone={row.opnameMarkedAt ? 'success' : 'neutral'}>{row.opnameMarkedAt ? 'Done' : 'Draft'}</Badge>
+          <Badge tone={row.opnameMarkedAt ? 'success' : 'neutral'}>{row.opnameMarkedAt ? 'Done' : 'Not Yet'}</Badge>
           {row.opnameValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.opnameValue)}</div>}
           {row.opnameMarkedAt && <div className="tnum text-xs text-muted-foreground">{formatDate(row.opnameMarkedAt)}</div>}
         </>
@@ -96,7 +96,7 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       sortAccessor: (row) => (row.padMarkedAt ? 1 : 0),
       render: (row) => (
         <>
-          <Badge tone={row.padMarkedAt ? 'success' : 'neutral'}>{row.padMarkedAt ? 'Done' : 'Draft'}</Badge>
+          <Badge tone={row.padMarkedAt ? 'success' : 'neutral'}>{row.padMarkedAt ? 'Done' : 'Not Yet'}</Badge>
           {row.padValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.padValue)}</div>}
           {row.padMarkedAt && <div className="tnum text-xs text-muted-foreground">{formatDate(row.padMarkedAt)}</div>}
         </>
@@ -109,7 +109,7 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       sortAccessor: (row) => (row.invoiceDone ? 1 : 0),
       render: (row) => (
         <>
-          <Badge tone={row.invoiceDone ? 'success' : 'neutral'}>{row.invoiceDone ? 'Done' : 'Draft'}</Badge>
+          <Badge tone={row.invoiceDone ? 'success' : 'neutral'}>{row.invoiceDone ? 'Done' : 'Not Yet'}</Badge>
           {row.invoiceNumber && <div className="text-xs text-muted-foreground">{row.invoiceNumber}</div>}
           {row.invoiceValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.invoiceValue)}</div>}
           {row.invoiceDate && <div className="tnum text-xs text-muted-foreground">{formatDate(row.invoiceDate)}</div>}
