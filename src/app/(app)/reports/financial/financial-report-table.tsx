@@ -59,6 +59,9 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       key: 'spk',
       label: 'SPK',
       sortAccessor: (row) => row.siteCode ?? row.spkNumber,
+      renderTotal: (rows) => (
+        <span className="text-xs font-extrabold tracking-wider uppercase">Total ({rows.length} SPK)</span>
+      ),
       render: (row) => (
         <>
           <SpkCell id={row.spkId} spkNumber={row.spkNumber} siteCode={row.siteCode} href={`/spk/${row.spkId}?tab=financial`} />
@@ -71,6 +74,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       label: 'Nilai SPK',
       align: 'right',
       sortAccessor: (row) => row.nilaiSpk,
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + r.nilaiSpk, 0)),
       render: (row) => (
         <>
           <div className="tnum font-bold text-slate-900">{formatRupiah(row.nilaiSpk)}</div>
@@ -83,6 +87,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       label: 'Opname',
       align: 'right',
       sortAccessor: (row) => row.opnameMarkedAt,
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + (r.opnameValue ?? 0), 0)),
       render: (row) => (
         <>
           <Badge tone={row.opnameMarkedAt ? 'success' : 'neutral'}>{row.opnameMarkedAt ? 'Selesai' : 'Belum'}</Badge>
@@ -96,6 +101,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       label: 'PAD',
       align: 'right',
       sortAccessor: (row) => row.padMarkedAt,
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + (r.padValue ?? 0), 0)),
       render: (row) => (
         <>
           <Badge tone={row.padMarkedAt ? 'success' : 'neutral'}>{row.padMarkedAt ? 'Selesai' : 'Belum'}</Badge>
@@ -109,6 +115,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       label: 'Invoice',
       align: 'right',
       sortAccessor: (row) => row.invoiceDate,
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + (r.invoiceValue ?? 0), 0)),
       render: (row) => (
         <>
           <Badge tone={row.invoiceDone ? 'success' : 'neutral'}>{row.invoiceDone ? 'Selesai' : 'Belum'}</Badge>
@@ -124,6 +131,10 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       align: 'right',
       stopRowClick: true,
       sortAccessor: (row) => row.dendaValue ?? 0,
+      renderTotal: (rows) => {
+        const total = rows.reduce((sum, r) => sum + (r.dendaValue ?? 0), 0)
+        return total > 0 ? <span className="text-danger">{formatRupiah(total)}</span> : '—'
+      },
       render: (row) => (
         <div className="flex items-center justify-end gap-2">
           {row.dendaValue ? (
@@ -140,6 +151,10 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       label: 'Outstanding',
       align: 'right',
       sortAccessor: (row) => row.nilaiSpk - (row.invoiceValue ?? 0),
+      renderTotal: (rows) => {
+        const total = rows.reduce((sum, r) => sum + (r.nilaiSpk - (r.invoiceValue ?? 0)), 0)
+        return <span className={total > 0 ? 'text-danger' : undefined}>{formatRupiah(total)}</span>
+      },
       render: (row) => {
         const outstanding = row.nilaiSpk - (row.invoiceValue ?? 0)
         return (

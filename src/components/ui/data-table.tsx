@@ -17,6 +17,11 @@ export type DataTableColumn<T> = {
   render: (row: T) => ReactNode
   /** Cell has its own clickable controls (e.g. Edit/Hapus) — don't let clicks in it trigger onRowClick. */
   stopRowClick?: boolean
+  /** When set, this column gets a footer cell showing the result — typically
+   *  a sum over `rows` (the filtered, sorted, un-paginated set, so the total
+   *  matches what a search/filter narrows to, not just the current page).
+   *  Omit for columns with no meaningful total (e.g. a name or status). */
+  renderTotal?: (rows: T[]) => ReactNode
 }
 
 /**
@@ -114,6 +119,7 @@ export function DataTable<T>({
     })
   }
 
+  const hasTotals = columns.some((col) => col.renderTotal)
   const selectable = !!onSelectionChange
   const allVisibleChecked =
     selectable && visible.length > 0 && visible.every((row) => selectedKeys?.has(rowKey(row)))
@@ -255,6 +261,27 @@ export function DataTable<T>({
               </Tr>
             ))}
           </tbody>
+          {hasTotals && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-surface-muted">
+                {showRowNumber && <Td />}
+                {selectable && <Td />}
+                {columns.map((col) => (
+                  <Td
+                    key={col.key}
+                    className={cn(
+                      'font-black text-slate-900',
+                      col.align === 'right' && 'text-right',
+                      col.align === 'center' && 'text-center',
+                      col.className,
+                    )}
+                  >
+                    {col.renderTotal ? col.renderTotal(sorted) : null}
+                  </Td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
         </Table>
       ) : (
         <EmptyState

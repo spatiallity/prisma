@@ -74,12 +74,23 @@ export function DesignDetailModal({
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
-  const accordionSteps: AccordionStep[] = stages.map((stage) => {
+  const accordionSteps: AccordionStep[] = stages.map((stage, index) => {
     const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
     const now = stage === design.current_stage
     const state = now ? 'current' : done ? 'done' : 'pending'
     const stageRevisions = revisions.filter((r) => r.stage === stage)
     const latestEntry = stageRevisions[stageRevisions.length - 1]
+
+    // A freshly-opened stage's own entry has no Drafter/PIC Pertamina yet —
+    // default to whoever held the stage right before it, so the common case
+    // (same reviewer several stages running) doesn't need retyping. Only
+    // fills the gap: once this stage's own entry has a value (even one the
+    // user deliberately cleared), that value wins.
+    const previousStage = index > 0 ? stages[index - 1] : undefined
+    const previousRevisions = previousStage ? revisions.filter((r) => r.stage === previousStage) : []
+    const previousEntry = previousRevisions[previousRevisions.length - 1]
+    const previousDrafterName = previousEntry?.pic_id ? (picName[previousEntry.pic_id] ?? undefined) : undefined
+    const previousPicPertamina = previousEntry?.pic_pertamina ?? undefined
 
     return {
       key: stage,
@@ -129,6 +140,8 @@ export function DesignDetailModal({
               entry={latestEntry}
               picName={picName}
               pics={pics}
+              previousDrafterName={previousDrafterName}
+              previousPicPertamina={previousPicPertamina}
               onSaved={() => setOpenKey(null)}
             />
           ) : undefined

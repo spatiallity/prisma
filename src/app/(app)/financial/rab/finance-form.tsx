@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Download, Plus, Upload } from 'lucide-react'
+import { Download, Pencil, Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
@@ -336,8 +336,9 @@ export function EditTransactionButton({
       trigger={
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50"
         >
+          <Pencil size={14} aria-hidden />
           Edit
         </button>
       }

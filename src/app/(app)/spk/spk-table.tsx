@@ -59,6 +59,7 @@ export function SpkTable({
       label: 'Volume Pekerjaan',
       align: 'right',
       sortAccessor: (row) => (row.work_type === 'Stake Out' ? row.stake_out_patok : row.area_ha),
+      renderTotal: (rows) => formatArea(rows.reduce((sum, r) => sum + Number(r.area_ha ?? 0), 0)),
       render: (row) =>
         row.work_type === 'Stake Out'
           ? row.stake_out_patok != null
@@ -71,6 +72,7 @@ export function SpkTable({
       label: 'Nilai kontrak',
       align: 'right',
       sortAccessor: (row) => Number(row.contract_value ?? 0),
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + Number(r.contract_value ?? 0), 0)),
       render: (row) => formatRupiah(row.contract_value),
     },
     {

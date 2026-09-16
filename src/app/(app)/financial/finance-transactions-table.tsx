@@ -6,6 +6,7 @@ import { AlertTriangle, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DeleteButton } from '@/components/ui/delete-button'
+import { RowActions } from '@/components/ui/row-actions'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Modal } from '@/components/ui/modal'
 import { useActionToast } from '@/components/ui/toast'
@@ -230,6 +231,7 @@ export function FinanceTransactionsTable({
       align: 'right',
       className: 'font-bold',
       sortAccessor: (row) => Number(row.jumlah),
+      renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + Number(r.jumlah), 0)),
       render: (row) => formatRupiah(row.jumlah),
     },
     ...(mayEdit
@@ -240,14 +242,14 @@ export function FinanceTransactionsTable({
             align: 'right',
             stopRowClick: true,
             render: (row: FinanceTransactionListRow) => (
-              <div className="flex items-center justify-end gap-3">
+              <RowActions>
                 <EditTransactionButton akunOptions={coa} transaction={row} pjOptions={pjOptions} />
                 <DeleteButton
                   action={deleteFinanceTransaction}
                   hiddenFields={{ id: row.id }}
                   itemLabel="transaksi ini"
                 />
-              </div>
+              </RowActions>
             ),
           } satisfies DataTableColumn<FinanceTransactionListRow>,
         ]

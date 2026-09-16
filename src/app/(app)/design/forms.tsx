@@ -394,6 +394,8 @@ export function StageEntryForm({
   entry,
   picName,
   pics,
+  previousDrafterName,
+  previousPicPertamina,
   onSaved,
 }: {
   designId: string
@@ -409,6 +411,10 @@ export function StageEntryForm({
   }
   picName: Record<string, string>
   pics: PicOption[]
+  /** The stage right before this one's Drafter/PIC Pertamina — the default
+   *  when this stage's own entry doesn't have one yet. */
+  previousDrafterName?: string
+  previousPicPertamina?: string | null
   onSaved?: () => void
 }) {
   const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
@@ -423,7 +429,7 @@ export function StageEntryForm({
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
   const [showAll, setShowAll] = useState(false)
   const allOptions = PHASE_STAGES[phase].filter((s) => s !== stage)
-  const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : ''
+  const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : (previousDrafterName ?? '')
   const anyPending = savePending || advancePending || completePending
 
   return (
@@ -447,7 +453,7 @@ export function StageEntryForm({
 
       <PicPertaminaField
         label="PIC Pertamina"
-        defaultValue={entry.pic_pertamina ?? ''}
+        defaultValue={entry.pic_pertamina ?? previousPicPertamina ?? ''}
         placeholder="Reviewer Pertamina"
       />
 
