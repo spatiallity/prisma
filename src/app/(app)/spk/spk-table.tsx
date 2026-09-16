@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { RowActions } from '@/components/ui/row-actions'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { formatDate, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea, spkStatusLabel, workTypeCategory } from '@/lib/spk'
+import { SPK_STATUS_TONE, daysLeft, formatArea, spkStatusLabel } from '@/lib/spk'
 import type { Database } from '@/lib/supabase/types'
 import type { SpkStage } from '@/lib/spk-stage'
 import { deleteSpk } from './actions'
@@ -35,12 +35,6 @@ export function SpkTable({
       label: 'SPK',
       sortAccessor: (row) => row.site_code ?? row.spk_number,
       render: (row) => <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />,
-    },
-    {
-      key: 'work_name',
-      label: 'Pekerjaan',
-      sortAccessor: (row) => workTypeCategory(row.work_type),
-      render: (row) => <span className="font-bold text-slate-900">{workTypeCategory(row.work_type)}</span>,
     },
     {
       key: 'location',

@@ -12,7 +12,6 @@ import {
   Gauge,
   HandCoins,
   HeartPulse,
-  History,
   Kanban,
   KeyRound,
   LayoutDashboard,
@@ -117,7 +116,6 @@ export const NAV: NavGroup[] = [
     icon: FileStack,
     items: [
       { label: 'Routing Monitor', href: '/routing', icon: Route, module: 'routing', ready: true, phase: 6 },
-      { label: 'Routing History', href: '/routing/history', icon: History, module: 'routing', ready: true, phase: 6 },
     ],
   },
   {
