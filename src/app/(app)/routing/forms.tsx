@@ -165,6 +165,7 @@ export function RoutingStepDateForm({
   stepName,
   entry,
   previousCompletedAt,
+  dendaValue,
   onSaved,
 }: {
   routingId: string
@@ -176,6 +177,9 @@ export function RoutingStepDateForm({
   /** The step before this one's Tanggal selesai — Tanggal mulai defaults to
    *  it (not "today") so consecutive stages stay continuous. */
   previousCompletedAt?: string | null
+  /** The SPK's current denda_value — only meaningful alongside the Invoiced
+   *  fields, since that's the moment denda actually gets decided. */
+  dendaValue?: number | null
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(updateRoutingStepDates, initialState)
@@ -195,6 +199,9 @@ export function RoutingStepDateForm({
       </Field>
       <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
         <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? ''} />
+      </Field>
+      <Field label="Denda (Rp)" htmlFor="rd_denda" hint="Kosongkan kalau tidak ada denda.">
+        <Input id="rd_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={dendaValue ?? ''} />
       </Field>
     </div>
   )

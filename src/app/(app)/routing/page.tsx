@@ -44,7 +44,7 @@ export async function RoutingMonitor({
       supabase
         .from('spks')
         .select(
-          'id, spk_number, site_code, work_name, work_type, location_type, status, opname_marked_at, opname_value, pad_marked_at, pad_value',
+          'id, spk_number, site_code, work_name, work_type, location_type, status, opname_marked_at, opname_value, pad_marked_at, pad_value, denda_value',
         )
         .order('spk_number'),
       supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
@@ -55,6 +55,7 @@ export async function RoutingMonitor({
   const opnameValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.opname_value]))
   const padBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_marked_at]))
   const padValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.pad_value]))
+  const dendaValueBySpk = Object.fromEntries((spks ?? []).map((s) => [s.id, s.denda_value]))
 
   // An SPK with PAD and no spk_routing row sits in document preparation.
   const routedSpkIds = new Set((documents ?? []).map((d) => d.spk_id))
@@ -203,6 +204,7 @@ export async function RoutingMonitor({
             opnameValueBySpk={opnameValueBySpk}
             padBySpk={padBySpk}
             padValueBySpk={padValueBySpk}
+            dendaValueBySpk={dendaValueBySpk}
             virtualSpkIds={step ? [] : virtualSpkIds}
             stepFilter={step}
           />
@@ -305,6 +307,7 @@ async function RoutingMatrixSection({
   opnameValueBySpk,
   padBySpk,
   padValueBySpk,
+  dendaValueBySpk,
   virtualSpkIds,
   stepFilter,
 }: {
@@ -318,6 +321,7 @@ async function RoutingMatrixSection({
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
   padValueBySpk: Record<string, number | null>
+  dendaValueBySpk: Record<string, number | null>
   /** SPKs eligible for routing (Finalisasi Desain opened) with no spk_routing
    *  row yet — shown as placeholder rows so they aren't invisible while
    *  waiting to be routed. */
@@ -384,6 +388,7 @@ async function RoutingMatrixSection({
       opnameValueBySpk={opnameValueBySpk}
       padBySpk={padBySpk}
       padValueBySpk={padValueBySpk}
+      dendaValueBySpk={dendaValueBySpk}
       stepFilter={stepFilter}
     />
   )

@@ -363,6 +363,31 @@ export async function unmarkPad(
   return { error: null, success: 'Tanda PAD dibatalkan.' }
 }
 
+/** Denda is a plain correction, not a workflow mark — no date/by columns,
+ *  editable straight from Financial Report. Empty clears it (contract had no
+ *  penalty after all), same as every other optional value field here. */
+export async function updateSpkDenda(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ denda_value: numeric(formData, 'denda_value') })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/reports/financial')
+  revalidatePath(`/spk/${id}`)
+  return { error: null, success: 'Denda disimpan.' }
+}
+
 /**
  * Terrain survey collapses the old Survei Pendahuluan..Pengolahan Data Topo
  * activity chain into one On Going/Selesai mark — those sub-steps were never

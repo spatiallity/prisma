@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate, formatRupiah } from '@/lib/utils'
+import { DendaEditButton } from './denda-edit'
 
 export type FinancialRow = {
   spkId: string
@@ -49,7 +50,7 @@ function matches(row: FinancialRow, filter: FilterKey) {
 /** Section 26.1 — one row per SPK, read live from the SPK itself (Nilai
  *  SPK), the design Opname stage, and the routing document's PAD mark /
  *  Invoiced step — not the old standalone Contract/PAD/Invoice lists. */
-export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
+export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; mayEdit: boolean }) {
   const [filter, setFilter] = useState<FilterKey>('all')
   const filtered = useMemo(() => rows.filter((r) => matches(r, filter)), [rows, filter])
 
@@ -81,10 +82,10 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       key: 'opname',
       label: 'Opname',
       align: 'right',
-      sortAccessor: (row) => (row.opnameMarkedAt ? 1 : 0),
+      sortAccessor: (row) => row.opnameMarkedAt,
       render: (row) => (
         <>
-          <Badge tone={row.opnameMarkedAt ? 'success' : 'neutral'}>{row.opnameMarkedAt ? 'Selesai' : 'Draft'}</Badge>
+          <Badge tone={row.opnameMarkedAt ? 'success' : 'neutral'}>{row.opnameMarkedAt ? 'Selesai' : 'Belum'}</Badge>
           {row.opnameValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.opnameValue)}</div>}
           {row.opnameMarkedAt && <div className="tnum text-xs text-muted-foreground">{formatDate(row.opnameMarkedAt)}</div>}
         </>
@@ -94,10 +95,10 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       key: 'pad',
       label: 'PAD',
       align: 'right',
-      sortAccessor: (row) => (row.padMarkedAt ? 1 : 0),
+      sortAccessor: (row) => row.padMarkedAt,
       render: (row) => (
         <>
-          <Badge tone={row.padMarkedAt ? 'success' : 'neutral'}>{row.padMarkedAt ? 'Selesai' : 'Draft'}</Badge>
+          <Badge tone={row.padMarkedAt ? 'success' : 'neutral'}>{row.padMarkedAt ? 'Selesai' : 'Belum'}</Badge>
           {row.padValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.padValue)}</div>}
           {row.padMarkedAt && <div className="tnum text-xs text-muted-foreground">{formatDate(row.padMarkedAt)}</div>}
         </>
@@ -107,10 +108,10 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       key: 'invoice',
       label: 'Invoice',
       align: 'right',
-      sortAccessor: (row) => (row.invoiceDone ? 1 : 0),
+      sortAccessor: (row) => row.invoiceDate,
       render: (row) => (
         <>
-          <Badge tone={row.invoiceDone ? 'success' : 'neutral'}>{row.invoiceDone ? 'Selesai' : 'Draft'}</Badge>
+          <Badge tone={row.invoiceDone ? 'success' : 'neutral'}>{row.invoiceDone ? 'Selesai' : 'Belum'}</Badge>
           {row.invoiceNumber && <div className="text-xs text-muted-foreground">{row.invoiceNumber}</div>}
           {row.invoiceValue != null && <div className="tnum text-xs text-muted-foreground">{formatRupiah(row.invoiceValue)}</div>}
           {row.invoiceDate && <div className="tnum text-xs text-muted-foreground">{formatDate(row.invoiceDate)}</div>}
@@ -121,13 +122,18 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
       key: 'denda',
       label: 'Denda',
       align: 'right',
+      stopRowClick: true,
       sortAccessor: (row) => row.dendaValue ?? 0,
-      render: (row) =>
-        row.dendaValue ? (
-          <span className="tnum font-bold text-danger">{formatRupiah(row.dendaValue)}</span>
-        ) : (
-          <span className="tnum text-muted-foreground">—</span>
-        ),
+      render: (row) => (
+        <div className="flex items-center justify-end gap-2">
+          {row.dendaValue ? (
+            <span className="tnum font-bold text-danger">{formatRupiah(row.dendaValue)}</span>
+          ) : (
+            <span className="tnum text-muted-foreground">—</span>
+          )}
+          {mayEdit && <DendaEditButton spkId={row.spkId} value={row.dendaValue} />}
+        </div>
+      ),
     },
     {
       key: 'outstanding',
@@ -171,6 +177,7 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
         searchAccessor={(row) => [row.spkNumber, row.siteCode].filter(Boolean).join(' ')}
         searchPlaceholder="Cari SPK…"
         emptyTitle="Tidak ada SPK yang cocok"
+        defaultSort={{ key: 'pad', dir: 'desc' }}
         pageSize={100}
       />
     </div>

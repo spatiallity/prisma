@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
@@ -29,10 +29,10 @@ function Feedback({ state }: { state: FinancialState }) {
   return null
 }
 
-function Submit({ label, pending }: { label: string; pending?: boolean }) {
+function Submit({ label, pending, isEdit }: { label: string; pending?: boolean; isEdit?: boolean }) {
   return (
     <Button type="submit" disabled={pending}>
-      <Plus size={16} aria-hidden />
+      {isEdit ? <Save size={16} aria-hidden /> : <Plus size={16} aria-hidden />}
       {pending ? 'Menyimpan…' : label}
     </Button>
   )
@@ -144,12 +144,6 @@ export function RevenueForm({
           </Field>
         )}
 
-        {kind === 'invoice' && (
-          <Field label="Jatuh tempo" htmlFor="f_due">
-            <Input id="f_due" name="due_date" type="date" defaultValue={initial?.dueDate ?? undefined} />
-          </Field>
-        )}
-
         {kind === 'payment' && (
           <Field
             label={parentLabel}
@@ -173,7 +167,7 @@ export function RevenueForm({
       </div>
 
       <div>
-        <Submit label={initial ? 'Simpan perubahan' : `Simpan ${meta.label}`} pending={pending} />
+        <Submit label={initial ? 'Simpan perubahan' : `Simpan ${meta.label}`} pending={pending} isEdit={!!initial} />
       </div>
     </form>
   )

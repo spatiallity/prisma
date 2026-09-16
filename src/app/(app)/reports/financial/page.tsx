@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/session'
+import { can } from '@/lib/auth/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { cn, formatRupiah } from '@/lib/utils'
 import { FinancialReportTable, type FinancialRow } from './financial-report-table'
@@ -16,7 +17,8 @@ export const metadata: Metadata = { title: 'Financial Report' }
  * Invoiced step — whatever's been entered there shows up here too.
  */
 export default async function FinancialReportPage() {
-  await requirePermission('report', 'view')
+  const user = await requirePermission('report', 'view')
+  const mayEdit = can(user.permissions, 'spk', 'edit')
 
   const supabase = await createClient()
 
@@ -81,7 +83,7 @@ export default async function FinancialReportPage() {
         description="Nilai SPK sampai Invoice, dibaca langsung dari SPK, Desain, dan Routing — bukan daftar terpisah lagi."
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <Stat label="Nilai SPK" value={formatRupiah(totals.nilaiSpk)} />
         <Stat label="Opname" value={formatRupiah(totals.opname)} />
         <Stat label="PAD" value={formatRupiah(totals.pad)} />
@@ -91,7 +93,7 @@ export default async function FinancialReportPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <FinancialReportTable rows={rows} />
+        <FinancialReportTable rows={rows} mayEdit={mayEdit} />
       </Card>
     </>
   )
@@ -99,10 +101,10 @@ export default async function FinancialReportPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'danger' }) {
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="min-w-0">
+      <CardContent className="grid min-w-0 content-start gap-1 p-4">
         <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">{label}</div>
-        <div className={cn('tnum mt-1 text-lg font-black', tone === 'danger' ? 'text-danger' : 'text-slate-900')}>
+        <div className={cn('tnum truncate text-lg font-black', tone === 'danger' ? 'text-danger' : 'text-slate-900')}>
           {value}
         </div>
       </CardContent>

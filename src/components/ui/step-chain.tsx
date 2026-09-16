@@ -86,7 +86,7 @@ export function chainStatusLabel(state: ChainStep['state']) {
     case 'rejected':
       return 'Dibatalkan'
     default:
-      return 'Draft'
+      return 'Belum'
   }
 }
 

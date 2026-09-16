@@ -60,7 +60,7 @@ function StepCell({
     )
   }
 
-  if (!isCurrent) return <Badge tone="neutral">Draft</Badge>
+  if (!isCurrent) return <Badge tone="neutral">Belum</Badge>
 
   return (
     <div>
@@ -96,6 +96,7 @@ function RoutingDetailModal({
   opnameValue,
   padMarkedAt,
   padValue,
+  dendaValue,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -109,6 +110,7 @@ function RoutingDetailModal({
   opnameValue: number | null
   padMarkedAt: string | null
   padValue: number | null
+  dendaValue: number | null
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null)
   const lastDocId = useRef<string | null>(null)
@@ -186,6 +188,7 @@ function RoutingDetailModal({
             stepName={step.name}
             entry={cell}
             previousCompletedAt={previousCell?.completed_at}
+            dendaValue={dendaValue}
             onSaved={() => setOpenKey(null)}
           />
         ) : undefined,
@@ -211,7 +214,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Opname</div>
-              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Selesai' : 'Draft'}</Badge>
+              <Badge tone={opnameMarkedAt ? 'success' : 'neutral'}>{opnameMarkedAt ? 'Selesai' : 'Belum'}</Badge>
               {opnameMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(opnameMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -229,7 +232,7 @@ function RoutingDetailModal({
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">PAD</div>
-              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Selesai' : 'Draft'}</Badge>
+              <Badge tone={padMarkedAt ? 'success' : 'neutral'}>{padMarkedAt ? 'Selesai' : 'Belum'}</Badge>
               {padMarkedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(padMarkedAt)}</div>}
             </div>
             {mayEdit && (
@@ -278,6 +281,7 @@ export function RoutingMatrix({
   opnameValueBySpk,
   padBySpk,
   padValueBySpk,
+  dendaValueBySpk,
 }: {
   docs: RoutingDoc[]
   /** SPKs eligible for routing with no spk_routing document yet. */
@@ -294,6 +298,7 @@ export function RoutingMatrix({
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
   padValueBySpk: Record<string, number | null>
+  dendaValueBySpk: Record<string, number | null>
   /** The `?step=` filter chip currently active — clicking a different chip
    *  re-renders this same table instance with a new `docs` set, so any popup
    *  left open must close instead of possibly matching a same-id row in the
@@ -332,12 +337,12 @@ export function RoutingMatrix({
       label: 'Opname',
       align: 'center',
       className: 'text-muted-foreground',
-      sortAccessor: (row) => (opnameBySpk[row.spk_id] ? 1 : 0),
+      sortAccessor: (row) => opnameBySpk[row.spk_id],
       render: (row) => {
         const markedAt = opnameBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Draft'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Belum'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
@@ -348,12 +353,12 @@ export function RoutingMatrix({
       label: 'PAD',
       align: 'center',
       className: 'text-muted-foreground',
-      sortAccessor: (row) => (padBySpk[row.spk_id] ? 1 : 0),
+      sortAccessor: (row) => padBySpk[row.spk_id],
       render: (row) => {
         const markedAt = padBySpk[row.spk_id]
         return (
           <div>
-            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Draft'}</Badge>
+            <Badge tone={markedAt ? 'success' : 'neutral'}>{markedAt ? 'Selesai' : 'Belum'}</Badge>
             {markedAt && <div className="tnum mt-1 text-xs text-muted-foreground">{formatDate(markedAt)}</div>}
           </div>
         )
@@ -364,6 +369,11 @@ export function RoutingMatrix({
         key: step.id,
         label: step.name,
         align: 'center',
+        sortAccessor: (row) => {
+          if (isVirtual(row)) return null
+          const cell = historyByDoc[row.id]?.[step.sequence]
+          return cell?.completed_at ?? cell?.started_at ?? null
+        },
         render: (row) =>
           isVirtual(row) ? (
             <span className="text-muted-foreground">—</span>
@@ -421,6 +431,7 @@ export function RoutingMatrix({
         searchPlaceholder="Cari SPK…"
         emptyTitle="Tidak ada dokumen berjalan"
         emptyDescription="Rutekan dokumen agar posisinya bisa dipantau."
+        defaultSort={{ key: 'pad', dir: 'desc' }}
         pageSize={100}
       />
       <RoutingDetailModal
@@ -436,6 +447,7 @@ export function RoutingMatrix({
         opnameValue={openSpkId ? (opnameValueBySpk[openSpkId] ?? null) : null}
         padMarkedAt={openSpkId ? (padBySpk[openSpkId] ?? null) : null}
         padValue={openSpkId ? (padValueBySpk[openSpkId] ?? null) : null}
+        dendaValue={openSpkId ? (dendaValueBySpk[openSpkId] ?? null) : null}
       />
     </>
   )

@@ -287,6 +287,25 @@ export async function updateRoutingStepDates(
     .eq('id', stepId)
   if (error) return { error: error.message }
 
+  // Denda is decided at the same moment as the invoice itself — captured
+  // here rather than as its own separate step, straight onto the SPK
+  // (Financial Report reads it from there, same as Opname/PAD).
+  if (step.step_name === 'Invoiced') {
+    const dendaRaw = nullable(formData, 'denda_value')
+    const { data: routingDoc } = await supabase
+      .from('spk_routing')
+      .select('spk_id')
+      .eq('id', routingId)
+      .maybeSingle()
+    if (routingDoc) {
+      await supabase
+        .from('spks')
+        .update({ denda_value: dendaRaw ? Number(dendaRaw) : null })
+        .eq('id', routingDoc.spk_id)
+    }
+    revalidatePath('/reports/financial')
+  }
+
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
   return { error: null, success: decision === 'lanjut' ? 'Tahap selesai, lanjut ke tahap berikutnya.' : 'Tahap diperbarui.' }
