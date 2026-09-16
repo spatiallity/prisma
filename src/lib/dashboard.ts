@@ -73,8 +73,11 @@ export function bottleneckSinceDate(
   if (item.reason === 'Invoice belum dibuat') {
     return item.spk_id ? (padMarkedAtBySpk.get(item.spk_id) ?? null) : null
   }
-  if (item.reason === 'Design tidak berubah status lebih dari seminggu') {
-    return designs.find((d) => d.current_stage !== 'Finish')?.updated_at ?? null
+  if (item.reason === 'Design tidak berubah status') {
+    return (
+      designs.find((d) => d.current_stage !== 'Finish' && d.current_stage !== 'Review PIC Pertamina')
+        ?.updated_at ?? null
+    )
   }
   return null
 }

@@ -64,8 +64,8 @@ function describeBottleneck(
     return `SPK ${code} sudah Opname${opnameDate ? ` (${formatDate(opnameDate)})` : ''} tetapi belum PAD`
   }
 
-  if (item.reason === 'Design tidak berubah status lebih dari seminggu') {
-    const stuck = designs.find((d) => d.current_stage !== 'Finish')
+  if (item.reason === 'Design tidak berubah status') {
+    const stuck = designs.find((d) => d.current_stage !== 'Finish' && d.current_stage !== 'Review PIC Pertamina')
     const days = item.metric !== null ? Math.floor(item.metric) : null
     return stuck
       ? `SPK ${code} berada di tahap ${stageDisplayLabel(stuck.current_stage)} (mulai ${formatDate(stuck.updated_at)})${days !== null ? ` — ${days} hari` : ''}`
@@ -528,7 +528,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="flex h-full flex-col overflow-hidden">
+        <Card className="flex h-full min-h-0 flex-col overflow-hidden">
           <CardHeader>
             <div>
               <CardTitle>Bottleneck</CardTitle>
