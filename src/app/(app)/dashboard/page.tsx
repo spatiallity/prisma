@@ -242,13 +242,16 @@ export default async function DashboardPage() {
     stageCounts.set(d.current_stage, (stageCounts.get(d.current_stage) ?? 0) + 1)
   }
   const designStageChartData: Record<'siteplan' | 'finalisasi', { stage: DesignStage; label: string; count: number }[]> = {
-    // Opname stays in the list — reaching it doesn't set approved_at on its
-    // own, so it can genuinely sit open awaiting Tanggal selesai.
-    siteplan: PHASE_STAGES.siteplan.map((stage) => ({
-      stage,
-      label: stageDisplayLabel(stage),
-      count: stageCounts.get(stage) ?? 0,
-    })),
+    // Opname dropped from this chart — it's Siteplan's own terminal stage,
+    // same reasoning as Acc PIC Pertamina below (approved_at excludes it
+    // above already; not worth charting as a near-permanent 0/1).
+    siteplan: PHASE_STAGES.siteplan
+      .filter((stage) => stage !== 'Opname')
+      .map((stage) => ({
+        stage,
+        label: stageDisplayLabel(stage),
+        count: stageCounts.get(stage) ?? 0,
+      })),
     // Acc PIC Pertamina always sets approved_at the moment it's reached, so
     // it never shows up here — dropped rather than charted as a dead 0.
     finalisasi: PHASE_STAGES.finalisasi
@@ -424,8 +427,8 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid items-stretch gap-5 lg:grid-cols-3">
-        <div className="grid content-start gap-5 lg:col-span-2">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+        <div className="grid content-start gap-5 lg:flex-[2]">
           <div className="grid gap-5 sm:grid-cols-2">
             <Card className="overflow-hidden">
               <CardHeader>
@@ -528,7 +531,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="flex min-h-0 flex-col overflow-hidden">
+        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden lg:flex-1">
           <CardHeader>
             <div>
               <CardTitle>Bottleneck</CardTitle>

@@ -41,15 +41,19 @@ export default async function DesignQueuePage() {
 
   const perStage = new Map(DESIGN_STAGES.map((s) => [s, 0]))
   const draftPerPhase = { siteplan: 0, finalisasi: 0 }
+  // Opname (siteplan) and Acc PIC Pertamina (finalisasi) are terminal —
+  // current_stage sits there forever even once the phase is actually done
+  // and approved, so an already-approved design has to be counted
+  // separately or it inflates that stage's "still pending" count forever.
+  const donePerPhase = { siteplan: 0, finalisasi: 0 }
   const heldDaysPerPhase: Record<'siteplan' | 'finalisasi', number[]> = { siteplan: [], finalisasi: [] }
   const stuck: { id: string; spkId: string; phase: 'siteplan' | 'finalisasi'; stage: string; days: number }[] = []
 
   for (const d of designs ?? []) {
-    // Opname (siteplan) and Acc PIC Pertamina (finalisasi) are terminal —
-    // current_stage sits there forever even once the phase is actually
-    // done and approved, so an already-approved design has to be skipped
-    // entirely here or it inflates that stage's count indefinitely.
-    if (d.approved_at !== null) continue
+    if (d.approved_at !== null) {
+      donePerPhase[d.phase]++
+      continue
+    }
     if (startedDesignIds.has(d.id)) {
       perStage.set(d.current_stage, (perStage.get(d.current_stage) ?? 0) + 1)
       const held = daysInStage(d.updated_at)
@@ -72,6 +76,7 @@ export default async function DesignQueuePage() {
     siteplan: [
       { label: 'Draft', count: draftPerPhase.siteplan },
       ...PHASE_STAGES.siteplan.map((s) => ({ label: s, count: perStage.get(s) ?? 0 })),
+      { label: 'Opname', count: donePerPhase.siteplan },
     ],
     finalisasi: [
       { label: 'Draft', count: draftPerPhase.finalisasi },
