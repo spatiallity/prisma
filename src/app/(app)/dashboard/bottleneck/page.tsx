@@ -1,29 +1,17 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
-import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
-import {
-  AREA_LABEL,
-  SEVERITY_RANK,
-  SEVERITY_TONE,
-  formatMetric,
-} from '@/lib/dashboard'
+import { AREA_LABEL, type BottleneckDesignContext, bottleneckSinceDate } from '@/lib/dashboard'
+import { daysInStage } from '@/lib/design'
+import { BottleneckTable, type BottleneckRow } from './bottleneck-table'
 
 export const metadata: Metadata = { title: 'Bottleneck' }
-
-/** Where each area's problems are dealt with. */
-const AREA_LINK: Record<string, string> = {
-  design: '/design',
-  routing: '/routing',
-  financial: '/financial/invoice',
-}
 
 /**
  * Section 9 — every condition the system watches, in one list. The thresholds
@@ -34,17 +22,48 @@ export default async function BottleneckPage() {
   await requirePermission('dashboard', 'view')
 
   const supabase = await createClient()
-  const [{ data: rows, error }, { data: settings }] = await Promise.all([
-    supabase.from('v_bottleneck').select('*'),
-    supabase.from('app_settings').select('key, value, description'),
-  ])
+  const [{ data: rows, error }, { data: settings }, { data: activeDesigns }, { data: spkMarks }] =
+    await Promise.all([
+      supabase.from('v_bottleneck').select('*'),
+      supabase.from('app_settings').select('key, value, description'),
+      supabase.from('designs').select('spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
+      supabase.from('spks').select('id, opname_marked_at, pad_marked_at'),
+    ])
 
-  const ranked = [...(rows ?? [])].sort(
-    (a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
-  )
+  // Same lookups the Dashboard's Bottleneck card uses to say what actually
+  // happened — here they feed the Tanggal/Hari columns instead of a sentence.
+  const designsBySpk = new Map<string, BottleneckDesignContext[]>()
+  for (const d of activeDesigns ?? []) {
+    const list = designsBySpk.get(d.spk_id) ?? []
+    list.push({ phase: d.phase, current_stage: d.current_stage, updated_at: d.updated_at })
+    designsBySpk.set(d.spk_id, list)
+  }
+  const opnameMarkedAtBySpk = new Map((spkMarks ?? []).map((s) => [s.id, s.opname_marked_at]))
+  const padMarkedAtBySpk = new Map((spkMarks ?? []).map((s) => [s.id, s.pad_marked_at]))
+  const isMoneyReason = (reason: string) => /saldo|payment|dibayar|diterima/i.test(reason)
+
+  const tableRows: BottleneckRow[] = (rows ?? []).map((row, index) => {
+    const tanggal = bottleneckSinceDate(row, designsBySpk, opnameMarkedAtBySpk, padMarkedAtBySpk)
+    const hari = tanggal
+      ? daysInStage(tanggal)
+      : !isMoneyReason(row.reason) && row.metric !== null
+        ? Math.floor(row.metric)
+        : null
+    return {
+      key: `${row.reason}-${row.spk_id ?? 'none'}-${index}`,
+      area: row.area,
+      reason: row.reason,
+      spk_id: row.spk_id,
+      spk_number: row.spk_number,
+      site_code: row.site_code,
+      severity: row.severity,
+      tanggal,
+      hari,
+    }
+  })
 
   const perArea = new Map<string, number>()
-  for (const row of ranked) {
+  for (const row of tableRows) {
     perArea.set(row.area, (perArea.get(row.area) ?? 0) + 1)
   }
 
@@ -91,61 +110,12 @@ export default async function BottleneckPage() {
           <div>
             <CardTitle>Semua bottleneck</CardTitle>
           </div>
-          <Badge tone={ranked.length === 0 ? 'success' : 'danger'}>
-            {ranked.length} aktif
+          <Badge tone={tableRows.length === 0 ? 'success' : 'danger'}>
+            {tableRows.length} aktif
           </Badge>
         </CardHeader>
 
-        {ranked.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Area</Th>
-                <Th>Kondisi</Th>
-                <Th>SPK</Th>
-                <Th className="text-right">Ukuran</Th>
-                <Th>Severity</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((row, index) => (
-                <Tr key={`${row.reason}-${row.spk_id ?? 'none'}-${index}`}>
-                  <Td>
-                    <Link
-                      href={AREA_LINK[row.area] ?? '/dashboard'}
-                      className="text-xs font-bold text-primary hover:underline"
-                    >
-                      {AREA_LABEL[row.area] ?? row.area}
-                    </Link>
-                  </Td>
-                  <Td className="font-bold text-slate-900">{row.reason}</Td>
-                  <Td>
-                    {row.spk_id ? (
-                      <SpkCell
-                        id={row.spk_id}
-                        spkNumber={row.spk_number ?? 'SPK'}
-                        siteCode={row.site_code}
-                      />
-                    ) : (
-                      <span className="text-muted-foreground">Seluruh project</span>
-                    )}
-                  </Td>
-                  <Td className="tnum text-right text-muted-foreground">
-                    {formatMetric(row.reason, row.metric) ?? '—'}
-                  </Td>
-                  <Td>
-                    <Badge tone={SEVERITY_TONE[row.severity]}>{row.severity}</Badge>
-                  </Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        ) : (
-          <EmptyState
-            title="Tidak ada bottleneck"
-            description="Semua kondisi berada dalam batas yang disetel."
-          />
-        )}
+        <BottleneckTable rows={tableRows} />
       </Card>
 
       <Card className="overflow-hidden">

@@ -21,7 +21,6 @@ import {
   Package,
   PencilRuler,
   Plane,
-  Receipt,
   Route,
   ScrollText,
   Settings2,
@@ -75,6 +74,7 @@ export const NAV: NavGroup[] = [
         ready: true,
         phase: 2,
       },
+      { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
   // Schedule and Vendor Jasa Survey are hidden from the menu for now (asked
@@ -111,7 +111,7 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'Routing',
+    label: 'Invoicing',
     icon: FileStack,
     items: [
       { label: 'Routing Monitor', href: '/routing', icon: Route, module: 'routing', ready: true, phase: 6 },
@@ -129,22 +129,6 @@ export const NAV: NavGroup[] = [
       { label: 'PPBJ Jasa', href: '/financial/ppbj-jasa', icon: Briefcase, module: 'spending', ready: true, phase: 8 },
       { label: 'Gaji PTT Project', href: '/financial/gaji-ptt', icon: HandCoins, module: 'spending', ready: true, phase: 8 },
       { label: 'MCU', href: '/financial/mcu', icon: HeartPulse, module: 'spending', ready: true, phase: 8 },
-    ],
-  },
-  {
-    // Contract/PAD/Invoice used to be a manually-tracked client-payment
-    // chain; that's now driven by the SPK itself (Nilai SPK), the design
-    // Opname stage, and the routing document's PAD/Invoiced steps, so these
-    // three standalone lists are hidden — routes, permissions and data are
-    // untouched, so re-adding is just uncommenting. Financial Report is the
-    // one surface left, reworked to read that same live data.
-    label: 'Client Payment',
-    icon: Receipt,
-    items: [
-      // { label: 'Contract', href: '/financial/contract', icon: FileSignature, module: 'contract', ready: true, phase: 7 },
-      // { label: 'PAD', href: '/financial/pad', icon: Stamp, module: 'pad', ready: true, phase: 7 },
-      // { label: 'Invoice', href: '/financial/invoice', icon: ReceiptText, module: 'invoice', ready: true, phase: 7 },
-      { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
   {

@@ -363,29 +363,79 @@ export async function unmarkPad(
   return { error: null, success: 'Tanda PAD dibatalkan.' }
 }
 
-/** Denda is a plain correction, not a workflow mark — no date/by columns,
- *  editable straight from Financial Report. Empty clears it (contract had no
- *  penalty after all), same as every other optional value field here. */
-export async function updateSpkDenda(
+/**
+ * Financial Report's one-stop correction popup for a row: Nilai/Tanggal SPK,
+ * PAD, Invoice, and Denda are typed once from source documents (Excel,
+ * contracts) rather than lived through day by day, so this writes them
+ * straight through instead of routing PAD through markPad's "opname first"
+ * workflow gate. Opname itself stays out of this form — it's still marked
+ * through the Design Opname stage like every other stage. Invoice lives on
+ * the routing document's own Invoiced step (routing_history), not on spks,
+ * so it's only saved when that step already exists for this SPK; if it
+ * doesn't, the SPK/PAD/Denda fields still save and the response says so.
+ */
+export async function updateFinancialReportRow(
   _prev: SpkFormState,
   formData: FormData,
 ): Promise<SpkFormState> {
-  await requirePermission('spk', 'edit')
+  const user = await requirePermission('spk', 'edit')
 
   const id = text(formData, 'id')
   if (!id) return { error: 'SPK tidak dikenali.' }
 
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('spks')
-    .update({ denda_value: numeric(formData, 'denda_value') })
-    .eq('id', id)
 
-  if (error) return { error: error.message }
+  const padTanggalRaw = text(formData, 'pad_tanggal')
+  const padTanggal = padTanggalRaw ? new Date(`${padTanggalRaw}T12:00:00`).toISOString() : null
+
+  const { error: spkError } = await supabase
+    .from('spks')
+    .update({
+      contract_value: numeric(formData, 'nilai_spk'),
+      start_date: nullable(formData, 'tanggal_spk'),
+      pad_value: padTanggal ? numeric(formData, 'pad_value') : null,
+      pad_marked_at: padTanggal,
+      pad_marked_by: padTanggal ? user.id : null,
+      denda_value: numeric(formData, 'denda_value'),
+    })
+    .eq('id', id)
+  if (spkError) return { error: spkError.message }
+
+  const invoiceValueRaw = text(formData, 'invoice_value')
+  const invoiceTanggalRaw = text(formData, 'invoice_tanggal')
+
+  const { data: routingDoc } = await supabase
+    .from('spk_routing')
+    .select('id')
+    .eq('spk_id', id)
+    .maybeSingle()
+  const { data: invoicedStep } = routingDoc
+    ? await supabase
+        .from('routing_history')
+        .select('id')
+        .eq('spk_routing_id', routingDoc.id)
+        .eq('step_name', 'Invoiced')
+        .maybeSingle()
+    : { data: null }
+
+  let invoiceWarning = ''
+  if (invoicedStep) {
+    const { error: invoiceError } = await supabase
+      .from('routing_history')
+      .update({
+        invoice_value: numeric(formData, 'invoice_value'),
+        invoice_date: nullable(formData, 'invoice_tanggal'),
+      })
+      .eq('id', invoicedStep.id)
+    if (invoiceError) return { error: invoiceError.message }
+  } else if (invoiceValueRaw || invoiceTanggalRaw) {
+    invoiceWarning = ' Invoice belum tersimpan — dokumen routing belum mencapai tahap Invoiced.'
+  }
 
   revalidatePath('/reports/financial')
   revalidatePath(`/spk/${id}`)
-  return { error: null, success: 'Denda disimpan.' }
+  revalidatePath('/routing')
+  return { error: null, success: `Perubahan disimpan.${invoiceWarning}` }
 }
 
 /**

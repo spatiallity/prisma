@@ -71,9 +71,8 @@ export default async function FinancialReportPage() {
       pad: acc.pad + (r.padValue ?? 0),
       invoice: acc.invoice + (r.invoiceValue ?? 0),
       denda: acc.denda + (r.dendaValue ?? 0),
-      outstanding: acc.outstanding + (r.nilaiSpk - (r.invoiceValue ?? 0)),
     }),
-    { nilaiSpk: 0, opname: 0, pad: 0, invoice: 0, denda: 0, outstanding: 0 },
+    { nilaiSpk: 0, opname: 0, pad: 0, invoice: 0, denda: 0 },
   )
 
   return (
@@ -83,13 +82,12 @@ export default async function FinancialReportPage() {
         description="Nilai SPK sampai Invoice, dibaca langsung dari SPK, Desain, dan Routing — bukan daftar terpisah lagi."
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <Stat label="Nilai SPK" value={formatRupiah(totals.nilaiSpk)} />
         <Stat label="Opname" value={formatRupiah(totals.opname)} />
         <Stat label="PAD" value={formatRupiah(totals.pad)} />
-        <Stat label="Invoice" value={formatRupiah(totals.invoice)} />
         <Stat label="Denda" value={formatRupiah(totals.denda)} tone={totals.denda > 0 ? 'danger' : undefined} />
-        <Stat label="Outstanding" value={formatRupiah(totals.outstanding)} tone={totals.outstanding > 0 ? 'danger' : undefined} />
+        <Stat label="Invoice" value={formatRupiah(totals.invoice)} />
       </div>
 
       <Card className="overflow-hidden">

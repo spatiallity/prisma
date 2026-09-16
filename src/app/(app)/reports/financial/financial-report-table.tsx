@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate, formatRupiah } from '@/lib/utils'
-import { DendaEditButton } from './denda-edit'
+import { FinancialRowEditButton } from './row-edit'
 
 export type FinancialRow = {
   spkId: string
@@ -111,6 +111,22 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       ),
     },
     {
+      key: 'denda',
+      label: 'Denda',
+      align: 'right',
+      sortAccessor: (row) => row.dendaValue ?? 0,
+      renderTotal: (rows) => {
+        const total = rows.reduce((sum, r) => sum + (r.dendaValue ?? 0), 0)
+        return total > 0 ? <span className="text-danger">{formatRupiah(total)}</span> : '—'
+      },
+      render: (row) =>
+        row.dendaValue ? (
+          <span className="tnum font-bold text-danger">{formatRupiah(row.dendaValue)}</span>
+        ) : (
+          <span className="tnum text-muted-foreground">—</span>
+        ),
+    },
+    {
       key: 'invoice',
       label: 'Invoice',
       align: 'right',
@@ -125,45 +141,21 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
         </>
       ),
     },
-    {
-      key: 'denda',
-      label: 'Denda',
-      align: 'right',
-      stopRowClick: true,
-      sortAccessor: (row) => row.dendaValue ?? 0,
-      renderTotal: (rows) => {
-        const total = rows.reduce((sum, r) => sum + (r.dendaValue ?? 0), 0)
-        return total > 0 ? <span className="text-danger">{formatRupiah(total)}</span> : '—'
-      },
-      render: (row) => (
-        <div className="flex items-center justify-end gap-2">
-          {row.dendaValue ? (
-            <span className="tnum font-bold text-danger">{formatRupiah(row.dendaValue)}</span>
-          ) : (
-            <span className="tnum text-muted-foreground">—</span>
-          )}
-          {mayEdit && <DendaEditButton spkId={row.spkId} value={row.dendaValue} />}
-        </div>
-      ),
-    },
-    {
-      key: 'outstanding',
-      label: 'Outstanding',
-      align: 'right',
-      sortAccessor: (row) => row.nilaiSpk - (row.invoiceValue ?? 0),
-      renderTotal: (rows) => {
-        const total = rows.reduce((sum, r) => sum + (r.nilaiSpk - (r.invoiceValue ?? 0)), 0)
-        return <span className={total > 0 ? 'text-danger' : undefined}>{formatRupiah(total)}</span>
-      },
-      render: (row) => {
-        const outstanding = row.nilaiSpk - (row.invoiceValue ?? 0)
-        return (
-          <span className={cn('tnum', outstanding > 0 && 'font-bold text-danger')}>
-            {outstanding !== 0 ? formatRupiah(outstanding) : '—'}
-          </span>
-        )
-      },
-    },
+    ...(mayEdit
+      ? [
+          {
+            key: 'aksi',
+            label: 'Aksi',
+            align: 'right' as const,
+            stopRowClick: true,
+            render: (row: FinancialRow) => (
+              <div className="flex justify-end">
+                <FinancialRowEditButton row={row} />
+              </div>
+            ),
+          } satisfies DataTableColumn<FinancialRow>,
+        ]
+      : []),
   ]
 
   return (
