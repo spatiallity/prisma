@@ -103,7 +103,7 @@ export default async function DesignQueuePage() {
                 </CardDescription>
               </div>
             </CardHeader>
-            <DesignStageChart data={chartDataPerPhase[phase]} />
+            <DesignStageChart data={chartDataPerPhase[phase]} linkBase={`/design/${phase}`} />
           </Card>
         ))}
       </div>

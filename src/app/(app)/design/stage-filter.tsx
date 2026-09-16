@@ -18,6 +18,7 @@ export function StageFilterChips({
   const current = active ?? 'ongoing'
   const options = [
     { value: 'ongoing', label: 'Berjalan' },
+    { value: 'Draft', label: 'Draft' },
     ...PHASE_STAGES[phase].map((stage) => ({
       value: stage,
       label: stage === PHASE_TERMINAL_STAGE[phase] ? `Sudah ${stage}` : stage,

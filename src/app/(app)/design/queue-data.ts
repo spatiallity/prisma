@@ -4,7 +4,9 @@ import type { DesignPhase } from '@/lib/supabase/types'
 
 /** `?stage=` on the Desain Siteplan/Finalisasi Desain lists: omitted (or
  *  "ongoing") shows everything short of the terminal stage — the default,
- *  working set. "all" shows everything including finished ones. Any other
+ *  working set. "all" shows everything including finished ones. "Draft"
+ *  shows designs opened but never actually started (no revision yet) — not
+ *  a real DesignStage, so it can't be matched via current_stage. Any other
  *  value filters to that exact stage (e.g. "Sinkronisasi Hasil Finalisasi"). */
 export type StageFilter = string | undefined
 
@@ -18,10 +20,17 @@ export async function loadDesignQueue(
   phase: DesignPhase,
   stageFilter?: StageFilter,
 ) {
+  const isDraftFilter = stageFilter === 'Draft'
+
   let designsQuery = supabase.from('designs').select('*').eq('status', 'Active').eq('phase', phase)
   const validStage = PHASE_STAGES[phase].find((s) => s === stageFilter)
   if (validStage) {
     designsQuery = designsQuery.eq('current_stage', validStage)
+  } else if (isDraftFilter) {
+    // Can't filter this at the query level — "never started" means zero
+    // design_revisions rows, not a current_stage value (a fresh design
+    // already defaults to the phase's first stage). Narrowed below once
+    // revisions are known.
   } else if (stageFilter !== 'all') {
     // "Ongoing" means not actually approved yet — not "hasn't reached the
     // terminal stage's name". Opname is reachable long before it's marked
@@ -124,8 +133,12 @@ export async function loadDesignQueue(
     )
   }
 
+  const finalDesigns = isDraftFilter
+    ? (designs ?? []).filter((d) => !revisionsByDesign[d.id]?.length)
+    : (designs ?? [])
+
   return {
-    designs: designs ?? [],
+    designs: finalDesigns,
     error,
     spkById,
     picName,

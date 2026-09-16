@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import {
   Bar,
   BarChart,
@@ -60,7 +61,18 @@ const STAGE_BAR_COLOR = 'var(--color-info)'
  *  and the Y-axis width both scale with the data: a fixed size clipped or
  *  overlapped the longer stage names ("Pembuatan Peta Inventaris dan Stake
  *  Out", "Manager Engineering & Project"). */
-export function DesignStageChart({ data }: { data: { label: string; count: number }[] }) {
+export function DesignStageChart({
+  data,
+  linkBase,
+}: {
+  data: { label: string; count: number }[]
+  /** When set, each bar becomes a link to `${linkBase}?stage=<label>` (the
+   *  Desain Siteplan/Finalisasi Desain list's own stage filter) — "Draft"
+   *  goes to `?stage=Draft` too, which those pages read as "not started
+   *  yet" rather than a real DesignStage. */
+  linkBase?: string
+}) {
+  const router = useRouter()
   const chartData = [...data].reverse()
   const total = data.reduce((sum, d) => sum + d.count, 0)
 
@@ -95,7 +107,18 @@ export function DesignStageChart({ data }: { data: { label: string; count: numbe
             contentStyle={{ fontSize: 12, borderRadius: 8 }}
             cursor={{ fill: 'var(--color-slate-50)' }}
           />
-          <Bar dataKey="count" fill={STAGE_BAR_COLOR} radius={[0, 4, 4, 0]} barSize={16} />
+          <Bar dataKey="count" fill={STAGE_BAR_COLOR} radius={[0, 4, 4, 0]} barSize={16}>
+            {linkBase &&
+              chartData.map((d) => (
+                <Cell
+                  key={d.label}
+                  cursor="pointer"
+                  onClick={() =>
+                    router.push(`${linkBase}?stage=${encodeURIComponent(d.label)}`)
+                  }
+                />
+              ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

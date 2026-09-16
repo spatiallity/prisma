@@ -434,7 +434,7 @@ export default async function DashboardPage() {
                   <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
                 </div>
               </CardHeader>
-              <DesignStageChart data={designStageChartData.siteplan} />
+              <DesignStageChart data={designStageChartData.siteplan} linkBase="/design/siteplan" />
             </Card>
             <Card className="overflow-hidden">
               <CardHeader>
@@ -443,7 +443,7 @@ export default async function DashboardPage() {
                   <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
                 </div>
               </CardHeader>
-              <DesignStageChart data={designStageChartData.finalisasi} />
+              <DesignStageChart data={designStageChartData.finalisasi} linkBase="/design/finalisasi" />
             </Card>
           </div>
 
