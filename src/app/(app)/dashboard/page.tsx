@@ -25,6 +25,7 @@ import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { PHASE_LABEL, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
 import type { DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
 import { RabDonutChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
+import { EqualHeightRow } from './equal-height-row'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -427,8 +428,9 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
-        <div className="grid content-start gap-5 lg:flex-[2]">
+      <EqualHeightRow
+        left={
+          <div className="grid content-start gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <Card className="overflow-hidden">
               <CardHeader>
@@ -529,9 +531,10 @@ export default async function DashboardPage() {
               />
             )}
           </Card>
-        </div>
-
-        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden lg:flex-1">
+          </div>
+        }
+        right={
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden">
           <CardHeader>
             <div>
               <CardTitle>Bottleneck</CardTitle>
@@ -581,8 +584,9 @@ export default async function DashboardPage() {
               description="Semua kondisi dalam batas wajar."
             />
           )}
-        </Card>
-      </div>
+          </Card>
+        }
+      />
 
       {seeFinance && topCategories.length > 0 && (
         <div className="mt-5">
