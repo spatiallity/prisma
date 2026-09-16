@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
@@ -82,28 +83,35 @@ export function DesignTabCards({
           })
 
           return (
-            <Card key={design.id}>
+            <Card key={design.id} className="overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>{PHASE_LABEL[design.phase]}</CardTitle>
-                  {design.title && <CardDescription>{design.title}</CardDescription>}
+                  <CardDescription>
+                    {isDraft
+                      ? `Draft · mulai dari ${stageDisplayLabel(design.current_stage)}`
+                      : `Sedang di ${stageDisplayLabel(design.current_stage)}`}
+                  </CardDescription>
                 </div>
-                {mayEdit && (
-                  <button
-                    type="button"
-                    onClick={() => setOpenId(design.id)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                    aria-label="Edit"
-                  >
-                    <Pencil size={14} aria-hidden />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  <Badge tone={isDraft ? 'neutral' : 'primary'}>{isDraft ? 'Draft' : 'Sedang Berjalan'}</Badge>
+                  {mayEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(design.id)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      <Pencil size={14} aria-hidden />
+                      Edit
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {isDraft ? (
                   <EmptyState
                     title="Belum dimulai"
-                    description={`Menunggu tahap ${stageDisplayLabel(design.current_stage)} dimulai.`}
+                    description={`Klik Edit untuk mengisi tanggal mulai, drafter, dan PIC Pertamina pada tahap ${stageDisplayLabel(design.current_stage)}.`}
                   />
                 ) : (
                   <>

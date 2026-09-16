@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
@@ -67,13 +67,25 @@ export default async function BottleneckPage() {
     perArea.set(row.area, (perArea.get(row.area) ?? 0) + 1)
   }
 
+  const critical = tableRows.filter((row) => row.severity === 'critical').length
+  const warning = tableRows.filter((row) => row.severity === 'warning').length
+  const oldest = tableRows
+    .filter((row) => row.hari !== null)
+    .sort((a, b) => (b.hari ?? 0) - (a.hari ?? 0))[0]
+  const topReasons = [...tableRows.reduce((acc, row) => {
+    acc.set(row.reason, (acc.get(row.reason) ?? 0) + 1)
+    return acc
+  }, new Map<string, number>()).entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+
   const areas = ['design', 'routing', 'financial']
 
   return (
     <>
       <PageHeader
         title="Bottleneck Monitoring"
-        description="Kondisi yang membutuhkan perhatian."
+        description="Kondisi yang perlu dicek hari ini."
       />
 
       {error && (
@@ -82,22 +94,94 @@ export default async function BottleneckPage() {
         </Alert>
       )}
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <div>
+              <CardTitle>Prioritas Hari Ini</CardTitle>
+              <CardDescription>Ringkasan kondisi yang paling perlu dicek.</CardDescription>
+            </div>
+            <Badge tone={critical > 0 ? 'danger' : tableRows.length > 0 ? 'warning' : 'success'}>
+              {tableRows.length} aktif
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: 'Critical', value: critical, tone: 'text-danger', helper: 'perlu dicek dulu' },
+              { label: 'Warning', value: warning, tone: 'text-warning', helper: 'pantau hari ini' },
+              {
+                label: 'Tertahan Terlama',
+                value: oldest?.hari !== null && oldest?.hari !== undefined ? oldest.hari : 0,
+                tone: 'text-info',
+                helper: oldest ? `${oldest.site_code ?? oldest.spk_number ?? 'SPK'} · hari` : 'tidak ada data',
+              },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                  {item.label}
+                </div>
+                <div className={cn('tnum mt-1 text-3xl font-black', item.tone)}>{item.value}</div>
+                <div className="mt-1 text-xs font-semibold text-muted-foreground">{item.helper}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <div>
+              <CardTitle>Penyebab Terbanyak</CardTitle>
+              <CardDescription>Dipakai untuk menentukan fokus pengecekan.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {topReasons.length > 0 ? (
+              topReasons.map(([reason, count]) => (
+                <div key={reason} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+                  <span className="min-w-0 text-sm font-bold text-slate-800">{reason}</span>
+                  <span className="tnum shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-black text-primary">
+                    {count}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-semibold text-muted-foreground">
+                Belum ada pola bottleneck.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {areas.map((area) => {
           const count = perArea.get(area) ?? 0
           return (
-            <Card key={area}>
+            <Card key={area} className="overflow-hidden">
               <CardContent className="p-4">
-                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                  {AREA_LABEL[area] ?? area}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                      {AREA_LABEL[area] ?? area}
+                    </div>
+                    <div className="mt-1 text-xs font-semibold text-muted-foreground">
+                      {count === 0 ? 'Tidak ada hambatan aktif' : 'Butuh tindak lanjut'}
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      'tnum text-3xl font-black',
+                      count === 0 ? 'text-success' : 'text-slate-900',
+                    )}
+                  >
+                    {count}
+                  </div>
                 </div>
-                <div
-                  className={cn(
-                    'tnum mt-1 text-2xl font-black',
-                    count === 0 ? 'text-success' : 'text-slate-900',
-                  )}
-                >
-                  {count}
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={cn('h-full rounded-full', count === 0 ? 'bg-success' : 'bg-primary')}
+                    style={{ width: `${count === 0 ? 100 : Math.min(100, 24 + count * 12)}%` }}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -109,6 +193,7 @@ export default async function BottleneckPage() {
         <CardHeader>
           <div>
             <CardTitle>Semua bottleneck</CardTitle>
+            <CardDescription>Urutkan prioritas, area, atau lama tertahan untuk menentukan fokus kerja.</CardDescription>
           </div>
           <Badge tone={tableRows.length === 0 ? 'success' : 'danger'}>
             {tableRows.length} aktif
@@ -122,6 +207,7 @@ export default async function BottleneckPage() {
         <CardHeader>
           <div>
             <CardTitle>Ambang batas</CardTitle>
+            <CardDescription>Konfigurasi batas hari/nilai yang memunculkan bottleneck.</CardDescription>
           </div>
         </CardHeader>
         {settings && settings.length > 0 ? (

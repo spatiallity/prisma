@@ -112,6 +112,9 @@ export async function createRouting(
 
   revalidatePath('/routing')
   revalidatePath(`/spk/${spkId}`)
+  if (text(formData, 'return_to_spk')) {
+    redirect(`/spk/${spkId}?tab=routing`)
+  }
   redirect(`/routing/${routing.id}`)
 }
 

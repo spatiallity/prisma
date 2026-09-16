@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
@@ -58,9 +58,12 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
   ]
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle>Survei Lapangan</CardTitle>
+        <div>
+          <CardTitle>Survei Lapangan</CardTitle>
+          <CardDescription>Isi status survei terestris dan tanggal pengecekan bersama sebelum masuk desain.</CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <StepChain steps={steps} />

@@ -279,7 +279,7 @@ export async function markOpname(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
-  return { error: null, success: 'Ditandai sudah opname.' }
+  return { error: null, success: 'Opname disimpan.' }
 }
 
 export async function unmarkOpname(
@@ -339,7 +339,7 @@ export async function markPad(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
-  return { error: null, success: 'Ditandai sudah PAD.' }
+  return { error: null, success: 'PAD disimpan.' }
 }
 
 export async function unmarkPad(
@@ -463,7 +463,7 @@ export async function markTerrainSurvey(
   revalidatePath(`/spk/${id}`)
   revalidatePath('/spk')
   revalidatePath('/dashboard')
-  return { error: null, success: 'Survei Terestris ditandai selesai.' }
+  return { error: null, success: 'Survei Terestris selesai.' }
 }
 
 export async function unmarkTerrainSurvey(

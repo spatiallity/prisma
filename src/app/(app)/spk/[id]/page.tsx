@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft, Banknote, CalendarDays, Clock3, FileText, MapPin, Pencil } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
@@ -25,11 +25,11 @@ export const metadata: Metadata = { title: 'Detail SPK' }
  *  surfaced — we don't use it now (see Survei Terestris/Pengecekan Bersama
  *  below for the field-survey stage that replaces it). */
 const TABS = [
-  { key: 'overview', label: 'Overview', phase: 2, ready: true },
+  { key: 'overview', label: 'Ringkasan', phase: 2, ready: true },
   { key: 'survey', label: 'Survei Lapangan', phase: 3, ready: true },
-  { key: 'design', label: 'Design', phase: 5, ready: true },
-  { key: 'routing', label: 'Routing', phase: 6, ready: true },
-  { key: 'financial', label: 'Financial', phase: 7, ready: true },
+  { key: 'design', label: 'Desain', phase: 5, ready: true },
+  { key: 'routing', label: 'Dokumen Invoice', phase: 6, ready: true },
+  { key: 'financial', label: 'Keuangan', phase: 7, ready: true },
 ]
 
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
@@ -40,6 +40,59 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
       </dt>
       <dd className="mt-0.5 text-sm font-semibold text-slate-900">{value}</dd>
     </div>
+  )
+}
+
+const AUDIT_TABLE_LABEL: Record<string, string> = {
+  spks: 'Data SPK',
+  spk_activities: 'Aktivitas',
+  activity_progress: 'Progress aktivitas',
+  designs: 'Desain',
+  design_revisions: 'Tahap desain',
+  spk_routing: 'Dokumen invoice',
+  routing_history: 'Tahap dokumen invoice',
+  invoices: 'Invoice',
+  payments: 'Payment',
+  opnames: 'Opname',
+  pad: 'PAD',
+}
+
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  INSERT: 'Dibuat',
+  UPDATE: 'Diperbarui',
+  DELETE: 'Dihapus',
+}
+
+function SummaryCard({
+  label,
+  value,
+  helper,
+  icon,
+  tone,
+}: {
+  label: string
+  value: React.ReactNode
+  helper?: React.ReactNode
+  icon: React.ReactNode
+  tone: string
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+              {label}
+            </div>
+            <div className="mt-1 truncate text-lg font-black text-slate-900">{value}</div>
+            {helper && <div className="mt-1 text-xs font-semibold text-muted-foreground">{helper}</div>}
+          </div>
+          <div className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-lg', tone)}>
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -87,6 +140,13 @@ export default async function SpkDetailPage({
   const hasRoutingStarted = stage?.label.startsWith('Routing') || stage?.label === 'Invoice terbit'
 
   const remaining = daysLeft(spk.end_date)
+  const scheduleLabel =
+    remaining === null
+      ? '—'
+      : remaining < 0
+        ? `Lewat ${Math.abs(remaining)} hari`
+        : `${remaining} hari lagi`
+  const scheduleTone = remaining !== null && remaining < 0 ? 'text-danger' : 'text-slate-900'
 
   return (
     <>
@@ -105,9 +165,9 @@ export default async function SpkDetailPage({
       )}
 
       {/* Header — Section 12 */}
-      <Card className="mb-5">
+      <Card className="mb-5 overflow-hidden">
         <CardContent className="p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
@@ -119,23 +179,22 @@ export default async function SpkDetailPage({
               <p className="mt-1 text-sm font-medium text-muted-foreground">
                 {spk.work_name}
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-600">
-                <span>{formatArea(spk.area_ha)}</span>
-                <span>{formatRupiah(spk.contract_value)}</span>
-                <span className="tnum">
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">
+                  <MapPin size={13} aria-hidden />
+                  {spk.location ?? spk.kabupaten ?? 'Lokasi belum diisi'}
+                </span>
+                <span className="tnum inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">
+                  <CalendarDays size={13} aria-hidden />
                   {formatDate(spk.start_date)} – {formatDate(spk.end_date)}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                  Tahapan
-                </div>
-                <div className="text-sm font-black text-primary">
-                  {stage?.label ?? '—'}
-                </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Tahap saat ini</div>
+                <div className="mt-0.5 text-sm font-black text-primary">{stage?.label ?? 'Belum mulai'}</div>
               </div>
               {mayEdit && (
                 <Link
@@ -151,8 +210,39 @@ export default async function SpkDetailPage({
         </CardContent>
       </Card>
 
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          label="Nilai Kontrak"
+          value={formatRupiah(spk.contract_value)}
+          helper="Nilai awal SPK"
+          icon={<Banknote size={17} aria-hidden />}
+          tone="bg-primary-soft text-primary"
+        />
+        <SummaryCard
+          label="Luas Area"
+          value={formatArea(spk.area_ha)}
+          helper={spk.location_type ?? 'Jenis lokasi belum diisi'}
+          icon={<MapPin size={17} aria-hidden />}
+          tone="bg-info/10 text-info"
+        />
+        <SummaryCard
+          label="Jadwal"
+          value={<span className={scheduleTone}>{scheduleLabel}</span>}
+          helper={`${formatDate(spk.start_date)} - ${formatDate(spk.end_date)}`}
+          icon={<Clock3 size={17} aria-hidden />}
+          tone="bg-warning/15 text-warning"
+        />
+        <SummaryCard
+          label="Jenis Pekerjaan"
+          value={spk.work_type ?? 'Belum diisi'}
+          helper={spkStatusLabel(spk.status)}
+          icon={<FileText size={17} aria-hidden />}
+          tone="bg-brand-orange/10 text-brand-orange"
+        />
+      </div>
+
       {/* Tabs */}
-      <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+      <div className="mb-5 flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-surface p-1 shadow-sm">
         {TABS.map((t) => {
           const built = t.ready
           const active = t.key === activeTab
@@ -187,9 +277,12 @@ export default async function SpkDetailPage({
 
       {activeTab === 'overview' && (
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="overflow-hidden lg:col-span-2">
           <CardHeader>
-            <CardTitle>Basic information</CardTitle>
+            <div>
+              <CardTitle>Informasi Pekerjaan</CardTitle>
+              <CardDescription>Data utama yang dipakai di proses survei, desain, invoice, dan keuangan.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-3">
@@ -232,9 +325,12 @@ export default async function SpkDetailPage({
         </Card>
 
         <div className="grid content-start gap-5">
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Latest activity</CardTitle>
+              <div>
+                <CardTitle>Aktivitas Terakhir</CardTitle>
+                <CardDescription>Perubahan terbaru untuk SPK ini.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {audit && audit.length > 0 ? (
@@ -258,8 +354,12 @@ export default async function SpkDetailPage({
                             : 'Sistem'}
                         </Td>
                         <Td className="text-xs">
-                          <span className="code">{entry.table_name}</span>{' '}
-                          <span className="text-muted-foreground">{entry.action}</span>
+                          <span className="font-bold text-slate-900">
+                            {AUDIT_TABLE_LABEL[entry.table_name] ?? entry.table_name}
+                          </span>{' '}
+                          <span className="text-muted-foreground">
+                            {AUDIT_ACTION_LABEL[entry.action] ?? entry.action}
+                          </span>
                         </Td>
                       </Tr>
                     ))}

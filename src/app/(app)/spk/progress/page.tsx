@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { SpkCell } from '@/components/ui/spk-cell'
+import { PageHeader } from '@/components/ui/page-header'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { cn } from '@/lib/utils'
 import type { DesignStage } from '@/lib/supabase/types'
+import { ProgressBoard, type ProgressColumn } from './progress-board'
 
 export const metadata: Metadata = { title: 'Progress SPK' }
 
@@ -18,6 +18,39 @@ const COLUMNS: { key: Column; label: string }[] = [
   { key: 'invoicing', label: 'Invoicing' },
   { key: 'selesai', label: 'Selesai / Invoiced' },
 ]
+
+const COLUMN_TONE: Record<Column, { bar: string; soft: string; text: string; caption: string }> = {
+  terestris: {
+    bar: 'bg-info',
+    soft: 'bg-info/10',
+    text: 'text-info',
+    caption: 'Belum masuk desain aktif',
+  },
+  desain_awal: {
+    bar: 'bg-primary',
+    soft: 'bg-primary-soft',
+    text: 'text-primary',
+    caption: 'Desain siteplan berjalan',
+  },
+  finalisasi: {
+    bar: 'bg-warning',
+    soft: 'bg-warning/15',
+    text: 'text-warning',
+    caption: 'Finalisasi desain berjalan',
+  },
+  invoicing: {
+    bar: 'bg-brand-orange',
+    soft: 'bg-brand-orange/10',
+    text: 'text-brand-orange',
+    caption: 'Dokumen invoice sedang diproses',
+  },
+  selesai: {
+    bar: 'bg-success',
+    soft: 'bg-success/10',
+    text: 'text-success',
+    caption: 'Sudah selesai/invoiced',
+  },
+}
 
 /**
  * A Kanban read of the same funnel the Dashboard tiles count — one column
@@ -34,7 +67,7 @@ export default async function SpkProgressPage() {
   const [{ data: spks, error }, { data: activeDesigns }, { data: routingDocs }] = await Promise.all([
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, work_name, status')
+      .select('id, spk_number, site_code, work_name, status, start_date, end_date, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi')
       .in('status', ['On Going', 'Selesai'])
       .order('spk_number'),
     supabase.from('designs').select('spk_id, phase, current_stage').eq('status', 'Active'),
@@ -70,43 +103,84 @@ export default async function SpkProgressPage() {
     },
     { terestris: [], desain_awal: [], finalisasi: [], invoicing: [], selesai: [] },
   )
+  const total = spks?.length ?? 0
+  const maxBucket = Math.max(1, ...COLUMNS.map((col) => bySpk[col.key].length))
+  const activeTotal = total - bySpk.selesai.length
+  const boardColumns: ProgressColumn[] = COLUMNS.map((col) => {
+    const rows = bySpk[col.key]
+    return {
+      key: col.key,
+      label: col.label,
+      caption: COLUMN_TONE[col.key].caption,
+      tone: {
+        bar: COLUMN_TONE[col.key].bar,
+        soft: COLUMN_TONE[col.key].soft,
+        text: COLUMN_TONE[col.key].text,
+      },
+      density: Math.round((rows.length / maxBucket) * 100),
+      rows,
+    }
+  })
 
   return (
     <>
       <PageHeader
         title="Progress SPK"
-        description="Setiap SPK, di tahap mana dia sedang berada — Survei Terestris sampai Selesai/Invoiced."
+        description="Posisi setiap SPK dari Survei Terestris sampai Selesai/Invoiced."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {COLUMNS.map((col) => {
-          const rows = bySpk[col.key]
-          return (
-            <Card key={col.key} className="flex max-h-[calc(100vh-220px)] flex-col overflow-hidden">
-              <CardHeader className="shrink-0">
-                <div>
-                  <CardTitle>{col.label}</CardTitle>
-                </div>
-                <Badge tone="info">{rows.length}</Badge>
-              </CardHeader>
-              {rows.length > 0 ? (
-                <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
-                  {rows.map((row) => (
-                    <li key={row.id} className="px-4 py-3">
-                      <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />
-                      <div className="line-clamp-1 text-xs text-muted-foreground">{row.work_name}</div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="flex-1 px-4 py-6">
-                  <EmptyState title="Kosong" />
-                </div>
-              )}
-            </Card>
-          )
-        })}
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Total SPK', value: total, helper: 'On Going + Selesai', tone: 'text-slate-900' },
+          { label: 'Masih berjalan', value: activeTotal, helper: 'belum selesai/invoiced', tone: 'text-primary' },
+          { label: 'Dokumen invoice', value: bySpk.invoicing.length, helper: 'sedang diproses', tone: 'text-brand-orange' },
+          { label: 'Selesai', value: bySpk.selesai.length, helper: 'sudah completed', tone: 'text-success' },
+        ].map((item) => (
+          <Card key={item.label} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                {item.label}
+              </div>
+              <div className={cn('tnum mt-1 text-3xl font-black', item.tone)}>{item.value}</div>
+              <div className="mt-1 text-xs font-semibold text-muted-foreground">{item.helper}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+
+      <Card className="mb-5 overflow-hidden">
+        <CardHeader>
+          <div>
+            <CardTitle>Distribusi Tahapan</CardTitle>
+            <CardDescription>Komposisi SPK berdasarkan tahap terjauh yang sudah dicapai.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {COLUMNS.map((col) => {
+            const rows = bySpk[col.key]
+            const percent = total > 0 ? Math.round((rows.length / total) * 100) : 0
+            return (
+              <div key={col.key} className="grid gap-2 sm:grid-cols-[180px_1fr_70px] sm:items-center">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">{col.label}</div>
+                  <div className="text-xs font-semibold text-muted-foreground">{COLUMN_TONE[col.key].caption}</div>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={cn('h-full rounded-full', COLUMN_TONE[col.key].bar)}
+                    style={{ width: `${Math.max(3, percent)}%` }}
+                  />
+                </div>
+                <div className="tnum text-right text-sm font-black text-slate-900">
+                  {rows.length} <span className="text-xs font-bold text-muted-foreground">({percent}%)</span>
+                </div>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      <ProgressBoard columns={boardColumns} />
 
       {error && (
         <p className="mt-4 text-sm font-semibold text-danger">Gagal memuat data: {error.message}</p>

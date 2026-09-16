@@ -1,7 +1,7 @@
-import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/page-header'
 import { createClient } from '@/lib/supabase/server'
+import { AddDesignButton } from '../../design/forms'
 import { DesignTabCards } from './design-tab-cards'
 
 /**
@@ -24,15 +24,33 @@ export async function DesignTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
     .order('phase')
 
   if (!designs || designs.length === 0) {
+    const [{ data: spk }, { data: pics }] = await Promise.all([
+      supabase.from('spks').select('id, spk_number, work_name').eq('id', spkId).maybeSingle(),
+      supabase.from('design_pics').select('id, full_name').order('full_name'),
+    ])
+    const spkOptions = spk ? [{ id: spk.id, label: `${spk.spk_number} — ${spk.work_name}` }] : []
+
     return (
-      <Card>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <div>
+            <CardTitle>Desain</CardTitle>
+            <CardDescription>Mulai record Desain Siteplan langsung dari SPK ini.</CardDescription>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           <EmptyState
-            title="Belum ada record desain"
+            title="Belum ada desain aktif"
+            description="Buka record desain di sini, lalu isi tahap desain dari popup detailnya."
             action={
-              <Link href="/design" className="text-sm font-bold text-primary hover:underline">
-                Buka Design Queue
-              </Link>
+              mayEdit && spkOptions.length > 0 ? (
+                <AddDesignButton
+                  spks={spkOptions}
+                  pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
+                  lockedSpkId={spkId}
+                  label="Buka record desain"
+                />
+              ) : undefined
             }
           />
         </CardContent>

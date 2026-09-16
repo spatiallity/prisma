@@ -5,13 +5,15 @@ import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { cn, formatDate, formatRupiah } from '@/lib/utils'
+import { spkStatusLabel } from '@/lib/spk'
+import type { SpkStatus } from '@/lib/supabase/types'
 import { FinancialRowEditButton } from './row-edit'
 
 export type FinancialRow = {
   spkId: string
   spkNumber: string
   siteCode: string | null
-  status: string
+  status: SpkStatus
   nilaiSpk: number
   tanggalMulai: string | null
   opnameMarkedAt: string | null
@@ -53,6 +55,10 @@ function matches(row: FinancialRow, filter: FilterKey) {
 export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; mayEdit: boolean }) {
   const [filter, setFilter] = useState<FilterKey>('all')
   const filtered = useMemo(() => rows.filter((r) => matches(r, filter)), [rows, filter])
+  const filterCounts = useMemo(
+    () => Object.fromEntries(FILTERS.map((f) => [f.key, rows.filter((row) => matches(row, f.key)).length])) as Record<FilterKey, number>,
+    [rows],
+  )
 
   const columns: DataTableColumn<FinancialRow>[] = [
     {
@@ -65,9 +71,42 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
       render: (row) => (
         <>
           <SpkCell id={row.spkId} spkNumber={row.spkNumber} siteCode={row.siteCode} href={`/spk/${row.spkId}?tab=financial`} />
-          <div className="text-xs text-muted-foreground">{row.status}</div>
+          <div className="text-xs text-muted-foreground">{spkStatusLabel(row.status)}</div>
         </>
       ),
+    },
+    {
+      key: 'progress',
+      label: 'Alur bayar',
+      sortAccessor: (row) => {
+        if (row.invoiceDone) return 4
+        if (row.padMarkedAt) return 3
+        if (row.opnameMarkedAt) return 2
+        return 1
+      },
+      render: (row) => {
+        const steps = [
+          { label: 'Opname', done: !!row.opnameMarkedAt },
+          { label: 'PAD', done: !!row.padMarkedAt },
+          { label: 'Invoice', done: row.invoiceDone },
+        ]
+        return (
+          <div className="min-w-[170px]">
+            <div className="flex gap-1">
+              {steps.map((step) => (
+                <div
+                  key={step.label}
+                  className={cn('h-2 flex-1 rounded-full', step.done ? 'bg-success' : 'bg-slate-200')}
+                  title={step.label}
+                />
+              ))}
+            </div>
+            <div className="mt-1 text-xs font-semibold text-muted-foreground">
+              {row.invoiceDone ? 'Invoice selesai' : row.padMarkedAt ? 'Menunggu invoice' : row.opnameMarkedAt ? 'Menunggu PAD' : 'Menunggu opname'}
+            </div>
+          </div>
+        )
+      },
     },
     {
       key: 'nilai_spk',
@@ -160,7 +199,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 border-b border-slate-100 p-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/60 p-3">
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -174,6 +213,9 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
             )}
           >
             {f.label}
+            <span className={cn('tnum ml-2 rounded-full px-2 py-0.5', filter === f.key ? 'bg-white/70' : 'bg-slate-100')}>
+              {filterCounts[f.key]}
+            </span>
           </button>
         ))}
       </div>
@@ -181,7 +223,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
         columns={columns}
         rows={filtered}
         rowKey={(row) => row.spkId}
-        searchAccessor={(row) => [row.spkNumber, row.siteCode].filter(Boolean).join(' ')}
+        searchAccessor={(row) => [row.spkNumber, row.siteCode, row.invoiceNumber].filter(Boolean).join(' ')}
         searchPlaceholder="Cari SPK…"
         emptyTitle="Tidak ada SPK yang cocok"
         defaultSort={{ key: 'pad', dir: 'desc' }}

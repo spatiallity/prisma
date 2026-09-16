@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
+import { AlertTriangle, FileCheck2, ReceiptText, WalletCards } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/session'
 import { can } from '@/lib/auth/permissions'
 import { createClient } from '@/lib/supabase/server'
-import { cn, formatRupiah } from '@/lib/utils'
+import { cn, formatRupiah, formatRupiahCompact } from '@/lib/utils'
 import { FinancialReportTable, type FinancialRow } from './financial-report-table'
 
 export const metadata: Metadata = { title: 'Financial Report' }
@@ -74,20 +76,62 @@ export default async function FinancialReportPage() {
     }),
     { nilaiSpk: 0, opname: 0, pad: 0, invoice: 0, denda: 0 },
   )
+  const counts = {
+    total: rows.length,
+    opname: rows.filter((r) => r.opnameMarkedAt).length,
+    pad: rows.filter((r) => r.padMarkedAt).length,
+    invoice: rows.filter((r) => r.invoiceDone).length,
+    denda: rows.filter((r) => (r.dendaValue ?? 0) > 0).length,
+  }
+  const invoicePercent = counts.total > 0 ? Math.round((counts.invoice / counts.total) * 100) : 0
 
   return (
     <>
       <PageHeader
-        title="Financial Report"
-        description="Nilai SPK sampai Invoice, dibaca langsung dari SPK, Desain, dan Routing — bukan daftar terpisah lagi."
+        title="Laporan Keuangan SPK"
+        description="Ringkasan nilai kontrak, opname, PAD, denda, dan invoice dari data SPK yang sedang dipantau."
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-        <Stat label="Nilai SPK" value={formatRupiah(totals.nilaiSpk)} />
-        <Stat label="Opname" value={formatRupiah(totals.opname)} />
-        <Stat label="PAD" value={formatRupiah(totals.pad)} />
-        <Stat label="Denda" value={formatRupiah(totals.denda)} tone={totals.denda > 0 ? 'danger' : undefined} />
-        <Stat label="Invoice" value={formatRupiah(totals.invoice)} />
+      <div className="mb-5 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <Stat
+          label="Nilai SPK"
+          value={formatRupiahCompact(totals.nilaiSpk)}
+          helper={`${counts.total} SPK tercatat`}
+          detail={formatRupiah(totals.nilaiSpk)}
+          icon={<WalletCards size={18} />}
+          accent="primary"
+          wide
+        />
+        <Stat
+          label="PAD"
+          value={formatRupiahCompact(totals.pad)}
+          helper={`${counts.pad} SPK sudah PAD`}
+          detail={formatRupiah(totals.pad)}
+          icon={<FileCheck2 size={18} />}
+          accent="success"
+        />
+        <Stat
+          label="Invoice"
+          value={formatRupiahCompact(totals.invoice)}
+          helper={`${counts.invoice} SPK selesai invoice`}
+          detail={`${invoicePercent}% dari laporan`}
+          icon={<ReceiptText size={18} />}
+          accent="info"
+        />
+        <Stat
+          label="Denda"
+          value={formatRupiahCompact(totals.denda)}
+          helper={totals.denda > 0 ? `${counts.denda} SPK punya denda` : 'Tidak ada denda'}
+          detail={formatRupiah(totals.denda)}
+          icon={<AlertTriangle size={18} />}
+          accent={totals.denda > 0 ? 'danger' : 'neutral'}
+        />
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <MiniStat label="Opname" value={formatRupiah(totals.opname)} helper={`${counts.opname} SPK sudah opname`} />
+        <MiniStat label="Belum PAD" value={String(rows.filter((r) => r.opnameMarkedAt && !r.padMarkedAt).length)} helper="sudah opname, menunggu PAD" />
+        <MiniStat label="Belum Invoice" value={String(rows.filter((r) => r.padMarkedAt && !r.invoiceDone).length)} helper="sudah PAD, menunggu invoice" />
       </div>
 
       <Card className="overflow-hidden">
@@ -97,12 +141,61 @@ export default async function FinancialReportPage() {
   )
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: 'danger' }) {
+function Stat({
+  label,
+  value,
+  helper,
+  detail,
+  icon,
+  accent,
+  wide = false,
+}: {
+  label: string
+  value: string
+  helper: string
+  detail: string
+  icon: ReactNode
+  accent: 'primary' | 'success' | 'info' | 'danger' | 'neutral'
+  wide?: boolean
+}) {
+  const tone = {
+    primary: 'bg-primary-soft text-primary border-primary/20',
+    success: 'bg-success/10 text-success border-success/20',
+    info: 'bg-info/10 text-info border-info/20',
+    danger: 'bg-danger/10 text-danger border-danger/20',
+    neutral: 'bg-slate-100 text-slate-600 border-slate-200',
+  }[accent]
+
   return (
-    <Card className="min-w-0">
-      <CardContent className="grid min-w-0 content-start gap-1 p-4">
-        <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">{label}</div>
-        <div className={cn('tnum truncate text-lg font-black', tone === 'danger' ? 'text-danger' : 'text-slate-900')}>
+    <Card className={cn('min-w-0 overflow-hidden', wide && 'lg:min-h-[128px]')}>
+      <CardContent className="grid min-w-0 content-between gap-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">{label}</div>
+            <div className="mt-1 text-xs font-semibold text-muted-foreground">{helper}</div>
+          </div>
+          <div className={cn('rounded-lg border p-2', tone)}>{icon}</div>
+        </div>
+        <div>
+          <div className={cn('tnum truncate text-2xl font-black', accent === 'danger' ? 'text-danger' : 'text-slate-900')}>
+            {value}
+          </div>
+          <div className="tnum mt-1 truncate text-xs font-bold text-muted-foreground">{detail}</div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function MiniStat({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between gap-4 p-4">
+        <div>
+          <div className="text-sm font-black text-slate-900">{label}</div>
+          <div className="mt-0.5 text-xs font-semibold text-muted-foreground">{helper}</div>
+        </div>
+        <div className="tnum rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-900">
           {value}
         </div>
       </CardContent>

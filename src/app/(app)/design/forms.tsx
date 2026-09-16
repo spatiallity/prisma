@@ -192,10 +192,12 @@ function SpkCombobox({
 export function NewDesignForm({
   spks,
   pics,
+  lockedSpkId,
   onSaved,
 }: {
   spks: SpkOption[]
   pics: PicOption[]
+  lockedSpkId?: string
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(createDesign, initialState)
@@ -216,7 +218,16 @@ export function NewDesignForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="SPK" htmlFor="d_spk" required className="sm:col-span-2">
-          <SpkCombobox id="d_spk" spks={spks} />
+          {lockedSpkId ? (
+            <>
+              <input type="hidden" name="spk_id" value={lockedSpkId} />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-900">
+                {spks.find((spk) => spk.id === lockedSpkId)?.label ?? 'SPK ini'}
+              </div>
+            </>
+          ) : (
+            <SpkCombobox id="d_spk" spks={spks} />
+          )}
         </Field>
 
         <PicField label="Drafter" pics={pics} placeholder="Nama Drafter" />
@@ -250,9 +261,13 @@ export function NewDesignForm({
 export function AddDesignButton({
   spks,
   pics,
+  lockedSpkId,
+  label = 'Add Data',
 }: {
   spks: SpkOption[]
   pics: PicOption[]
+  lockedSpkId?: string
+  label?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -264,11 +279,11 @@ export function AddDesignButton({
       trigger={
         <Button type="button">
           <Plus size={16} aria-hidden />
-          Add Data
+          {label}
         </Button>
       }
     >
-      <NewDesignForm spks={spks} pics={pics} onSaved={() => setOpen(false)} />
+      <NewDesignForm spks={spks} pics={pics} lockedSpkId={lockedSpkId} onSaved={() => setOpen(false)} />
     </Modal>
   )
 }

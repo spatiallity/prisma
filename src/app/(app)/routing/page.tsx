@@ -125,7 +125,7 @@ export async function RoutingMonitor({
   const description =
     mode === 'history'
       ? 'Dokumen yang sudah selesai atau ditolak, beserta lead time totalnya.'
-      : 'Posisi setiap dokumen dan berapa lama tertahan di tahap sekarang.'
+      : 'Posisi setiap dokumen invoice dan tahap yang sedang berjalan.'
 
   return (
     <>
@@ -189,7 +189,7 @@ export async function RoutingMonitor({
             description={
               mode === 'history'
                 ? 'Dokumen akan muncul di sini setelah tahap terakhirnya selesai.'
-                : 'Rutekan dokumen agar posisinya bisa dipantau.'
+                : 'Buat dokumen invoice agar posisinya bisa dipantau.'
             }
           />
         ) : mode === 'open' ? (
@@ -253,26 +253,56 @@ async function StepSummaryCards({
 
   if (!steps || steps.length === 0) return null
 
+  const totalOpen = Object.keys(currentByDoc).length
+  const maxCount = Math.max(1, ...steps.map((step) => countByStep.get(step.name) ?? 0))
+  const accents = [
+    'from-primary/80 to-primary',
+    'from-info/80 to-info',
+    'from-warning/80 to-warning',
+    'from-brand-orange/75 to-brand-orange',
+    'from-success/75 to-success',
+    'from-brand-navy/75 to-brand-navy',
+  ]
+
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {steps.map((step) => {
+    <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8">
+      {steps.map((step, index) => {
         const active = activeStep === step.name
+        const count = countByStep.get(step.name) ?? 0
+        const percentOfMax = Math.max(4, Math.round((count / maxCount) * 100))
+        const percentOfTotal = totalOpen > 0 ? Math.round((count / totalOpen) * 100) : 0
         return (
           <Link
             key={step.id}
             href={active ? '/routing' : `/routing?step=${encodeURIComponent(step.name)}`}
             className={cn(
-              'block rounded-xl border p-4 transition-colors',
+              'group block overflow-hidden rounded-lg border bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
               active
-                ? 'border-primary bg-primary-soft'
-                : 'border-slate-200 bg-surface hover:border-primary/40',
+                ? 'border-primary bg-primary-soft ring-1 ring-primary/20'
+                : 'border-slate-200 hover:border-primary/40',
             )}
           >
-            <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-              {step.name}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                  {step.name}
+                </div>
+                <div className="mt-1 text-xs font-semibold text-muted-foreground">
+                  {count > 0 ? `${percentOfTotal}% dari dokumen aktif` : 'Tidak ada dokumen'}
+                </div>
+              </div>
+              <div className="tnum shrink-0 text-2xl font-black text-slate-900">
+                {count}
+              </div>
             </div>
-            <div className="tnum mt-1 text-2xl font-black text-slate-900">
-              {countByStep.get(step.name) ?? 0}
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn(
+                  'h-full rounded-full bg-gradient-to-r transition-all',
+                  count === 0 ? 'from-slate-200 to-slate-200' : accents[index % accents.length],
+                )}
+                style={{ width: `${percentOfMax}%` }}
+              />
             </div>
           </Link>
         )

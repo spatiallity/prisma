@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatRupiah } from '@/lib/utils'
@@ -148,9 +148,12 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   ]
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle>Financial</CardTitle>
+        <div>
+          <CardTitle>Keuangan</CardTitle>
+          <CardDescription>Ringkasan nilai SPK, opname, PAD, dan invoice untuk SPK ini.</CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <StepChain steps={steps} />

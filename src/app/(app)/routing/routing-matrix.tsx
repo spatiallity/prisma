@@ -255,7 +255,7 @@ function RoutingDetailModal({
           <AccordionChain steps={accordionSteps} openKey={openKey} onToggle={toggle} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Belum dirutekan. SPK ini sudah siap masuk persiapan dokumen invoice.
+            Belum ada dokumen invoice. SPK ini sudah siap masuk persiapan invoice.
           </p>
         )}
       </div>
@@ -408,7 +408,7 @@ export function RoutingMatrix({
                 action={deleteRouting}
                 hiddenFields={{ routing_id: row.id }}
                 label="Hapus Progress"
-                confirmText={`Progres routing untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — bisa dirutekan ulang dari sini.`}
+                confirmText={`Progres dokumen invoice untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — dokumen invoice bisa dibuat lagi dari sini.`}
               />
             )}
           </RowActions>
@@ -430,7 +430,7 @@ export function RoutingMatrix({
         }}
         searchPlaceholder="Cari SPK…"
         emptyTitle="Tidak ada dokumen berjalan"
-        emptyDescription="Rutekan dokumen agar posisinya bisa dipantau."
+        emptyDescription="Buat dokumen invoice agar posisinya bisa dipantau."
         defaultSort={{ key: 'pad', dir: 'desc' }}
         pageSize={100}
       />

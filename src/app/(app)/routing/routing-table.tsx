@@ -137,7 +137,7 @@ export function RoutingTable({
       emptyDescription={
         mode === 'history'
           ? 'Dokumen akan muncul di sini setelah tahap terakhirnya selesai.'
-          : 'Rutekan dokumen agar posisinya bisa dipantau.'
+          : 'Buat dokumen invoice agar posisinya bisa dipantau.'
       }
     />
   )

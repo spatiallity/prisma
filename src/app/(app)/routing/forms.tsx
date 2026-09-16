@@ -61,12 +61,16 @@ function Submit({
 export function NewRoutingForm({
   spks,
   templateId,
+  lockedSpkId,
+  returnToSpk = false,
   onSaved,
 }: {
   spks: Option[]
   /** Only one routing template exists in practice, so it's picked for the
    *  user instead of asked — there's nothing to choose between. */
   templateId: string | null
+  lockedSpkId?: string
+  returnToSpk?: boolean
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(createRouting, initialState)
@@ -76,8 +80,8 @@ export function NewRoutingForm({
   if (spks.length === 0 || !templateId) {
     return (
       <Alert tone="warning">
-        Butuh minimal satu SPK aktif dan satu template routing sebelum dokumen bisa
-        dirutekan.
+        Butuh minimal satu SPK aktif dan satu template routing sebelum dokumen invoice bisa
+        dibuat.
       </Alert>
     )
   }
@@ -87,10 +91,20 @@ export function NewRoutingForm({
       <Feedback state={state} />
       <input type="hidden" name="document_type" value={DOCUMENT_TYPE} />
       <input type="hidden" name="template_id" value={templateId} />
+      {returnToSpk && <input type="hidden" name="return_to_spk" value="1" />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="SPK" htmlFor="r_spk" required className="sm:col-span-2">
-          <Combobox id="r_spk" name="spk_id" options={spks} placeholder="Cari SPK…" />
+          {lockedSpkId ? (
+            <>
+              <input type="hidden" name="spk_id" value={lockedSpkId} />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-900">
+                {spks.find((spk) => spk.id === lockedSpkId)?.label ?? 'SPK ini'}
+              </div>
+            </>
+          ) : (
+            <Combobox id="r_spk" name="spk_id" options={spks} placeholder="Cari SPK…" />
+          )}
         </Field>
 
         <Field label="Nomor dokumen" htmlFor="r_number">
@@ -107,7 +121,7 @@ export function NewRoutingForm({
       </div>
 
       <div>
-        <Submit label="Rutekan invoice" icon={<Plus size={16} aria-hidden />} pending={pending} />
+        <Submit label="Buat dokumen invoice" icon={<Plus size={16} aria-hidden />} pending={pending} />
       </div>
     </form>
   )
@@ -116,24 +130,36 @@ export function NewRoutingForm({
 export function AddRoutingButton({
   spks,
   templateId,
+  lockedSpkId,
+  returnToSpk = false,
+  label = 'Add Data',
 }: {
   spks: Option[]
   templateId: string | null
+  lockedSpkId?: string
+  returnToSpk?: boolean
+  label?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
     <Modal
       open={open}
       onOpenChange={setOpen}
-      title="Rutekan invoice"
+      title="Buat dokumen invoice"
       trigger={
         <Button type="button">
           <Plus size={16} aria-hidden />
-          Add Data
+          {label}
         </Button>
       }
     >
-      <NewRoutingForm spks={spks} templateId={templateId} onSaved={() => setOpen(false)} />
+      <NewRoutingForm
+        spks={spks}
+        templateId={templateId}
+        lockedSpkId={lockedSpkId}
+        returnToSpk={returnToSpk}
+        onSaved={() => setOpen(false)}
+      />
     </Modal>
   )
 }

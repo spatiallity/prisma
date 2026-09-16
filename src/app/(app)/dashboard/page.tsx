@@ -431,41 +431,11 @@ export default async function DashboardPage() {
       <EqualHeightRow
         left={
           <div className="grid content-start gap-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <div>
-                  <CardTitle>{PHASE_LABEL.siteplan}</CardTitle>
-                  <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
-                </div>
-              </CardHeader>
-              <DesignStageChart data={designStageChartData.siteplan} linkBase="/design/siteplan" />
-            </Card>
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <div>
-                  <CardTitle>{PHASE_LABEL.finalisasi}</CardTitle>
-                  <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
-                </div>
-              </CardHeader>
-              <DesignStageChart data={designStageChartData.finalisasi} linkBase="/design/finalisasi" />
-            </Card>
-          </div>
-
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div>
-                <CardTitle>Posisi Routing</CardTitle>
-                <CardDescription>Dokumen belum Completed, per tahap</CardDescription>
-              </div>
-            </CardHeader>
-            <DesignStageChart data={routingStageChartData} />
-          </Card>
-
           <Card className="overflow-hidden">
             <CardHeader>
               <div>
                 <CardTitle>SPK Sedang Berjalan</CardTitle>
+                <CardDescription>Daftar pekerjaan aktif dan posisi tahap terakhirnya.</CardDescription>
               </div>
               <Link href="/spk" className="text-xs font-bold text-primary hover:underline">
                 Semua SPK
@@ -530,6 +500,37 @@ export default async function DashboardPage() {
                 description="SPK berstatus Sedang Berjalan akan muncul di sini."
               />
             )}
+          </Card>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <div>
+                  <CardTitle>{PHASE_LABEL.siteplan}</CardTitle>
+                  <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
+                </div>
+              </CardHeader>
+              <DesignStageChart data={designStageChartData.siteplan} linkBase="/design/siteplan" />
+            </Card>
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <div>
+                  <CardTitle>{PHASE_LABEL.finalisasi}</CardTitle>
+                  <CardDescription>Sebaran tahap yang sedang berjalan</CardDescription>
+                </div>
+              </CardHeader>
+              <DesignStageChart data={designStageChartData.finalisasi} linkBase="/design/finalisasi" />
+            </Card>
+          </div>
+
+          <Card className="overflow-hidden">
+            <CardHeader>
+              <div>
+                <CardTitle>Posisi Routing</CardTitle>
+                <CardDescription>Dokumen belum Completed, per tahap</CardDescription>
+              </div>
+            </CardHeader>
+            <DesignStageChart data={routingStageChartData} />
           </Card>
           </div>
         }

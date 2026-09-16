@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
@@ -77,7 +77,7 @@ function describe(entry: AuditEntry): string | null {
       const step = (after.step_name as string | undefined) ?? 'tahap'
       if (fields.includes('status')) {
         const status = after.status as string
-        if (status === 'Completed') return `${step} ditandai selesai`
+        if (status === 'Completed') return `${step} selesai`
         if (status === 'In Progress') return `${step} mulai dikerjakan`
         if (status === 'Returned') return `${step} dikembalikan untuk revisi`
         return `${step} → ${status}`
@@ -102,12 +102,12 @@ function describe(entry: AuditEntry): string | null {
     case 'spks':
       if (fields.includes('status')) return `statusnya berubah dari ${before.status ?? '—'} ke ${after.status}`
       if (fields.includes('terrain_survey_completed_at') && after.terrain_survey_completed_at && !before.terrain_survey_completed_at)
-        return 'Survei Terestris ditandai selesai'
+        return 'Survei Terestris selesai'
       if (fields.includes('joint_check_date')) return `tanggal Pengecekan Bersama diisi ${after.joint_check_date ?? '—'}`
       if (fields.includes('opname_marked_at') && after.opname_marked_at && !before.opname_marked_at)
-        return 'opname ditandai selesai'
+        return 'sudah opname'
       if (fields.includes('pad_marked_at') && after.pad_marked_at && !before.pad_marked_at)
-        return 'PAD ditandai'
+        return 'sudah PAD'
       if (fields.includes('vendor_id')) return 'vendornya diubah'
       if (fields.includes('site_code')) return `kode lokasinya diubah ke ${after.site_code}`
       if (fields.includes('work_name')) return 'nama pekerjaannya diubah'
@@ -173,12 +173,20 @@ export default async function RecentActivityPage() {
     .filter(
       (row): row is { entry: AuditEntry; description: string } => row.description !== null,
     )
+  const actionCounts = rows.reduce(
+    (acc, { entry }) => {
+      acc[entry.action] += 1
+      return acc
+    },
+    { INSERT: 0, UPDATE: 0, DELETE: 0 },
+  )
+  const touchedSpkCount = new Set(rows.map(({ entry }) => entry.spk_id).filter(Boolean)).size
 
   return (
     <>
       <PageHeader
         title="Recent Activity"
-        description="Perubahan yang benar-benar dilakukan seseorang, terbaru dulu."
+        description="Perubahan terbaru dari pengguna."
       />
 
       {error && (
@@ -187,11 +195,30 @@ export default async function RecentActivityPage() {
         </Alert>
       )}
 
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Aktivitas terakhir', value: rows.length, tone: 'text-slate-900', helper: `dari ${PAGE_SIZE} audit terakhir` },
+          { label: 'SPK terkait', value: touchedSpkCount, tone: 'text-primary', helper: 'unik di feed ini' },
+          { label: 'Update', value: actionCounts.UPDATE, tone: 'text-info', helper: 'perubahan data' },
+          { label: 'Data baru', value: actionCounts.INSERT, tone: 'text-success', helper: 'record dibuat' },
+        ].map((item) => (
+          <Card key={item.label} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
+                {item.label}
+              </div>
+              <div className={`tnum mt-1 text-3xl font-black ${item.tone}`}>{item.value}</div>
+              <div className="mt-1 text-xs font-semibold text-muted-foreground">{item.helper}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <Card className="overflow-hidden">
         <CardHeader>
           <div>
             <CardTitle>Perubahan terakhir</CardTitle>
-            <CardDescription>Aksi sistem/trigger tidak ikut ditampilkan di sini.</CardDescription>
+            <CardDescription>Perubahan otomatis dari sistem tidak ditampilkan di sini.</CardDescription>
           </div>
           <Link
             href="/admin/audit-log"
@@ -202,16 +229,19 @@ export default async function RecentActivityPage() {
         </CardHeader>
 
         {rows.length > 0 ? (
-          <ul className="divide-y divide-slate-100">
+          <ul className="grid gap-3 bg-slate-50 px-5 py-4">
             {rows.map(({ entry, description }) => {
               const spk = entry.spk_id ? spkById.get(entry.spk_id) : null
               return (
-                <li key={entry.id} className="flex items-start gap-3 px-5 py-3.5">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-extrabold text-primary">
+                <li
+                  key={entry.id}
+                  className="flex items-start gap-3 rounded-lg border border-slate-200 bg-surface px-4 py-3 shadow-sm"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-xs font-extrabold text-primary">
                     {(spk?.site_code ?? spk?.spk_number ?? '#').slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-slate-700">
+                    <p className="text-sm font-semibold text-slate-800">
                       {spk && (
                         <>
                           SPK{' '}
@@ -225,7 +255,7 @@ export default async function RecentActivityPage() {
                       )}
                       {spk ? description : description.charAt(0).toUpperCase() + description.slice(1)}
                     </p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <Badge tone={ACTION_TONE[entry.action]} className="py-0">
                         {entry.action}
                       </Badge>

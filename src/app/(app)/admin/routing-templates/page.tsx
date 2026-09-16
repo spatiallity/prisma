@@ -41,7 +41,7 @@ export default async function RoutingTemplatesPage() {
     <>
       <PageHeader
         title="Routing Template"
-        description="Urutan tahap beserta SLA-nya. Dokumen menyalin SLA saat dirutekan, jadi perubahan di sini tidak mengubah dokumen yang sedang berjalan."
+        description="Urutan tahap beserta SLA-nya. Dokumen menyalin SLA saat dibuat, jadi perubahan di sini tidak mengubah dokumen yang sedang berjalan."
       />
 
       {error && (

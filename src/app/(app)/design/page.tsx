@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { DESIGN_STAGES } from '@/lib/supabase/types'
-import { PHASE_LABEL, PHASE_STAGES, daysInStage } from '@/lib/design'
+import { DESIGN_STAGES, type DesignStage } from '@/lib/supabase/types'
+import { PHASE_LABEL, PHASE_STAGES, PHASE_TERMINAL_STAGE, daysInStage, stageDisplayLabel } from '@/lib/design'
 import { DesignStageChart } from '../dashboard/dashboard-charts'
 
 export const metadata: Metadata = { title: 'Design Queue' }
@@ -47,7 +48,7 @@ export default async function DesignQueuePage() {
   // separately or it inflates that stage's "still pending" count forever.
   const donePerPhase = { siteplan: 0, finalisasi: 0 }
   const heldDaysPerPhase: Record<'siteplan' | 'finalisasi', number[]> = { siteplan: [], finalisasi: [] }
-  const stuck: { id: string; spkId: string; phase: 'siteplan' | 'finalisasi'; stage: string; days: number }[] = []
+  const stuck: { id: string; spkId: string; phase: 'siteplan' | 'finalisasi'; stage: DesignStage; days: number }[] = []
 
   for (const d of designs ?? []) {
     if (d.approved_at !== null) {
@@ -72,15 +73,22 @@ export default async function DesignQueuePage() {
 
   const phases: ('siteplan' | 'finalisasi')[] = ['siteplan', 'finalisasi']
 
-  const chartDataPerPhase: Record<'siteplan' | 'finalisasi', { label: string; count: number }[]> = {
+  const chartDataPerPhase: Record<'siteplan' | 'finalisasi', { label: string; count: number; hrefStage?: string }[]> = {
     siteplan: [
       { label: 'Draft', count: draftPerPhase.siteplan },
-      ...PHASE_STAGES.siteplan.map((s) => ({ label: s, count: perStage.get(s) ?? 0 })),
-      { label: 'Opname', count: donePerPhase.siteplan },
+      ...PHASE_STAGES.siteplan.map((s) => ({
+        label: stageDisplayLabel(s),
+        hrefStage: s,
+        count: (perStage.get(s) ?? 0) + (s === PHASE_TERMINAL_STAGE.siteplan ? donePerPhase.siteplan : 0),
+      })),
     ],
     finalisasi: [
       { label: 'Draft', count: draftPerPhase.finalisasi },
-      ...PHASE_STAGES.finalisasi.map((s) => ({ label: s, count: perStage.get(s) ?? 0 })),
+      ...PHASE_STAGES.finalisasi.map((s) => ({
+        label: stageDisplayLabel(s),
+        hrefStage: s,
+        count: (perStage.get(s) ?? 0) + (s === PHASE_TERMINAL_STAGE.finalisasi ? donePerPhase.finalisasi : 0),
+      })),
     ],
   }
   const totalPerPhase = {
@@ -90,7 +98,10 @@ export default async function DesignQueuePage() {
 
   return (
     <>
-      <PageHeader title="Design Queue" />
+      <PageHeader
+        title="Design Queue"
+        description="Pantau antrean desain, tahap yang sedang dikerjakan, dan SPK yang perlu segera ditindaklanjuti."
+      />
 
       {error && (
         <Alert tone="danger" className="mb-4" title="Gagal memuat data">
@@ -98,7 +109,14 @@ export default async function DesignQueuePage() {
         </Alert>
       )}
 
-      <div className="mb-5 grid gap-5 sm:grid-cols-2">
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <OverviewStat label="Desain aktif" value={designs?.length ?? 0} helper="siteplan + finalisasi" />
+        <OverviewStat label="Siteplan" value={totalPerPhase.siteplan} helper={`${donePerPhase.siteplan} sudah opname`} tone="primary" />
+        <OverviewStat label="Finalisasi" value={totalPerPhase.finalisasi} helper={`${donePerPhase.finalisasi} sudah acc PIC`} tone="success" />
+        <OverviewStat label="Perlu dicek" value={stuck.length} helper="lebih dari 7 hari" tone={stuck.length ? 'danger' : 'neutral'} />
+      </div>
+
+      <div className="mb-5 grid gap-5 xl:grid-cols-2">
         {phases.map((phase) => (
           <Card key={phase} className="overflow-hidden">
             <CardHeader>
@@ -112,6 +130,7 @@ export default async function DesignQueuePage() {
                   {avg(heldDaysPerPhase[phase]) === null ? '—' : `${avg(heldDaysPerPhase[phase])} hari`}
                 </CardDescription>
               </div>
+              <Badge tone={phase === 'siteplan' ? 'primary' : 'info'}>{PHASE_LABEL[phase]}</Badge>
             </CardHeader>
             <DesignStageChart data={chartDataPerPhase[phase]} linkBase={`/design/${phase}`} />
           </Card>
@@ -120,26 +139,32 @@ export default async function DesignQueuePage() {
 
       <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Desain yang lama tidak bergerak (&gt;7 hari)</CardTitle>
+          <div>
+            <CardTitle>Perlu ditindaklanjuti</CardTitle>
+            <CardDescription>Desain yang belum bergerak lebih dari 7 hari.</CardDescription>
+          </div>
+          <Badge tone={stuck.length ? 'danger' : 'success'}>{stuck.length}</Badge>
         </CardHeader>
         {stuck.length > 0 ? (
-          <ul className="divide-y divide-slate-100">
+          <ul className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             {stuck.map((s) => {
               const spk = spkById[s.spkId]
               return (
-                <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <li key={s.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="min-w-0">
                     <SpkCell
-                      id={s.id}
+                      id={s.spkId}
                       spkNumber={spk?.spk_number ?? 'SPK'}
                       siteCode={spk?.site_code ?? null}
-                      href={`/design/${s.id}`}
+                      href={`/spk/${s.spkId}?tab=design`}
                     />
                     <div className="text-xs text-muted-foreground">
-                      {PHASE_LABEL[s.phase]} — {s.stage}
+                      {PHASE_LABEL[s.phase]} · {stageDisplayLabel(s.stage)}
                     </div>
                   </div>
-                  <span className="tnum shrink-0 text-sm font-bold text-danger">{s.days} hari</span>
+                  <div className="tnum mt-3 inline-flex rounded-full bg-danger/10 px-2 py-1 text-xs font-black text-danger">
+                    {s.days} hari
+                  </div>
                 </li>
               )
             })}
@@ -149,5 +174,36 @@ export default async function DesignQueuePage() {
         )}
       </Card>
     </>
+  )
+}
+
+function OverviewStat({
+  label,
+  value,
+  helper,
+  tone = 'neutral',
+}: {
+  label: string
+  value: number
+  helper: string
+  tone?: 'neutral' | 'primary' | 'success' | 'danger'
+}) {
+  const toneClass = {
+    neutral: 'text-slate-900 bg-slate-100',
+    primary: 'text-primary bg-primary-soft',
+    success: 'text-success bg-success/10',
+    danger: 'text-danger bg-danger/10',
+  }[tone]
+
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between gap-4 p-4">
+        <div>
+          <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">{label}</div>
+          <div className="mt-1 text-xs font-semibold text-muted-foreground">{helper}</div>
+        </div>
+        <div className={`tnum rounded-full px-3 py-1 text-lg font-black ${toneClass}`}>{value}</div>
+      </CardContent>
+    </Card>
   )
 }

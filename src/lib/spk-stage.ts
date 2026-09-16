@@ -99,11 +99,11 @@ export async function loadStageBySpk(
     }
 
     if (spk.pad_marked_at) {
-      stageBySpk[spk.id] = { label: 'PAD ditandai', date: spk.pad_marked_at }
+      stageBySpk[spk.id] = { label: 'Sudah PAD', date: spk.pad_marked_at }
       continue
     }
     if (spk.opname_marked_at) {
-      stageBySpk[spk.id] = { label: 'Opname ditandai', date: spk.opname_marked_at }
+      stageBySpk[spk.id] = { label: 'Sudah Opname', date: spk.opname_marked_at }
       continue
     }
 

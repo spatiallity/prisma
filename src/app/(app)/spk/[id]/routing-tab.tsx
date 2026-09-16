@@ -1,11 +1,12 @@
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
+import { canStartRouting } from '@/lib/workflow-rules'
 import { routingStatusLabel } from '@/lib/routing'
 import type { RoutingStatus } from '@/lib/supabase/types'
+import { AddRoutingButton } from '../../routing/forms'
 import { RoutingStepEdit } from '../../routing/routing-step-edit'
 
 /** The Routing tab of Detail SPK: every document this SPK has in flight,
@@ -21,16 +22,43 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
     .order('created_at', { ascending: false })
 
   if (!documents || documents.length === 0) {
+    const [{ data: spk }, { data: template }] = await Promise.all([
+      supabase
+        .from('spks')
+        .select('id, spk_number, work_name, work_type, location_type, pad_marked_at')
+        .eq('id', spkId)
+        .maybeSingle(),
+      supabase.from('routing_templates').select('id').eq('status', 'Active').order('created_at').limit(1).maybeSingle(),
+    ])
+    const ready = spk ? canStartRouting(spk) : false
+    const spkOptions = spk ? [{ id: spk.id, label: `${spk.spk_number} — ${spk.work_name}` }] : []
+
     return (
-      <Card>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <div>
+            <CardTitle>Dokumen Invoice</CardTitle>
+            <CardDescription>Buat dan pantau alur dokumen invoice dari SPK ini.</CardDescription>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           <EmptyState
-            title="Belum ada dokumen dirutekan"
-            description="Rutekan Berita Acara, PAD, atau Invoice dari Routing Monitor."
+            title="Belum ada dokumen invoice"
+            description={
+              ready
+                ? 'SPK sudah siap dibuatkan dokumen invoice.'
+                : 'Dokumen invoice bisa dibuat setelah PAD selesai.'
+            }
             action={
-              <Link href="/routing" className="text-sm font-bold text-primary hover:underline">
-                Buka Routing Monitor
-              </Link>
+              mayEdit && ready && spkOptions.length > 0 ? (
+                <AddRoutingButton
+                  spks={spkOptions}
+                  templateId={template?.id ?? null}
+                  lockedSpkId={spkId}
+                  returnToSpk
+                  label="Buat dokumen invoice"
+                />
+              ) : undefined
             }
           />
         </CardContent>
@@ -117,10 +145,11 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
         })
 
         return (
-          <Card key={doc.id}>
+          <Card key={doc.id} className="overflow-hidden">
             <CardHeader>
               <div>
                 <CardTitle>{doc.document_type}</CardTitle>
+                <CardDescription>Isi tanggal tiap tahap dokumen invoice secara berurutan.</CardDescription>
               </div>
               {doc.document_number && (
                 <span className="text-xs font-semibold text-muted-foreground">{doc.document_number}</span>

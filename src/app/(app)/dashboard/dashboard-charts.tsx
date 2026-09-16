@@ -1,18 +1,14 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
-  Bar,
-  BarChart,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from 'recharts'
-import { formatRupiah, formatRupiahCompact } from '@/lib/utils'
+import { cn, formatRupiah, formatRupiahCompact } from '@/lib/utils'
 
 const RAB_COLORS = { realisasi: 'var(--color-primary)', sisa: 'var(--color-slate-200)' }
 
@@ -53,106 +49,120 @@ export function RabDonutChart({ anggaran, realisasi }: { anggaran: number; reali
   )
 }
 
-const STAGE_BAR_COLOR = 'var(--color-info)'
+const STAGE_BAR_TONES = [
+  'bg-primary',
+  'bg-info',
+  'bg-warning',
+  'bg-brand-orange',
+  'bg-success',
+  'bg-brand-navy',
+]
 
 /** How many on-going designs sit at each stage of one phase, as horizontal
- *  bars in the phase's own fixed stage order (not sorted by count) — the
- *  order itself is the point, showing where the pipeline backs up. Height
- *  and the Y-axis width both scale with the data: a fixed size clipped or
- *  overlapped the longer stage names ("Pembuatan Peta Inventaris dan Stake
- *  Out", "Manager Engineering & Project"). */
+ *  bars in the phase's own fixed stage order (not sorted by count). This is
+ *  rendered as a compact list instead of an axis chart so long operational
+ *  labels stay readable and the card does not feel empty. */
 export function DesignStageChart({
   data,
   linkBase,
 }: {
-  data: { label: string; count: number }[]
+  data: { label: string; count: number; hrefStage?: string }[]
   /** When set, each bar becomes a link to `${linkBase}?stage=<label>` (the
    *  Desain Siteplan/Finalisasi Desain list's own stage filter) — "Draft"
    *  goes to `?stage=Draft` too, which those pages read as "not started
    *  yet" rather than a real DesignStage. */
   linkBase?: string
 }) {
-  const router = useRouter()
-  const chartData = [...data].reverse()
   const total = data.reduce((sum, d) => sum + d.count, 0)
+  const maxCount = Math.max(1, ...data.map((d) => d.count))
 
   if (total === 0) {
     return (
-      <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-        Tidak ada yang sedang berjalan
+      <div className="grid min-h-40 place-items-center px-5 py-8">
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center">
+          <div className="text-sm font-bold text-slate-900">Tidak ada yang sedang berjalan</div>
+          <div className="mt-1 text-xs font-semibold text-muted-foreground">
+            Semua tahap di grup ini sedang kosong.
+          </div>
+        </div>
       </div>
     )
   }
 
-  const longestLabel = Math.max(...chartData.map((d) => d.label.length))
-  const axisWidth = Math.min(Math.max(longestLabel * 6, 90), 220)
-  const height = Math.max(chartData.length * 34, 160)
-
   return (
-    <div style={{ height }} className="px-2 pt-1 pb-1">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
-          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={axisWidth}
-            interval={0}
-            tick={{ fontSize: 10 }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip
-            formatter={(value) => [value, 'SPK']}
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            cursor={{ fill: 'var(--color-slate-50)' }}
-          />
-          <Bar dataKey="count" fill={STAGE_BAR_COLOR} radius={[0, 4, 4, 0]} barSize={16}>
-            {linkBase &&
-              chartData.map((d) => (
-                <Cell
-                  key={d.label}
-                  cursor="pointer"
-                  onClick={() =>
-                    router.push(`${linkBase}?stage=${encodeURIComponent(d.label)}`)
-                  }
-                />
-              ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="grid gap-3 px-5 py-4">
+      {data.map((item, index) => {
+        const width = Math.max(5, Math.round((item.count / maxCount) * 100))
+        const row = (
+          <div
+            className={cn(
+              'grid gap-2 rounded-md px-2 py-2 transition-colors',
+              linkBase ? 'hover:bg-slate-50' : '',
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 text-sm font-bold leading-snug text-slate-800">
+                {item.label}
+              </div>
+              <div className="tnum shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-black text-slate-700">
+                {item.count}
+              </div>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  item.count === 0 ? 'bg-slate-200' : STAGE_BAR_TONES[index % STAGE_BAR_TONES.length],
+                )}
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          </div>
+        )
+
+        return linkBase ? (
+          <Link key={item.label} href={`${linkBase}?stage=${encodeURIComponent(item.hrefStage ?? item.label)}`}>
+            {row}
+          </Link>
+        ) : (
+          <div key={item.label}>{row}</div>
+        )
+      })}
     </div>
   )
 }
 
 /** Top 5 spending accounts this month, as horizontal bars — longest label wins the most width. */
 export function TopCategoriesChart({ data }: { data: { label: string; jumlah: number }[] }) {
-  const chartData = [...data].reverse().map((d) => ({
-    ...d,
-    label: d.label.length > 26 ? `${d.label.slice(0, 26)}…` : d.label,
-  }))
+  const maxValue = Math.max(1, ...data.map((d) => d.jumlah))
 
   return (
-    <div className="h-52 px-2 pt-1 pb-1">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
-          <XAxis type="number" tickFormatter={(v) => formatRupiahCompact(v)} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={132}
-            tick={{ fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip
-            formatter={(value) => [formatRupiah(Number(value)), 'Realisasi']}
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            cursor={{ fill: 'var(--color-slate-50)' }}
-          />
-          <Bar dataKey="jumlah" fill="var(--color-primary)" radius={[0, 4, 4, 0]} barSize={16} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="grid gap-3 px-5 py-4">
+      {data.map((item, index) => {
+        const width = Math.max(6, Math.round((item.jumlah / maxValue) * 100))
+        return (
+          <div key={item.label} className="grid gap-2 rounded-md px-2 py-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 text-sm font-bold leading-snug text-slate-800">
+                {item.label}
+              </div>
+              <div className="tnum shrink-0 text-xs font-black text-slate-900">
+                {formatRupiahCompact(item.jumlah)}
+              </div>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn(
+                  'h-full rounded-full',
+                  STAGE_BAR_TONES[(index + 1) % STAGE_BAR_TONES.length],
+                )}
+                style={{ width: `${width}%` }}
+                title={formatRupiah(item.jumlah)}
+              />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
