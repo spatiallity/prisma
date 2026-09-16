@@ -64,10 +64,10 @@ export function bottleneckSinceDate(
 ): string | null {
   const designs = item.spk_id ? (designsBySpk.get(item.spk_id) ?? []) : []
 
-  if (item.reason === 'Opname belum ditandai') {
+  if (item.reason === 'Belum opname') {
     return designs.find((d) => d.phase === 'siteplan')?.updated_at ?? null
   }
-  if (item.reason === 'PAD belum ditandai') {
+  if (item.reason === 'Belum PAD') {
     return item.spk_id ? (opnameMarkedAtBySpk.get(item.spk_id) ?? null) : null
   }
   if (item.reason === 'Invoice belum dibuat') {

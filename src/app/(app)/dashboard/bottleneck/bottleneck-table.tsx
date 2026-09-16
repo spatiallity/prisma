@@ -58,6 +58,7 @@ export function BottleneckTable({ rows }: { rows: BottleneckRow[] }) {
     {
       key: 'reason',
       label: 'Keterangan',
+      className: 'w-full',
       sortAccessor: (row) => row.reason,
       render: (row) => <span className="font-bold text-slate-900">{row.reason}</span>,
     },

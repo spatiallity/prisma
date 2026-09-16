@@ -52,14 +52,14 @@ function describeBottleneck(
   const code = item.site_code ?? item.spk_number ?? 'SPK'
   const designs = item.spk_id ? (designsBySpk.get(item.spk_id) ?? []) : []
 
-  if (item.reason === 'Opname belum ditandai') {
+  if (item.reason === 'Belum opname') {
     const siteplan = designs.find((d) => d.phase === 'siteplan')
     return siteplan
       ? `SPK ${code} belum diopname (Desain Siteplan selesai ${formatDate(siteplan.updated_at)})`
       : `SPK ${code} belum diopname — Desain Siteplan belum dibuka`
   }
 
-  if (item.reason === 'PAD belum ditandai') {
+  if (item.reason === 'Belum PAD') {
     const opnameDate = item.spk_id ? opnameMarkedAtBySpk.get(item.spk_id) : null
     return `SPK ${code} sudah Opname${opnameDate ? ` (${formatDate(opnameDate)})` : ''} tetapi belum PAD`
   }
