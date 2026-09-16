@@ -190,8 +190,14 @@ export default async function DashboardPage() {
   const fieldOnGoingCount = (spkFunnel ?? []).filter(
     (s) => s.status === 'On Going' && !siteplanOpenedSpkIds.has(s.id),
   ).length
+  // Phase-filtered, not just "any active unapproved design" — an SPK whose
+  // siteplan design already got approved (Opname done) but whose sibling
+  // Finalisasi Desain is still open would otherwise double-count into this
+  // Design Siteplan tile even though it's really in Finalisasi now.
   const designOnGoingSpkIds = new Set(
-    (activeDesigns ?? []).filter((d) => d.approved_at === null).map((d) => d.spk_id),
+    (activeDesigns ?? [])
+      .filter((d) => d.phase === 'siteplan' && d.approved_at === null)
+      .map((d) => d.spk_id),
   )
   const designOnGoingCount = designOnGoingSpkIds.size
 
