@@ -177,26 +177,29 @@ export default async function DashboardPage() {
   const expenseTotal = rabTotals.realisasi
   const labaRugi = nilaiSpkTotal - expenseTotal
 
-  // Section 8.3 — one funnel stage per SPK: still out in the field (no
-  // Desain Siteplan opened yet), in Design (an Active design not yet
-  // approved), or in Routing/Invoicing (a document not yet Completed).
-  // Deliberately not mutually exclusive across the three the way status
-  // counts are — an SPK reads as "in design" the whole time its design sits
-  // open regardless of where routing is, which is exactly what "sedang
-  // masuk desain" is asking.
-  const siteplanOpenedSpkIds = new Set(
-    (activeDesigns ?? []).filter((d) => d.phase === 'siteplan').map((d) => d.spk_id),
-  )
-  const fieldOnGoingCount = (spkFunnel ?? []).filter(
-    (s) => s.status === 'On Going' && !siteplanOpenedSpkIds.has(s.id),
+  // Section 8.3 — one funnel stage per SPK: still out in the field (nothing
+  // started at all yet), in Design (an active design that hasn't reached its
+  // own "done" stage), or in Routing/Invoicing (a document not yet
+  // Completed). Deliberately not mutually exclusive across the three the way
+  // status counts are. Survei Terestris reuses loadStageBySpk's own
+  // waterfall below (design/PAD/Opname/routing/joint-check/invoice, in that
+  // order) instead of a separate "no siteplan design opened" heuristic — an
+  // SPK with a design row that's merely sitting Draft (opened but not
+  // actually started) used to still get excluded here, overcounting this
+  // tile against what the SPK Sedang Berjalan list right below it shows for
+  // the same SPKs.
+  const fieldOnGoingCount = (onGoing ?? []).filter(
+    (s) => stageBySpk[s.id]?.label === 'Survei Terestris: Sedang Berjalan',
   ).length
-  // Phase-filtered, not just "any active unapproved design" — an SPK whose
-  // siteplan design already got approved (Opname done) but whose sibling
-  // Finalisasi Desain is still open would otherwise double-count into this
-  // Design Siteplan tile even though it's really in Finalisasi now.
+  // Opname (Siteplan's own terminal stage) and Acc PIC Pertamina
+  // (Finalisasi's) mean that phase is actually done, even though the design
+  // row itself is still Active — only stages before that count as "still in
+  // design".
   const designOnGoingSpkIds = new Set(
     (activeDesigns ?? [])
-      .filter((d) => d.phase === 'siteplan' && d.approved_at === null)
+      .filter((d) =>
+        d.phase === 'siteplan' ? d.current_stage !== 'Opname' : d.current_stage !== 'Acc PIC Pertamina',
+      )
       .map((d) => d.spk_id),
   )
   const designOnGoingCount = designOnGoingSpkIds.size
@@ -286,7 +289,7 @@ export default async function DashboardPage() {
     { label: 'Total SPK', value: kpi?.total_spk ?? 0, href: '/spk', icon: FolderKanban, accent: 'primary' },
     { label: 'On Going', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
     { label: 'Survei Terestris', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
-    { label: 'Design Siteplan', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
+    { label: 'Design', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
     { label: 'Invoicing', value: routingOnGoingCount, href: '/routing', icon: Route, accent: 'orange' },
     { label: 'Invoiced', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
   ]
