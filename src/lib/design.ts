@@ -50,12 +50,17 @@ export const PHASE_LABEL: Record<DesignPhase, string> = {
 }
 
 export const PHASE_STAGES: Record<DesignPhase, DesignStage[]> = {
+  // 'Finalisasi' used to sit between Stake Out and Finish here — dropped:
+  // it read as the same thing as the separate Finalisasi Desain phase and
+  // was never anything more than a pass-through checkpoint. The enum value
+  // itself stays (existing design_revisions history still references it;
+  // STAGE_ORDER/STAGE_TONE/DESIGN_NEXT_STAGES below keep an entry for the
+  // same reason 'Submit Peta' does), it's just unreachable going forward.
   siteplan: [
     'Pembuatan Desain Awal',
     'Review Desain Awal',
     'Revisi Desain Awal',
     'Pembuatan Peta Inventaris dan Stake Out',
-    'Finalisasi',
     'Finish',
     'Opname',
   ],
@@ -95,7 +100,9 @@ export const DESIGN_NEXT_STAGES: Record<DesignStage, DesignStage[]> = {
   'Pembuatan Desain Awal': ['Review Desain Awal'],
   'Review Desain Awal': ['Revisi Desain Awal', 'Pembuatan Peta Inventaris dan Stake Out'],
   'Revisi Desain Awal': ['Pembuatan Peta Inventaris dan Stake Out'],
-  'Pembuatan Peta Inventaris dan Stake Out': ['Finalisasi'],
+  'Pembuatan Peta Inventaris dan Stake Out': ['Finish'],
+  // Unreachable now that PHASE_STAGES.siteplan skips it — kept only because
+  // DesignStage still has this enum value (see PHASE_STAGES' comment).
   Finalisasi: ['Finish'],
   Finish: ['Opname'],
   Opname: [],
