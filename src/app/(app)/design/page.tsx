@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { SpkCell } from '@/components/ui/spk-cell'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { DESIGN_STAGES } from '@/lib/supabase/types'
 import { PHASE_LABEL, PHASE_STAGES, daysInStage } from '@/lib/design'
+import { DesignStageChart } from '../dashboard/dashboard-charts'
 
 export const metadata: Metadata = { title: 'Design Queue' }
 
@@ -62,6 +63,21 @@ export default async function DesignQueuePage() {
 
   const phases: ('siteplan' | 'finalisasi')[] = ['siteplan', 'finalisasi']
 
+  const chartDataPerPhase: Record<'siteplan' | 'finalisasi', { label: string; count: number }[]> = {
+    siteplan: [
+      { label: 'Draft', count: draftPerPhase.siteplan },
+      ...PHASE_STAGES.siteplan.map((s) => ({ label: s, count: perStage.get(s) ?? 0 })),
+    ],
+    finalisasi: [
+      { label: 'Draft', count: draftPerPhase.finalisasi },
+      ...PHASE_STAGES.finalisasi.map((s) => ({ label: s, count: perStage.get(s) ?? 0 })),
+    ],
+  }
+  const totalPerPhase = {
+    siteplan: chartDataPerPhase.siteplan.reduce((sum, d) => sum + d.count, 0),
+    finalisasi: chartDataPerPhase.finalisasi.reduce((sum, d) => sum + d.count, 0),
+  }
+
   return (
     <>
       <PageHeader title="Design Queue" />
@@ -72,41 +88,25 @@ export default async function DesignQueuePage() {
         </Alert>
       )}
 
-      {phases.map((phase) => (
-        <div key={phase} className="mb-5">
-          <h2 className="mb-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
-            {PHASE_LABEL[phase]}
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <Card className="border-dashed">
-              <CardContent className="p-4">
-                <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                  Draft
-                </div>
-                <div className="tnum mt-1 text-2xl font-black text-slate-900">
-                  {draftPerPhase[phase]}
-                </div>
-              </CardContent>
-            </Card>
-            {PHASE_STAGES[phase].map((s) => (
-              <Card key={s}>
-                <CardContent className="p-4">
-                  <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
-                    {s}
-                  </div>
-                  <div className="tnum mt-1 text-2xl font-black text-slate-900">
-                    {perStage.get(s) ?? 0}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <p className="mt-2 text-xs font-semibold text-muted-foreground">
-            Rata-rata lama di tahap saat ini:{' '}
-            {avg(heldDaysPerPhase[phase]) === null ? '—' : `${avg(heldDaysPerPhase[phase])} hari`}
-          </p>
-        </div>
-      ))}
+      <div className="mb-5 grid gap-5 sm:grid-cols-2">
+        {phases.map((phase) => (
+          <Card key={phase} className="overflow-hidden">
+            <CardHeader>
+              <div>
+                <CardTitle>
+                  {PHASE_LABEL[phase]}{' '}
+                  <span className="tnum text-muted-foreground font-bold">({totalPerPhase[phase]})</span>
+                </CardTitle>
+                <CardDescription>
+                  Rata-rata lama di tahap saat ini:{' '}
+                  {avg(heldDaysPerPhase[phase]) === null ? '—' : `${avg(heldDaysPerPhase[phase])} hari`}
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <DesignStageChart data={chartDataPerPhase[phase]} />
+          </Card>
+        ))}
+      </div>
 
       <Card className="overflow-hidden">
         <CardHeader>
