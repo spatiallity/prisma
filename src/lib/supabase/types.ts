@@ -251,6 +251,8 @@ export type SpkRow = Timestamps & {
   stake_out_patok: number | null
   /** 'Lokasi Bor' or 'Fasilitas Produksi'. */
   location_type: string | null
+  /** Contract penalty, if any — read live in Financial Report same as opname_value/pad_value. */
+  denda_value: number | null
 }
 
 export type SpkAssignmentRow = Timestamps & {
@@ -829,6 +831,7 @@ export type Database = {
         | 'joint_check_date'
         | 'stake_out_patok'
         | 'location_type'
+        | 'denda_value'
       >
       spk_assignments: Table<
         SpkAssignmentRow,

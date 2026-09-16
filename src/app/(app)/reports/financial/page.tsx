@@ -23,7 +23,7 @@ export default async function FinancialReportPage() {
   const [{ data: spks }, { data: routingDocs }, { data: invoicedSteps }] = await Promise.all([
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, status, contract_value, start_date, opname_marked_at, opname_value, pad_marked_at, pad_value')
+      .select('id, spk_number, site_code, status, contract_value, start_date, opname_marked_at, opname_value, pad_marked_at, pad_value, denda_value')
       .order('spk_number'),
     supabase.from('spk_routing').select('id, spk_id'),
     supabase
@@ -40,7 +40,7 @@ export default async function FinancialReportPage() {
   }
 
   const rows: FinancialRow[] = (spks ?? [])
-    .filter((s) => Number(s.contract_value) > 0 || s.opname_marked_at || s.pad_marked_at || invoiceBySpk.has(s.id))
+    .filter((s) => Number(s.contract_value) > 0 || s.opname_marked_at || s.pad_marked_at || Number(s.denda_value) > 0 || invoiceBySpk.has(s.id))
     .map((s) => {
       const invoice = invoiceBySpk.get(s.id)
       return {
@@ -58,6 +58,7 @@ export default async function FinancialReportPage() {
         invoiceNumber: invoice?.invoice_number ?? null,
         invoiceValue: invoice?.invoice_value != null ? Number(invoice.invoice_value) : null,
         invoiceDate: invoice?.invoice_date ?? null,
+        dendaValue: s.denda_value != null ? Number(s.denda_value) : null,
       }
     })
 
@@ -67,9 +68,10 @@ export default async function FinancialReportPage() {
       opname: acc.opname + (r.opnameValue ?? 0),
       pad: acc.pad + (r.padValue ?? 0),
       invoice: acc.invoice + (r.invoiceValue ?? 0),
+      denda: acc.denda + (r.dendaValue ?? 0),
       outstanding: acc.outstanding + (r.nilaiSpk - (r.invoiceValue ?? 0)),
     }),
-    { nilaiSpk: 0, opname: 0, pad: 0, invoice: 0, outstanding: 0 },
+    { nilaiSpk: 0, opname: 0, pad: 0, invoice: 0, denda: 0, outstanding: 0 },
   )
 
   return (
@@ -79,11 +81,12 @@ export default async function FinancialReportPage() {
         description="Nilai SPK sampai Invoice, dibaca langsung dari SPK, Desain, dan Routing — bukan daftar terpisah lagi."
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Nilai SPK" value={formatRupiah(totals.nilaiSpk)} />
         <Stat label="Opname" value={formatRupiah(totals.opname)} />
         <Stat label="PAD" value={formatRupiah(totals.pad)} />
         <Stat label="Invoice" value={formatRupiah(totals.invoice)} />
+        <Stat label="Denda" value={formatRupiah(totals.denda)} tone={totals.denda > 0 ? 'danger' : undefined} />
         <Stat label="Outstanding" value={formatRupiah(totals.outstanding)} tone={totals.outstanding > 0 ? 'danger' : undefined} />
       </div>
 

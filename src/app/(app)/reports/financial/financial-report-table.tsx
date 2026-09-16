@@ -21,6 +21,7 @@ export type FinancialRow = {
   invoiceNumber: string | null
   invoiceValue: number | null
   invoiceDate: string | null
+  dendaValue: number | null
 }
 
 type FilterKey = 'all' | 'invoiced' | 'pad_only' | 'opname_only'
@@ -115,6 +116,18 @@ export function FinancialReportTable({ rows }: { rows: FinancialRow[] }) {
           {row.invoiceDate && <div className="tnum text-xs text-muted-foreground">{formatDate(row.invoiceDate)}</div>}
         </>
       ),
+    },
+    {
+      key: 'denda',
+      label: 'Denda',
+      align: 'right',
+      sortAccessor: (row) => row.dendaValue ?? 0,
+      render: (row) =>
+        row.dendaValue ? (
+          <span className="tnum font-bold text-danger">{formatRupiah(row.dendaValue)}</span>
+        ) : (
+          <span className="tnum text-muted-foreground">—</span>
+        ),
     },
     {
       key: 'outstanding',
