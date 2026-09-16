@@ -424,7 +424,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid items-stretch gap-5 lg:grid-cols-3">
         <div className="grid content-start gap-5 lg:col-span-2">
           <div className="grid gap-5 sm:grid-cols-2">
             <Card className="overflow-hidden">
@@ -528,7 +528,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
           <CardHeader>
             <div>
               <CardTitle>Bottleneck</CardTitle>

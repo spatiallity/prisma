@@ -22,7 +22,7 @@ export default async function DesignQueuePage() {
   const supabase = await createClient()
 
   const [{ data: designs, error }, { data: spks }] = await Promise.all([
-    supabase.from('designs').select('id, spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
+    supabase.from('designs').select('id, spk_id, phase, current_stage, approved_at, updated_at').eq('status', 'Active'),
     supabase.from('spks').select('id, spk_number, site_code'),
   ])
 
@@ -45,6 +45,11 @@ export default async function DesignQueuePage() {
   const stuck: { id: string; spkId: string; phase: 'siteplan' | 'finalisasi'; stage: string; days: number }[] = []
 
   for (const d of designs ?? []) {
+    // Opname (siteplan) and Acc PIC Pertamina (finalisasi) are terminal —
+    // current_stage sits there forever even once the phase is actually
+    // done and approved, so an already-approved design has to be skipped
+    // entirely here or it inflates that stage's count indefinitely.
+    if (d.approved_at !== null) continue
     if (startedDesignIds.has(d.id)) {
       perStage.set(d.current_stage, (perStage.get(d.current_stage) ?? 0) + 1)
       const held = daysInStage(d.updated_at)
