@@ -18,15 +18,63 @@ import { requireUser } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
-import { daysLeft, spkStatusLabel } from '@/lib/spk'
+import { daysLeft } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { PHASE_LABEL, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
-import type { SpkStatus, DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
-import { RabDonutChart, SpkStatusChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
+import type { DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
+import { RabDonutChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
 
 export const metadata: Metadata = { title: 'Dashboard' }
+
+type DesignSummary = { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; updated_at: string }
+
+/**
+ * Section 9's "reason" strings read fine in the full Bottleneck Monitoring
+ * table (SPK, area, and ukuran are their own columns there), but this card
+ * shows nothing but the sentence, so it needs to actually say what happened.
+ * The three reasons that dominate the list (Opname/PAD/stuck design stage)
+ * get a real rewrite using data already loaded for the rest of the page; the
+ * remaining reasons fall back to a plain "SPK X — reason" line.
+ */
+function describeBottleneck(
+  item: {
+    reason: string
+    spk_id: string | null
+    spk_number: string | null
+    site_code: string | null
+    metric: number | null
+  },
+  designsBySpk: Map<string, DesignSummary[]>,
+  opnameMarkedAtBySpk: Map<string, string | null>,
+) {
+  const code = item.site_code ?? item.spk_number ?? 'SPK'
+  const designs = item.spk_id ? (designsBySpk.get(item.spk_id) ?? []) : []
+
+  if (item.reason === 'Opname belum ditandai') {
+    const siteplan = designs.find((d) => d.phase === 'siteplan')
+    return siteplan
+      ? `SPK ${code} belum diopname (Desain Siteplan selesai ${formatDate(siteplan.updated_at)})`
+      : `SPK ${code} belum diopname — Desain Siteplan belum dibuka`
+  }
+
+  if (item.reason === 'PAD belum ditandai') {
+    const opnameDate = item.spk_id ? opnameMarkedAtBySpk.get(item.spk_id) : null
+    return `SPK ${code} sudah Opname${opnameDate ? ` (${formatDate(opnameDate)})` : ''} tetapi belum PAD`
+  }
+
+  if (item.reason === 'Design tidak berubah status lebih dari seminggu') {
+    const stuck = designs.find((d) => d.current_stage !== 'Finish')
+    const days = item.metric !== null ? Math.floor(item.metric) : null
+    return stuck
+      ? `SPK ${code} berada di tahap ${stageDisplayLabel(stuck.current_stage)} (mulai ${formatDate(stuck.updated_at)})${days !== null ? ` — ${days} hari` : ''}`
+      : `SPK ${code} — ${item.reason}`
+  }
+
+  const metricText = formatMetric(item.reason, item.metric)
+  return `SPK ${code} — ${item.reason}${metricText ? ` · ${metricText}` : ''}`
+}
 
 /**
  * Section 8 — rebuilt around one question first: what is the SPK book
@@ -62,8 +110,7 @@ export default async function DashboardPage() {
       .from('spks')
       .select('*')
       .eq('status', 'On Going')
-      .order('start_date', { ascending: false })
-      .limit(6),
+      .order('start_date', { ascending: false }),
     seeFinance
       ? supabase.from('v_finance_akun_summary').select('*')
       : Promise.resolve({ data: [] }),
@@ -79,7 +126,7 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] }),
     // On-going design stage breakdown, and the field/design funnel counts
     // below, both read off the same Active-design snapshot.
-    supabase.from('designs').select('spk_id, phase, current_stage, approved_at').eq('status', 'Active'),
+    supabase.from('designs').select('spk_id, phase, current_stage, approved_at, updated_at').eq('status', 'Active'),
     supabase.from('v_routing_lead_time').select('*'),
     supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
     seeFinance
@@ -97,14 +144,7 @@ export default async function DashboardPage() {
         .order('sequence')
     : { data: [] }
 
-  const statusCounts = new Map<string, number>()
-  for (const row of spkFunnel ?? []) {
-    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1)
-  }
-  const spkStatusOrder: SpkStatus[] = ['Draft', 'On Going', 'Selesai', 'Archived', 'Cancelled']
-  const spkStatusChartData = spkStatusOrder.map(
-    (status) => ({ status, label: spkStatusLabel(status), count: statusCounts.get(status) ?? 0 }),
-  )
+  const opnameMarkedAtBySpk = new Map((spkFunnel ?? []).map((s) => [s.id, s.opname_marked_at]))
 
   // Section 8.1 — total realized spend across every RAB account, all-time
   // (not just this month) — computed here, ahead of the money headline
@@ -173,6 +213,16 @@ export default async function DashboardPage() {
     label: step.name,
     count: routingStepCounts.get(step.name) ?? 0,
   }))
+
+  // Bottleneck card (right column) needs to name the actual stage/date behind
+  // "Opname belum ditandai" and "Design tidak berubah status" — group every
+  // active design by its SPK so describeBottleneck can look one up.
+  const designsBySpk = new Map<string, DesignSummary[]>()
+  for (const d of activeDesigns ?? []) {
+    const list = designsBySpk.get(d.spk_id) ?? []
+    list.push({ phase: d.phase, current_stage: d.current_stage, updated_at: d.updated_at })
+    designsBySpk.set(d.spk_id, list)
+  }
 
   // Section 8.4 — how many on-going designs sit at each stage, siteplan and
   // finalisasi charted side by side (finalisasi only exists once siteplan is
@@ -409,55 +459,57 @@ export default async function DashboardPage() {
             </CardHeader>
 
             {onGoing && onGoing.length > 0 ? (
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>SPK</Th>
-                    <Th>Pekerjaan</Th>
-                    <Th>Periode</Th>
-                    <Th>Tahapan</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {onGoing.map((row) => {
-                    const remaining = daysLeft(row.end_date)
-                    const overdue = remaining !== null && remaining < 0
-                    const stage = stageBySpk[row.id]
-                    return (
-                      <Tr key={row.id}>
-                        <Td>
-                          <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />
-                        </Td>
-                        <Td className="max-w-xs">
-                          <span className="line-clamp-1 font-bold text-slate-900">
-                            {row.work_name}
-                          </span>
-                        </Td>
-                        <Td className="tnum whitespace-nowrap text-muted-foreground">
-                          {formatDate(row.start_date)} – {formatDate(row.end_date)}
-                          {overdue && (
-                            <div className="text-xs font-bold text-danger">
-                              Lewat {Math.abs(remaining)} hari
-                            </div>
-                          )}
-                        </Td>
-                        <Td className="text-muted-foreground">
-                          {stage ? (
-                            <>
-                              <span className="font-bold text-slate-900">{stage.label}</span>
-                              {stage.date && (
-                                <div className="tnum text-xs">{formatDateTime(stage.date)}</div>
-                              )}
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </Td>
-                      </Tr>
-                    )
-                  })}
-                </tbody>
-              </Table>
+              <div className="max-h-[420px] overflow-y-auto">
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th className="sticky top-0 z-10">SPK</Th>
+                      <Th className="sticky top-0 z-10">Pekerjaan</Th>
+                      <Th className="sticky top-0 z-10">Periode</Th>
+                      <Th className="sticky top-0 z-10">Tahapan</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {onGoing.map((row) => {
+                      const remaining = daysLeft(row.end_date)
+                      const overdue = remaining !== null && remaining < 0
+                      const stage = stageBySpk[row.id]
+                      return (
+                        <Tr key={row.id}>
+                          <Td>
+                            <SpkCell id={row.id} spkNumber={row.spk_number} siteCode={row.site_code} />
+                          </Td>
+                          <Td className="max-w-xs">
+                            <span className="line-clamp-1 font-bold text-slate-900">
+                              {row.work_name}
+                            </span>
+                          </Td>
+                          <Td className="tnum whitespace-nowrap text-muted-foreground">
+                            {formatDate(row.start_date)} – {formatDate(row.end_date)}
+                            {overdue && (
+                              <div className="text-xs font-bold text-danger">
+                                Lewat {Math.abs(remaining)} hari
+                              </div>
+                            )}
+                          </Td>
+                          <Td className="text-muted-foreground">
+                            {stage ? (
+                              <>
+                                <span className="font-bold text-slate-900">{stage.label}</span>
+                                {stage.date && (
+                                  <div className="tnum text-xs">{formatDateTime(stage.date)}</div>
+                                )}
+                              </>
+                            ) : (
+                              '—'
+                            )}
+                          </Td>
+                        </Tr>
+                      )
+                    })}
+                  </tbody>
+                </Table>
+              </div>
             ) : (
               <EmptyState
                 title="Belum ada SPK berjalan"
@@ -467,72 +519,57 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <div className="grid content-start gap-5">
-          {(kpi?.total_spk ?? 0) > 0 && (
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <div>
-                  <CardTitle>Sebaran status SPK</CardTitle>
-                  <CardDescription>{kpi?.total_spk ?? 0} SPK aktif di luar yang dibatalkan</CardDescription>
-                </div>
-              </CardHeader>
-              <SpkStatusChart data={spkStatusChartData} />
-            </Card>
-          )}
+        <Card className="flex h-full flex-col overflow-hidden">
+          <CardHeader>
+            <div>
+              <CardTitle>Bottleneck</CardTitle>
+            </div>
+            <Badge tone={critical > 0 ? 'danger' : ranked.length > 0 ? 'warning' : 'success'}>
+              {ranked.length}
+            </Badge>
+          </CardHeader>
 
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div>
-                <CardTitle>Bottleneck</CardTitle>
-              </div>
-              <Badge tone={critical > 0 ? 'danger' : ranked.length > 0 ? 'warning' : 'success'}>
-                {ranked.length}
-              </Badge>
-            </CardHeader>
-
-            {ranked.length > 0 ? (
-              <>
-                <ul>
-                  {ranked.slice(0, 6).map((item, index) => (
-                    <li
-                      key={`${item.reason}-${item.spk_id ?? 'none'}-${index}`}
-                      className="flex items-stretch gap-3 border-b border-slate-100 px-5 py-3 last:border-0"
-                    >
-                      <span
-                        className={cn(
-                          'w-1 shrink-0 rounded-full',
-                          item.severity === 'critical' ? 'bg-danger' : 'bg-warning',
-                        )}
-                        aria-hidden
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-slate-900">{item.reason}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.site_code ?? item.spk_number ?? 'Seluruh project'}
-                          {formatMetric(item.reason, item.metric) &&
-                            ` · ${formatMetric(item.reason, item.metric)}`}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-slate-100 px-5 py-3">
-                  <Link
-                    href="/dashboard/bottleneck"
-                    className="text-xs font-bold text-primary hover:underline"
+          {ranked.length > 0 ? (
+            <>
+              <ul className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+                {ranked.map((item, index) => (
+                  <li
+                    key={`${item.reason}-${item.spk_id ?? 'none'}-${index}`}
+                    className="flex items-stretch gap-3 px-5 py-3"
                   >
-                    Lihat semua {ranked.length} bottleneck
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <EmptyState
-                title="Tidak ada bottleneck"
-                description="Semua kondisi dalam batas wajar."
-              />
-            )}
-          </Card>
-        </div>
+                    <span
+                      className={cn(
+                        'w-1 shrink-0 rounded-full',
+                        item.severity === 'critical'
+                          ? 'bg-danger'
+                          : item.severity === 'warning'
+                            ? 'bg-warning'
+                            : 'bg-info',
+                      )}
+                      aria-hidden
+                    />
+                    <p className="min-w-0 flex-1 text-sm font-semibold text-slate-900">
+                      {describeBottleneck(item, designsBySpk, opnameMarkedAtBySpk)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="shrink-0 border-t border-slate-100 px-5 py-3">
+                <Link
+                  href="/dashboard/bottleneck"
+                  className="text-xs font-bold text-primary hover:underline"
+                >
+                  Detail & ambang batas
+                </Link>
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              title="Tidak ada bottleneck"
+              description="Semua kondisi dalam batas wajar."
+            />
+          )}
+        </Card>
       </div>
 
       {seeFinance && topCategories.length > 0 && (

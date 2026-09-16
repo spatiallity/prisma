@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -13,68 +12,6 @@ import {
   YAxis,
 } from 'recharts'
 import { formatRupiah, formatRupiahCompact } from '@/lib/utils'
-
-const STATUS_COLORS: Record<string, string> = {
-  Draft: 'var(--color-slate-400)',
-  'On Going': 'var(--color-primary)',
-  Selesai: 'var(--color-success)',
-  Archived: 'var(--color-slate-300)',
-  Cancelled: 'var(--color-danger)',
-}
-
-function CountTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean
-  payload?: { name: string; value: number; payload: { fill: string; label?: string } }[]
-}) {
-  if (!active || !payload?.length) return null
-  const p = payload[0]
-  return (
-    <div className="rounded-lg border border-slate-200 bg-surface px-3 py-2 text-xs shadow-lg">
-      <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.payload.fill }} aria-hidden />
-        <span className="text-muted-foreground">{p.payload.label ?? p.name}</span>
-        <span className="tnum font-bold text-slate-900">{p.value}</span>
-      </div>
-    </div>
-  )
-}
-
-/** Section 8 — status mix at a glance, next to the raw counts already on the tiles above. */
-export function SpkStatusChart({ data }: { data: { status: string; label: string; count: number }[] }) {
-  const nonZero = data.filter((d) => d.count > 0)
-  if (nonZero.length === 0) return null
-
-  return (
-    <div className="h-56 px-2 pt-2 pb-1">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={nonZero}
-            dataKey="count"
-            nameKey="label"
-            innerRadius="55%"
-            outerRadius="85%"
-            paddingAngle={2}
-          >
-            {nonZero.map((d) => (
-              <Cell key={d.status} fill={STATUS_COLORS[d.status] ?? 'var(--color-slate-300)'} />
-            ))}
-          </Pie>
-          <Tooltip content={<CountTooltip />} />
-          <Legend
-            layout="vertical"
-            verticalAlign="middle"
-            align="right"
-            wrapperStyle={{ fontSize: 12 }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
 
 const RAB_COLORS = { realisasi: 'var(--color-primary)', sisa: 'var(--color-slate-200)' }
 
