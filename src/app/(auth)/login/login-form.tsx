@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
+import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { login, type LoginState } from './actions'
@@ -71,12 +72,20 @@ export function LoginForm({ next }: { next?: string }) {
       </div>
 
       <div>
-        <label
-          htmlFor="password"
-          className="mb-1.5 block text-xs font-bold text-slate-700"
-        >
-          Password
-        </label>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label
+            htmlFor="password"
+            className="text-xs font-bold text-slate-700"
+          >
+            Password
+          </label>
+          <Link
+            href="/auth/forgot-password"
+            className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Lupa password?
+          </Link>
+        </div>
         <div className="relative">
           <Lock
             size={16}
