@@ -62,6 +62,9 @@ export async function RoutingMonitor({
   const virtualSpkIds = (spks ?? []).filter(
     (spk) =>
       !routedSpkIds.has(spk.id) &&
+      // Existing PAD-only SPKs remain visible as document preparation. New
+      // SPKs enter the monitor through Add Data or finalisasi automation.
+      Boolean(spk.pad_marked_at) &&
       canStartRouting(spk),
   )
     .map((spk) => spk.id)

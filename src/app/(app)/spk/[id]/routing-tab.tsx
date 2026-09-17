@@ -3,7 +3,6 @@ import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
-import { canStartRouting } from '@/lib/workflow-rules'
 import { routingStatusLabel } from '@/lib/routing'
 import type { RoutingStatus } from '@/lib/supabase/types'
 import { AddRoutingButton } from '../../routing/forms'
@@ -25,12 +24,12 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
     const [{ data: spk }, { data: template }] = await Promise.all([
       supabase
         .from('spks')
-        .select('id, spk_number, work_name, work_type, location_type, pad_marked_at')
+        .select('id, spk_number, work_name, status')
         .eq('id', spkId)
         .maybeSingle(),
       supabase.from('routing_templates').select('id').eq('status', 'Active').order('created_at').limit(1).maybeSingle(),
     ])
-    const ready = spk ? canStartRouting(spk) : false
+    const ready = spk?.status === 'Draft' || spk?.status === 'On Going'
     const spkOptions = spk ? [{ id: spk.id, label: `${spk.spk_number} — ${spk.work_name}` }] : []
 
     return (
@@ -46,8 +45,8 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             title="Belum ada dokumen invoice"
             description={
               ready
-                ? 'SPK sudah siap dibuatkan dokumen invoice.'
-                : 'Dokumen invoice bisa dibuat setelah PAD selesai.'
+                ? 'SPK siap dibuatkan dokumen invoice. Opname dan PAD dapat diisi dari Routing Monitor.'
+                : 'Dokumen invoice hanya dapat dibuat untuk SPK Draft atau Sedang Berjalan.'
             }
             action={
               mayEdit && ready && spkOptions.length > 0 ? (

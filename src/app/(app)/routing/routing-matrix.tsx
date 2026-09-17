@@ -18,8 +18,8 @@ import { markOpname, markPad, unmarkOpname, unmarkPad } from '../spk/actions'
 import type { Database } from '@/lib/supabase/types'
 
 type RoutingDoc = Database['public']['Tables']['spk_routing']['Row']
-/** A placeholder row for an SPK that's eligible for routing (Finalisasi
- *  Desain opened) but has no spk_routing document yet — nothing to review,
+/** A placeholder row for a legacy SPK with PAD but no spk_routing document
+ *  yet — nothing to review,
  *  so the Aksi column is empty and every step column reads "—". */
 type VirtualDoc = { id: string; spk_id: string; virtual: true }
 type MatrixRow = RoutingDoc | VirtualDoc

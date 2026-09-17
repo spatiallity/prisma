@@ -29,6 +29,9 @@ export function isFinalisasiDesignComplete(finalisasi: FinalisasiInput) {
   return Boolean(finalisasi?.approved_at || finalisasi?.current_stage === 'Acc PIC Pertamina')
 }
 
-export function canStartRouting(spk: WorkRuleInput & { pad_marked_at?: string | null }) {
-  return Boolean(spk.pad_marked_at)
+/** Routing starts once a document invoice is prepared. Opname and PAD remain
+ * editable milestones inside Routing Monitor, rather than prerequisites that
+ * keep a new SPK out of the routing workflow. */
+export function canStartRouting(_spk: WorkRuleInput & { pad_marked_at?: string | null }) {
+  return true
 }

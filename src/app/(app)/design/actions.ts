@@ -127,10 +127,9 @@ async function syncSpkActivityStage(
 
 /**
  * Section 27 — completing Opname keeps spks.opname_marked_at in sync so the
- * Financial tab, PAD gate, and Routing Monitor's Opname column read the same
- * event as their source. Routing itself is now opened only from the routing
- * module once document invoice really enters Pertamina review; this lets SPK
- * sit in finalisasi/drafting invoice without polluting Routing Monitor.
+ * Financial tab and Routing Monitor's Opname column read the same event as
+ * their source. Routing is opened by finalisasi approval, while Opname stays
+ * independently editable during the routing workflow.
  */
 async function markOpnameFromDesign(
   supabase: Supabase,
@@ -148,6 +147,67 @@ async function markOpnameFromDesign(
     })
     .eq('id', spkId)
     .is('opname_marked_at', null)
+}
+
+/** Finalisasi yang sudah Acc PIC Pertamina langsung membuka dokumen invoice.
+ * Opname dan PAD sengaja tidak menjadi syarat di sini karena keduanya dicatat
+ * pada panel Routing Monitor saat proses administrasi berjalan. */
+async function openRoutingFromFinalisasi(
+  supabase: Supabase,
+  spkId: string,
+  userId: string,
+  startedAt: string,
+) {
+  const { data: existing } = await supabase
+    .from('spk_routing')
+    .select('id')
+    .eq('spk_id', spkId)
+    .maybeSingle()
+  if (existing) return false
+
+  const { data: template } = await supabase
+    .from('routing_templates')
+    .select('id')
+    .eq('status', 'Active')
+    .order('code')
+    .limit(1)
+    .maybeSingle()
+  if (!template) return false
+
+  const { data: steps } = await supabase
+    .from('routing_template_steps')
+    .select('id, name, sequence, sla_days, default_pic_role')
+    .eq('template_id', template.id)
+    .order('sequence')
+  if (!steps?.length) return false
+
+  const { data: routing, error } = await supabase
+    .from('spk_routing')
+    .insert({
+      spk_id: spkId,
+      template_id: template.id,
+      document_type: 'Invoice',
+      notes: 'Dibuat otomatis setelah finalisasi desain.',
+      created_by: userId,
+    })
+    .select('id')
+    .single()
+  if (error || !routing) return false
+
+  const { error: historyError } = await supabase.from('routing_history').insert(
+    steps.map((step, index) => ({
+      spk_routing_id: routing.id,
+      template_step_id: step.id,
+      step_name: step.name,
+      sequence: step.sequence,
+      sla_days: step.sla_days,
+      pic_name: step.default_pic_role,
+      status: index === 0 ? 'In Progress' : 'Pending',
+      started_at: index === 0 ? startedAt : null,
+      created_by: userId,
+    })),
+  )
+  return !historyError
 }
 
 /**
@@ -429,7 +489,7 @@ export async function advanceStage(
   // once its phase reaches its own terminal stage. Opname is the one
   // exception: reaching it just opens the stage (Tanggal mulai) the same as
   // any other — it isn't "done" until its own Tanggal selesai is filled via
-  // completeStage, which is what actually sets approved_at and opens routing.
+  // completeStage, which is what actually sets approved_at.
   if (stage !== 'Opname') {
     if (stage === PHASE_TERMINAL_STAGE[designRow.phase]) {
       await supabase
@@ -464,10 +524,20 @@ export async function advanceStage(
     user.id,
   )
 
+  const openedRouting =
+    designRow.phase === 'finalisasi' && stage === PHASE_TERMINAL_STAGE.finalisasi
+      ? await openRoutingFromFinalisasi(supabase, designRow.spk_id, user.id, now)
+      : false
+
   revalidatePath('/design')
   revalidatePath(`/design/${designId}`)
   revalidatePath(`/spk/${designRow.spk_id}`)
-  return { error: null, success: `Desain dipindahkan ke ${stage}.` }
+  return {
+    error: null,
+    success: openedRouting
+      ? `Desain dipindahkan ke ${stage}. Dokumen invoice masuk ke Routing Monitor.`
+      : `Desain dipindahkan ke ${stage}.`,
+  }
 }
 
 /**
