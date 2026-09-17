@@ -74,6 +74,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.textLayer span.pdf-search-match {
+  background: #fde68a;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+
 /* Thin scrollbar, same as the reference app. */
 ::-webkit-scrollbar {
   width: 6px;

@@ -11,7 +11,7 @@ type FileModule = (typeof MODULES)[number]
 
 function spkFileName(siteCode: string) {
   const cleaned = siteCode.normalize('NFKD').replace(/[^a-zA-Z0-9 ._-]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 120)
-  return `${cleaned || 'SPK'}.pdf`
+  return `SPK_${cleaned || 'Dokumen'}.pdf`
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
