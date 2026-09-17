@@ -17,6 +17,7 @@ import { SurveyTab } from './survey-tab'
 import { DesignTab } from './design-tab'
 import { RoutingTab } from './routing-tab'
 import { FinancialTab } from './financial-tab'
+import { SpkFilePanel } from './spk-file-panel'
 
 export const metadata: Metadata = { title: 'Detail SPK' }
 
@@ -116,13 +117,14 @@ export default async function SpkDetailPage({
   const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
   if (!spk) notFound()
 
-  const [{ data: audit }] = await Promise.all([
+  const [{ data: audit }, { data: documents }] = await Promise.all([
     supabase
       .from('audit_logs')
       .select('id, action, table_name, changed_at, changed_by, changed_fields')
       .eq('spk_id', id)
       .order('changed_at', { ascending: false })
       .limit(8),
+    supabase.from('files').select('id, filename, size_bytes, uploaded_at').eq('spk_id', id).eq('module', 'other').eq('status', 'Active').order('uploaded_at', { ascending: false }).limit(1).maybeSingle(),
   ])
 
   const actorIds = [
@@ -276,6 +278,10 @@ export default async function SpkDetailPage({
       {activeTab === 'financial' && <FinancialTab spkId={spk.id} mayEdit={mayEdit} />}
 
       {activeTab === 'overview' && (
+      <>
+      <div className="mb-5">
+        <SpkFilePanel spkId={spk.id} mayEdit={mayEdit} file={documents} />
+      </div>
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">
           <CardHeader>
@@ -372,6 +378,7 @@ export default async function SpkDetailPage({
           </Card>
         </div>
       </div>
+      </>
       )}
     </>
   )

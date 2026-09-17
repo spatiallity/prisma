@@ -400,6 +400,24 @@ export type DesignRevisionRow = Timestamps & {
   created_by: string | null
 }
 
+/** Metadata for a private object in Cloudflare R2. The bytes themselves never
+ * enter Postgres; `storage_path` is the immutable R2 object key. */
+export type FileRow = Timestamps & {
+  id: string
+  spk_id: string | null
+  module: 'survey' | 'design' | 'routing' | 'report' | 'map' | 'financial' | 'other'
+  filename: string
+  storage_path: string
+  file_type: string | null
+  size_bytes: number | null
+  version: number
+  is_final: boolean
+  description: string | null
+  status: RecordStatus
+  uploaded_by: string | null
+  uploaded_at: string
+}
+
 export type DesignStageRevisionRow = {
   id: string
   design_revision_id: string
@@ -1007,6 +1025,21 @@ export type Database = {
         | 'topo_data_received_at'
         | 'notes'
         | 'created_by'
+      >
+      files: Table<
+        FileRow,
+        | 'id'
+        | 'created_at'
+        | 'updated_at'
+        | 'module'
+        | 'file_type'
+        | 'size_bytes'
+        | 'version'
+        | 'is_final'
+        | 'description'
+        | 'status'
+        | 'uploaded_by'
+        | 'uploaded_at'
       >
       design_revisions: Table<
         DesignRevisionRow,
