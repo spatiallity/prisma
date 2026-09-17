@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 const MAX_WIDTH = {
   md: 'max-w-lg',
   lg: 'max-w-3xl',
+  xl: 'max-w-6xl',
 } as const
 
 export function Modal({

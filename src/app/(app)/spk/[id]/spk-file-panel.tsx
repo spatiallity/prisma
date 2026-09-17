@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Download, Eye, FileText, LoaderCircle, Pencil, Trash2, Upload } from 'lucide-react'
+import { Eye, FileText, LoaderCircle, Pencil, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
@@ -137,9 +137,8 @@ export function SpkFilePanel({ spkId, mayEdit, file: currentFile }: { spkId: str
         </div>
       </section>
       {uploadDialog}
-      <Modal open={viewerOpen} onOpenChange={setViewerOpen} title={currentFile.filename} size="lg">
-        <div className="-mx-1 -my-1 grid gap-3">
-          <div className="flex justify-end"><a href={`${fileUrl}?download=1`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"><Download size={14} aria-hidden /> Unduh</a></div>
+      <Modal open={viewerOpen} onOpenChange={setViewerOpen} title={currentFile.filename} size="xl">
+        <div className="-mx-1 -my-1">
           <PdfViewer fileUrl={fileUrl} filename={currentFile.filename} />
         </div>
       </Modal>

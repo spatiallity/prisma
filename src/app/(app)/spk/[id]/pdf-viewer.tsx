@@ -75,7 +75,7 @@ export function PdfViewer({ fileUrl, filename }: { fileUrl: string; filename: st
             metaData: { fileName: filename },
           },
           {
-            embedMode: 'SIZED_CONTAINER',
+            embedMode: 'FULL_WINDOW',
             defaultViewMode: 'FIT_WIDTH',
             enableLinearization: true,
             focusOnRendering: false,
@@ -112,8 +112,8 @@ export function PdfViewer({ fileUrl, filename }: { fileUrl: string; filename: st
   }
 
   return (
-    <div className="relative min-h-[72vh] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-      <div id={viewerId} className="min-h-[72vh]" />
+    <div className="relative h-[72vh] min-h-[540px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+      <div id={viewerId} className="h-full" />
       {loading && <div className="pointer-events-none absolute inset-0 grid place-items-center bg-slate-100 text-slate-600"><LoaderCircle className="animate-spin" size={20} aria-label="Memuat PDF" /></div>}
     </div>
   )
