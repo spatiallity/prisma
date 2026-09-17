@@ -12,11 +12,108 @@ import {
 } from '@/lib/auth/permissions'
 
 export type MatrixState = { error: string | null; success?: string }
+export type RoleActionState = { error: string | null; success?: string }
+
+const PROTECTED_ROLE_CODES = new Set([
+  'administration',
+  'drafter',
+  'management',
+  'operational',
+  'project_manager',
+  'super_admin',
+  'tester',
+  'vendor',
+])
 
 const SCOPES: PermissionScope[] = ['all', 'own', 'limited']
 
 function isScope(value: string): value is PermissionScope {
   return (SCOPES as string[]).includes(value)
+}
+
+function value(formData: FormData, key: string) {
+  const raw = formData.get(key)
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+async function requireSuperAdmin() {
+  const current = await requirePermission('user_management', 'edit')
+  if (current.role.code !== 'super_admin') {
+    throw new Error('Hanya Super Admin yang dapat mengelola daftar role.')
+  }
+}
+
+export async function createRole(
+  _prev: RoleActionState,
+  formData: FormData,
+): Promise<RoleActionState> {
+  await requireSuperAdmin()
+
+  const name = value(formData, 'name')
+  const code = value(formData, 'code').toLowerCase()
+  const description = value(formData, 'description')
+
+  if (!name || !code) return { error: 'Nama dan kode role wajib diisi.' }
+  if (!/^[a-z][a-z0-9_]{2,48}$/.test(code)) {
+    return { error: 'Kode role gunakan huruf kecil, angka, atau garis bawah (3–49 karakter).' }
+  }
+  if (PROTECTED_ROLE_CODES.has(code)) return { error: 'Kode tersebut digunakan oleh role inti sistem.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('roles').insert({
+    name,
+    code,
+    description: description || null,
+    status: 'Active',
+  })
+  if (error) {
+    return {
+      error: error.code === '23505' ? 'Kode role sudah digunakan.' : error.message,
+    }
+  }
+
+  revalidatePath('/admin/roles')
+  return { error: null, success: 'Role baru ditambahkan. Atur permission-nya dari daftar role.' }
+}
+
+export async function deleteRole(
+  _prev: RoleActionState,
+  formData: FormData,
+): Promise<RoleActionState> {
+  await requireSuperAdmin()
+
+  const roleId = value(formData, 'id')
+  if (!roleId) return { error: 'Role tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { data: role, error: roleError } = await supabase
+    .from('roles')
+    .select('id, code')
+    .eq('id', roleId)
+    .maybeSingle()
+  if (roleError) return { error: roleError.message }
+  if (!role) return { error: 'Role tidak ditemukan.' }
+  if (PROTECTED_ROLE_CODES.has(role.code)) {
+    return { error: 'Role inti sistem tidak dapat dihapus.' }
+  }
+
+  const { count, error: userError } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('role_id', roleId)
+  if (userError) return { error: userError.message }
+  if ((count ?? 0) > 0) {
+    return { error: 'Pindahkan seluruh user dari role ini sebelum menghapusnya.' }
+  }
+
+  const { error: grantsError } = await supabase.from('role_permissions').delete().eq('role_id', roleId)
+  if (grantsError) return { error: grantsError.message }
+
+  const { error } = await supabase.from('roles').delete().eq('id', roleId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/roles')
+  return { error: null }
 }
 
 /**

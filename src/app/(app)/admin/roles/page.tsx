@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
@@ -12,6 +15,7 @@ export const metadata: Metadata = { title: 'Role & Permission' }
 export default async function RolesPage() {
   const current = await requirePermission('user_management', 'view')
   const mayEdit = can(current.permissions, 'user_management', 'edit')
+  const mayManageRoles = current.role.code === 'super_admin'
 
   const supabase = await createClient()
   const [{ data: roles, error }, { data: grants }, { data: users }] = await Promise.all([
@@ -35,6 +39,13 @@ export default async function RolesPage() {
       <PageHeader
         title="Role & Permission"
         description="Permission tersimpan sebagai data, bukan kode — perubahan di sini langsung berlaku."
+        actions={
+          mayManageRoles ? (
+            <Link href="/admin/roles/new">
+              <Button><Plus size={16} aria-hidden /> Tambah role</Button>
+            </Link>
+          ) : null
+        }
       />
 
       {error && (
@@ -49,6 +60,7 @@ export default async function RolesPage() {
           grantCount={grantCount}
           userCount={userCount}
           mayEdit={mayEdit}
+          mayManageRoles={mayManageRoles}
         />
       </Card>
     </>

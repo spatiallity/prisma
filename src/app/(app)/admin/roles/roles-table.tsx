@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import { Badge, StatusBadge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { DeleteButton } from '@/components/ui/delete-button'
 import type { Database } from '@/lib/supabase/types'
+import { deleteRole } from './actions'
 
 type RoleRow = Database['public']['Tables']['roles']['Row']
 
@@ -12,11 +14,13 @@ export function RolesTable({
   grantCount,
   userCount,
   mayEdit,
+  mayManageRoles,
 }: {
   roles: RoleRow[]
   grantCount: Record<string, number>
   userCount: Record<string, number>
   mayEdit: boolean
+  mayManageRoles: boolean
 }) {
   const columns: DataTableColumn<RoleRow>[] = [
     {
@@ -62,12 +66,19 @@ export function RolesTable({
       label: 'Aksi',
       align: 'right',
       render: (row) => (
-        <Link
-          href={`/admin/roles/${row.id}`}
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          {mayEdit ? 'Atur permission' : 'Lihat permission'}
-        </Link>
+        <div className="flex justify-end gap-3">
+          <Link href={`/admin/roles/${row.id}`} className="text-sm font-medium text-primary hover:underline">
+            {mayEdit ? 'Atur permission' : 'Lihat permission'}
+          </Link>
+          {mayManageRoles && !['administration', 'drafter', 'management', 'operational', 'project_manager', 'super_admin', 'tester', 'vendor'].includes(row.code) && (
+            <DeleteButton
+              action={deleteRole}
+              hiddenFields={{ id: row.id }}
+              itemLabel={`role ${row.name}`}
+              confirmText={`Hapus role ${row.name}? Role ini beserta seluruh permission-nya akan dihapus permanen.`}
+            />
+          )}
+        </div>
       ),
     },
   ]
