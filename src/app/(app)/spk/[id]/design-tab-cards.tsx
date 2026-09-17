@@ -18,6 +18,7 @@ type DesignRow = {
   current_stage: DesignStage
   title: string | null
   updated_at: string
+  approved_at: string | null
 }
 type Revision = {
   id: string
@@ -52,14 +53,18 @@ export function DesignTabCards({
         {designs.map((design) => {
           const designRevisions = revisionsByDesign[design.id] ?? []
           const isDraft = designRevisions.length === 0
+          const isComplete = Boolean(design.approved_at)
           const currentOrder = STAGE_ORDER[design.current_stage]
           const held = daysInStage(design.updated_at)
           const stages = PHASE_STAGES[design.phase]
 
           const chainSteps: ChainStep[] = stages.map((stage) => {
-            const now = stage === design.current_stage
-            const done = STAGE_ORDER[stage] < currentOrder
             const stageRevisions = designRevisions.filter((r) => r.stage === stage)
+            const latestRevision = stageRevisions[0]
+            const done =
+              STAGE_ORDER[stage] < currentOrder ||
+              (stage === design.current_stage && Boolean(design.approved_at || latestRevision?.completed_at))
+            const now = stage === design.current_stage && !done
             return {
               key: stage,
               label: stageDisplayLabel(stage),
@@ -67,14 +72,29 @@ export function DesignTabCards({
               badge: chainBadge(now ? 'current' : done ? 'done' : 'pending', now ? stageDisplayLabel(design.current_stage) : undefined),
               sub:
                 stageRevisions.length > 0 ? (
-                  <ul className="grid gap-1">
+                  <ul className="grid gap-2">
                     {stageRevisions.map((revision) => (
                       <li key={revision.id}>
-                        Revisi {revision.revision_no} · {formatDate(revision.started_at)}
-                        <br />
-                        {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'PIC belum ditentukan'}
-                        {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
-                        {revision.notes && ` · ${revision.notes}`}
+                        <div className="font-semibold text-slate-700">Revisi {revision.revision_no}</div>
+                        <div className="mt-0.5">
+                          {revision.pic_id ? (picName[revision.pic_id] ?? '—') : 'PIC belum ditentukan'}
+                          {revision.pic_pertamina && ` · Pertamina: ${revision.pic_pertamina}`}
+                        </div>
+                        {(revision.started_at || revision.completed_at) && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {revision.started_at && (
+                              <span className="rounded-md bg-primary-soft px-2 py-0.5 font-bold text-primary">
+                                Mulai {formatDate(revision.started_at)}
+                              </span>
+                            )}
+                            {revision.completed_at && (
+                              <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+                                Selesai {formatDate(revision.completed_at)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {revision.notes && <div className="mt-1 text-slate-600">{revision.notes}</div>}
                       </li>
                     ))}
                   </ul>
@@ -90,11 +110,15 @@ export function DesignTabCards({
                   <CardDescription>
                     {isDraft
                       ? `Draft · mulai dari ${stageDisplayLabel(design.current_stage)}`
+                      : isComplete
+                        ? `Selesai · ${stageDisplayLabel(design.current_stage)}`
                       : `Sedang di ${stageDisplayLabel(design.current_stage)}`}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge tone={isDraft ? 'neutral' : 'primary'}>{isDraft ? 'Draft' : 'Sedang Berjalan'}</Badge>
+                  <Badge tone={isDraft ? 'neutral' : isComplete ? 'success' : 'primary'}>
+                    {isDraft ? 'Draft' : isComplete ? 'Selesai' : 'Sedang Berjalan'}
+                  </Badge>
                   {mayEdit && (
                     <button
                       type="button"

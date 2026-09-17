@@ -5,7 +5,8 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { DesignStage } from '@/lib/supabase/types'
-import { ProgressBoard, type ProgressColumn } from './progress-board'
+import { PHASE_LABEL, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
+import { ProgressBoard, type ProgressColumn, type ProgressRow, type ProgressStatus } from './progress-board'
 
 export const metadata: Metadata = { title: 'Progress SPK' }
 
@@ -64,14 +65,30 @@ export default async function SpkProgressPage() {
   await requirePermission('spk', 'view')
   const supabase = await createClient()
 
-  const [{ data: spks, error }, { data: activeDesigns }, { data: routingDocs }] = await Promise.all([
+  const [
+    { data: spks, error },
+    { data: activeDesigns },
+    { data: designRevisions },
+    { data: designPics },
+    { data: routingDocs },
+    { data: routingHistory },
+  ] = await Promise.all([
     supabase
       .from('spks')
       .select('id, spk_number, site_code, work_name, status, start_date, end_date, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi')
       .in('status', ['On Going', 'Selesai'])
       .order('spk_number'),
-    supabase.from('designs').select('spk_id, phase, current_stage').eq('status', 'Active'),
-    supabase.from('spk_routing').select('spk_id'),
+    supabase.from('designs').select('id, spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
+    supabase
+      .from('design_revisions')
+      .select('design_id, stage, pic_id, pic_pertamina, started_at, completed_at, created_at')
+      .eq('status', 'Active')
+      .order('created_at', { ascending: false }),
+    supabase.from('design_pics').select('id, full_name'),
+    supabase.from('spk_routing').select('id, spk_id, updated_at'),
+    supabase
+      .from('routing_history')
+      .select('spk_routing_id, step_name, sequence, status, pic_name, started_at, completed_at, updated_at'),
   ])
 
   const designsBySpk = new Map<string, { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage }[]>()
@@ -81,6 +98,21 @@ export default async function SpkProgressPage() {
     designsBySpk.set(d.spk_id, list)
   }
   const routedSpkIds = new Set((routingDocs ?? []).map((r) => r.spk_id))
+
+  const picNameById = new Map((designPics ?? []).map((pic) => [pic.id, pic.full_name]))
+  const currentRevisionByDesign = new Map<string, NonNullable<typeof designRevisions>[number]>()
+  for (const revision of designRevisions ?? []) {
+    const design = (activeDesigns ?? []).find((item) => item.id === revision.design_id)
+    if (design && design.current_stage === revision.stage && !currentRevisionByDesign.has(design.id)) {
+      currentRevisionByDesign.set(design.id, revision)
+    }
+  }
+  const routingHistoryByDoc = new Map<string, NonNullable<typeof routingHistory>>()
+  for (const history of routingHistory ?? []) {
+    const list = routingHistoryByDoc.get(history.spk_routing_id) ?? []
+    list.push(history)
+    routingHistoryByDoc.set(history.spk_routing_id, list)
+  }
 
   function bucketFor(spk: { id: string; status: string }): Column {
     if (spk.status === 'Selesai') return 'selesai'
@@ -95,8 +127,77 @@ export default async function SpkProgressPage() {
     return 'terestris'
   }
 
-  type Row = NonNullable<typeof spks>[number]
-  const bySpk = (spks ?? []).reduce<Record<Column, Row[]>>(
+  function designProgress(design: NonNullable<typeof activeDesigns>[number]): ProgressStatus {
+    const revision = currentRevisionByDesign.get(design.id)
+    const internalPic = revision?.pic_id ? (picNameById.get(revision.pic_id) ?? null) : null
+    const pic = [internalPic, revision?.pic_pertamina].filter(Boolean).join(' · ') || null
+    const startedAt = revision?.started_at ?? null
+    const completedAt = revision?.completed_at ?? null
+    return {
+      area: PHASE_LABEL[design.phase],
+      stage: stageDisplayLabel(design.current_stage),
+      pic,
+      startedAt,
+      completedAt,
+      durationDays: completedAt ? daysBetween(startedAt, completedAt) : daysInStage(startedAt ?? design.updated_at),
+    }
+  }
+
+  function routingProgress(spkId: string): ProgressStatus {
+    const docs = (routingDocs ?? []).filter((doc) => doc.spk_id === spkId)
+    const doc = docs[0]
+    const history = doc ? (routingHistoryByDoc.get(doc.id) ?? []) : []
+    const current = [...history]
+      .filter((step) => step.status !== 'Completed')
+      .sort((a, b) => a.sequence - b.sequence)[0] ?? [...history].sort((a, b) => b.sequence - a.sequence)[0]
+    const startedAt = current?.started_at ?? doc?.updated_at ?? null
+    const completedAt = current?.completed_at ?? null
+    return {
+      area: 'Dokumen Invoice',
+      stage: current?.step_name ?? 'Penyusunan dokumen invoice',
+      pic: current?.pic_name ?? null,
+      startedAt,
+      completedAt,
+      durationDays: completedAt ? daysBetween(startedAt, completedAt) : daysInStage(startedAt),
+    }
+  }
+
+  function progressFor(spk: NonNullable<typeof spks>[number], bucket: Column): ProgressStatus {
+    if (bucket === 'desain_awal') {
+      const design = (designsBySpk.get(spk.id) ?? []).find((item) => item.phase === 'siteplan')
+      const source = (activeDesigns ?? []).find((item) => item.spk_id === spk.id && item.phase === design?.phase)
+      if (source) return designProgress(source)
+    }
+    if (bucket === 'finalisasi') {
+      const source = (activeDesigns ?? []).find((item) => item.spk_id === spk.id && item.phase === 'finalisasi')
+      if (source) return designProgress(source)
+    }
+    if (bucket === 'invoicing') return routingProgress(spk.id)
+    if (bucket === 'terestris') {
+      return {
+        area: 'Survei Lapangan',
+        stage: 'Survei Terestris',
+        pic: null,
+        startedAt: spk.start_date,
+        completedAt: null,
+        durationDays: daysInStage(spk.start_date),
+      }
+    }
+    return {
+      area: 'Selesai',
+      stage: 'Selesai / Invoiced',
+      pic: null,
+      startedAt: null,
+      completedAt: spk.end_date,
+      durationDays: null,
+    }
+  }
+
+  const progressRows: ProgressRow[] = (spks ?? []).map((spk) => {
+    const bucket = bucketFor(spk)
+    return { ...spk, progress: progressFor(spk, bucket) }
+  })
+  const bySpk = progressRows.reduce<Record<Column, ProgressRow[]>>(
     (acc, s) => {
       acc[bucketFor(s)].push(s)
       return acc

@@ -18,7 +18,7 @@ export async function DesignTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
 
   const { data: designs } = await supabase
     .from('designs')
-    .select('id, phase, current_stage, title, updated_at')
+    .select('id, phase, current_stage, title, updated_at, approved_at')
     .eq('spk_id', spkId)
     .eq('status', 'Active')
     .order('phase')

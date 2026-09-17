@@ -310,6 +310,7 @@ export async function advanceStage(
   const user = await requirePermission('design', 'edit')
 
   const designId = text(formData, 'design_id')
+  const entryId = text(formData, 'entry_id')
   const stage = text(formData, 'stage') as DesignStage
   if (!designId || !stage) return { error: 'Tahap tujuan wajib dipilih.' }
 
@@ -336,13 +337,20 @@ export async function advanceStage(
 
   if (readError) return { error: readError.message }
 
-  const current = revisions?.[0]
+  const current = entryId
+    ? revisions?.find((revision) => revision.id === entryId)
+    : revisions?.find((revision) => !revision.completed_at) ?? revisions?.[0]
+  if (entryId && !current) return { error: 'Tahap aktif tidak ditemukan.' }
   if (current?.stage === stage) {
     return { error: `Desain sudah berada di tahap ${stage}.` }
   }
 
   const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
-  if (current?.started_at && new Date(now) < new Date(current.started_at)) {
+  // The accordion form can correct the start date while advancing. Validate
+  // against that submitted value instead of the pre-edit value in the row.
+  const submittedStartAt = text(formData, 'completed_at') ? pickedOrNow(formData, 'tanggal') : null
+  const currentStartAt = submittedStartAt ?? current?.started_at
+  if (currentStartAt && new Date(now) < new Date(currentStartAt)) {
     return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
   }
   // Drafter is per-stage-entry, not carried forward — a blank field means no
@@ -353,7 +361,10 @@ export async function advanceStage(
   if (current && !current.completed_at) {
     const { error } = await supabase
       .from('design_revisions')
-      .update({ completed_at: now })
+      .update({
+        completed_at: now,
+        ...(submittedStartAt ? { started_at: submittedStartAt } : {}),
+      })
       .eq('id', current.id)
     if (error) return { error: error.message }
   }

@@ -30,6 +30,16 @@ export type ProgressRow = {
   location_type: string | null
   kabupaten: string | null
   provinsi: string | null
+  progress: ProgressStatus
+}
+
+export type ProgressStatus = {
+  area: string
+  stage: string
+  pic: string | null
+  startedAt: string | null
+  completedAt: string | null
+  durationDays: number | null
 }
 
 export type ProgressColumn = {
@@ -77,6 +87,7 @@ export function ProgressBoard({ columns }: { columns: ProgressColumn[] }) {
                         <div className="tnum text-xs font-semibold text-slate-500">{row.spk_number}</div>
                       )}
                       <div className="mt-1 line-clamp-2 text-xs font-medium text-muted-foreground">{row.work_name}</div>
+                      <div className="mt-2 line-clamp-1 text-xs font-bold text-slate-700">{row.progress.stage}</div>
                       <div className={cn('mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-black', col.tone.soft, col.tone.text)}>
                         {spkStatusLabel(row.status)}
                       </div>
@@ -123,9 +134,28 @@ function ProgressDetail({ row, column }: { row: ProgressRow; column: ProgressCol
         </div>
       </div>
 
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Progress saat ini</div>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-black text-slate-900">{row.progress.area}</div>
+            <div className="text-xs font-semibold text-muted-foreground">{row.progress.stage}</div>
+          </div>
+          <div className={cn('rounded-full px-2.5 py-1 text-xs font-black', column.tone.soft, column.tone.text)}>
+            {row.progress.durationDays === null ? '—' : `${row.progress.durationDays} hari`}
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
+        <Fact label="PIC tahap" value={row.progress.pic ?? 'PIC belum ditentukan'} />
+        <Fact
+          icon={<CalendarDays size={16} />}
+          label="Periode tahap"
+          value={formatProgressPeriod(row.progress.startedAt, row.progress.completedAt)}
+        />
         <Fact icon={<WalletCards size={16} />} label="Nilai SPK" value={formatRupiah(row.contract_value)} />
-        <Fact icon={<CalendarDays size={16} />} label="Jadwal" value={`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`} />
+        <Fact icon={<CalendarDays size={16} />} label="Jadwal SPK" value={`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`} />
         <Fact icon={<Ruler size={16} />} label="Luas" value={formatArea(row.area_ha == null ? null : Number(row.area_ha))} />
         <Fact icon={<MapPin size={16} />} label="Lokasi" value={location || row.location_type || 'Belum diisi'} />
       </div>
@@ -140,7 +170,12 @@ function ProgressDetail({ row, column }: { row: ProgressRow; column: ProgressCol
   )
 }
 
-function Fact({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function formatProgressPeriod(start: string | null, end: string | null) {
+  if (!start && !end) return 'Belum ada tanggal'
+  return `${start ? formatDate(start) : 'Belum mulai'} - ${end ? formatDate(end) : 'Sedang berjalan'}`
+}
+
+function Fact({ icon, label, value }: { icon?: ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
       <div className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-slate-500 uppercase">

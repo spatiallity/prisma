@@ -1,14 +1,13 @@
 import type { Metadata } from 'next'
-import { PageHeader, EmptyState } from '@/components/ui/page-header'
+import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, Td, Th, Tr } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import { AREA_LABEL, type BottleneckDesignContext, bottleneckSinceDate } from '@/lib/dashboard'
-import { daysInStage } from '@/lib/design'
+import { daysInStage, PHASE_LABEL, stageDisplayLabel } from '@/lib/design'
 import { BottleneckTable, type BottleneckRow } from './bottleneck-table'
 
 export const metadata: Metadata = { title: 'Bottleneck' }
@@ -22,12 +21,28 @@ export default async function BottleneckPage() {
   await requirePermission('dashboard', 'view')
 
   const supabase = await createClient()
-  const [{ data: rows, error }, { data: settings }, { data: activeDesigns }, { data: spkMarks }] =
+  const [
+    { data: rows, error },
+    { data: activeDesigns },
+    { data: spkMarks },
+    { data: designRevisions },
+    { data: designPics },
+    { data: routingDocs },
+    { data: routingHistory },
+  ] =
     await Promise.all([
       supabase.from('v_bottleneck').select('*'),
-      supabase.from('app_settings').select('key, value, description'),
-      supabase.from('designs').select('spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
+      supabase.from('designs').select('id, spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
       supabase.from('spks').select('id, opname_marked_at, pad_marked_at'),
+      supabase
+        .from('design_revisions')
+        .select('design_id, stage, pic_id, pic_pertamina, started_at, completed_at, updated_at')
+        .eq('status', 'Active'),
+      supabase.from('design_pics').select('id, full_name'),
+      supabase.from('spk_routing').select('id, spk_id'),
+      supabase
+        .from('routing_history')
+        .select('spk_routing_id, step_name, pic_name, started_at, completed_at, updated_at'),
     ])
 
   // Same lookups the Dashboard's Bottleneck card uses to say what actually
@@ -41,6 +56,49 @@ export default async function BottleneckPage() {
   const opnameMarkedAtBySpk = new Map((spkMarks ?? []).map((s) => [s.id, s.opname_marked_at]))
   const padMarkedAtBySpk = new Map((spkMarks ?? []).map((s) => [s.id, s.pad_marked_at]))
   const isMoneyReason = (reason: string) => /saldo|payment|dibayar|diterima/i.test(reason)
+
+  type LastProcess = { process: string; pic: string | null; date: string | null }
+  const lastProcessBySpk = new Map<string, LastProcess>()
+  const addLastProcess = (spkId: string, candidate: LastProcess) => {
+    const previous = lastProcessBySpk.get(spkId)
+    if (!previous || (candidate.date ?? '') > (previous.date ?? '')) {
+      lastProcessBySpk.set(spkId, candidate)
+    }
+  }
+  const designById = new Map((activeDesigns ?? []).map((design) => [design.id, design]))
+  const picNameById = new Map((designPics ?? []).map((pic) => [pic.id, pic.full_name]))
+
+  for (const design of activeDesigns ?? []) {
+    addLastProcess(design.spk_id, {
+      process: `${PHASE_LABEL[design.phase]} · ${stageDisplayLabel(design.current_stage)}`,
+      pic: null,
+      date: design.updated_at,
+    })
+  }
+  for (const revision of designRevisions ?? []) {
+    const design = designById.get(revision.design_id)
+    if (!design) continue
+    addLastProcess(design.spk_id, {
+      process: `${PHASE_LABEL[design.phase]} · ${stageDisplayLabel(revision.stage)}`,
+      pic: revision.pic_id ? (picNameById.get(revision.pic_id) ?? null) : revision.pic_pertamina,
+      date: revision.completed_at ?? revision.started_at ?? revision.updated_at,
+    })
+  }
+
+  const routingSpkById = new Map((routingDocs ?? []).map((doc) => [doc.id, doc.spk_id]))
+  for (const step of routingHistory ?? []) {
+    const spkId = routingSpkById.get(step.spk_routing_id)
+    if (!spkId) continue
+    addLastProcess(spkId, {
+      process: `Dokumen invoice · ${step.step_name}`,
+      pic: step.pic_name,
+      date: step.completed_at ?? step.started_at ?? step.updated_at,
+    })
+  }
+  for (const spk of spkMarks ?? []) {
+    if (spk.opname_marked_at) addLastProcess(spk.id, { process: 'Opname', pic: null, date: spk.opname_marked_at })
+    if (spk.pad_marked_at) addLastProcess(spk.id, { process: 'PAD', pic: null, date: spk.pad_marked_at })
+  }
 
   const tableRows: BottleneckRow[] = (rows ?? []).map((row, index) => {
     const tanggal = bottleneckSinceDate(row, designsBySpk, opnameMarkedAtBySpk, padMarkedAtBySpk)
@@ -59,6 +117,9 @@ export default async function BottleneckPage() {
       severity: row.severity,
       tanggal,
       hari,
+      prosesTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.process ?? null) : null,
+      picTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.pic ?? null) : null,
+      tanggalProsesTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.date ?? null) : null,
     }
   })
 
@@ -201,39 +262,6 @@ export default async function BottleneckPage() {
         </CardHeader>
 
         <BottleneckTable rows={tableRows} />
-      </Card>
-
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <div>
-            <CardTitle>Ambang batas</CardTitle>
-            <CardDescription>Konfigurasi batas hari/nilai yang memunculkan bottleneck.</CardDescription>
-          </div>
-        </CardHeader>
-        {settings && settings.length > 0 ? (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Kunci</Th>
-                <Th>Nilai</Th>
-                <Th>Keterangan</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {settings.map((setting) => (
-                <Tr key={setting.key}>
-                  <Td>
-                    <span className="code text-xs">{setting.key}</span>
-                  </Td>
-                  <Td className="tnum font-bold">{setting.value}</Td>
-                  <Td className="text-muted-foreground">{setting.description ?? '—'}</Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        ) : (
-          <EmptyState title="Belum ada ambang batas tersimpan" />
-        )}
       </Card>
     </>
   )

@@ -18,6 +18,9 @@ export type BottleneckRow = {
   severity: NotificationSeverity
   tanggal: string | null
   hari: number | null
+  prosesTerakhir: string | null
+  picTerakhir: string | null
+  tanggalProsesTerakhir: string | null
 }
 
 /** Where each area's problems are dealt with. */
@@ -58,13 +61,34 @@ export function BottleneckTable({ rows }: { rows: BottleneckRow[] }) {
     {
       key: 'reason',
       label: 'Keterangan',
-      className: 'w-full',
+      className: 'min-w-[150px]',
       sortAccessor: (row) => row.reason,
       render: (row) => <span className="font-bold text-slate-900">{row.reason}</span>,
     },
     {
+      key: 'proses-terakhir',
+      label: 'Proses terakhir',
+      className: 'min-w-[190px]',
+      sortAccessor: (row) => row.prosesTerakhir,
+      render: (row) => <span className="text-sm font-bold text-slate-800">{row.prosesTerakhir ?? '—'}</span>,
+    },
+    {
+      key: 'pic-terakhir',
+      label: 'PIC terakhir',
+      className: 'min-w-[140px] text-muted-foreground',
+      sortAccessor: (row) => row.picTerakhir,
+      render: (row) => row.picTerakhir ?? '—',
+    },
+    {
+      key: 'tanggal-proses-terakhir',
+      label: 'Update terakhir',
+      className: 'tnum whitespace-nowrap text-muted-foreground',
+      sortAccessor: (row) => row.tanggalProsesTerakhir,
+      render: (row) => (row.tanggalProsesTerakhir ? formatDate(row.tanggalProsesTerakhir) : '—'),
+    },
+    {
       key: 'tanggal',
-      label: 'Tanggal',
+      label: 'Mulai tertahan',
       className: 'tnum whitespace-nowrap text-muted-foreground',
       sortAccessor: (row) => row.tanggal,
       render: (row) => (row.tanggal ? formatDate(row.tanggal) : '—'),
