@@ -125,6 +125,7 @@ export type AppModule =
   | 'invoice'
   | 'payment'
   | 'spending'
+  | 'rab_monitoring'
   | 'margin'
   | 'report'
   | 'master_data'

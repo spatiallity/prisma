@@ -9,7 +9,7 @@ import { buildRabSerapanWorkbook, type AkunSummaryForExport } from '@/lib/financ
  *  page can only show one month or the all-time total at a time; this puts
  *  every month side by side in one sheet. */
 export async function GET() {
-  await requirePermission('spending', 'view')
+  await requirePermission('rab_monitoring', 'view')
 
   const supabase = await createClient()
   const [{ data: akunSummary }, { data: bulanan }] = await Promise.all([

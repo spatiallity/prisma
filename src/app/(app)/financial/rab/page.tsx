@@ -32,8 +32,8 @@ export default async function MonitoringRabPage({
   searchParams: Promise<{ bulan?: string }>
 }) {
   const { bulan } = await searchParams
-  const user = await requirePermission('spending', 'view')
-  const mayEdit = can(user.permissions, 'spending', 'edit')
+  const user = await requirePermission('rab_monitoring', 'view')
+  const mayEdit = can(user.permissions, 'rab_monitoring', 'edit')
 
   const supabase = await createClient()
   const [{ data: akunSummary }, { data: coa }, { data: allTx }, { data: recent }, { data: bulanRealisasi }] =

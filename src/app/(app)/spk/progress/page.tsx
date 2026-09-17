@@ -62,7 +62,7 @@ const COLUMN_TONE: Record<Column, { bar: string; soft: string; text: string; cap
  * five buckets instead of that function's much finer-grained labels.
  */
 export default async function SpkProgressPage() {
-  await requirePermission('spk', 'view')
+  await requirePermission('progress', 'view')
   const supabase = await createClient()
 
   const [

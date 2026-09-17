@@ -7,6 +7,7 @@ import {
   Map as MapIcon,
   PencilRuler,
   Route,
+  LockKeyhole,
   type LucideIcon,
 } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
@@ -90,6 +91,7 @@ export default async function DashboardPage() {
   const supabase = await createClient()
 
   const seeFinance = can(user.permissions, 'spending', 'view')
+  const seeRabBudget = seeFinance && !['administration', 'tester'].includes(user.role.code)
   const now = new Date()
   const currentBulan = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
@@ -112,13 +114,13 @@ export default async function DashboardPage() {
       .select('*')
       .eq('status', 'On Going')
       .order('start_date', { ascending: false }),
-    seeFinance
+    seeRabBudget
       ? supabase.from('v_finance_akun_summary').select('*')
       : Promise.resolve({ data: [] }),
     supabase
       .from('spks')
       .select('id, status, contract_value, opname_marked_at, opname_value, pad_marked_at, pad_value'),
-    seeFinance
+    seeRabBudget
       ? supabase
           .from('finance_transactions')
           .select('kode_akun, jumlah')
@@ -355,38 +357,47 @@ export default async function DashboardPage() {
             <CardHeader>
               <div>
                 <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
-                <CardDescription>{rabLeaf.length} kode akun</CardDescription>
+                <CardDescription>{seeRabBudget ? `${rabLeaf.length} kode akun` : 'Akses anggaran dibatasi'}</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
-              <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-              <div className="grid gap-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Anggaran</span>
-                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                    {formatRupiah(rabTotals.anggaran)}
-                  </span>
+            {seeRabBudget ? (
+              <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
+                <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
+                <div className="grid gap-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Anggaran</span>
+                    <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                      {formatRupiah(rabTotals.anggaran)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Realisasi</span>
+                    <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
+                      {formatRupiah(rabTotals.realisasi)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">Terpakai</span>
+                    <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                      {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                    </Badge>
+                  </div>
+                  <Link
+                    href="/financial/rab"
+                    className="mt-1 text-xs font-bold text-primary hover:underline"
+                  >
+                    Rincian per kode akun
+                  </Link>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Realisasi</span>
-                  <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                    {formatRupiah(rabTotals.realisasi)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Terpakai</span>
-                  <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
-                    {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
-                  </Badge>
-                </div>
-                <Link
-                  href="/financial/rab"
-                  className="mt-1 text-xs font-bold text-primary hover:underline"
-                >
-                  Rincian per kode akun
-                </Link>
-              </div>
-            </CardContent>
+              </CardContent>
+            ) : (
+              <CardContent className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
+                  <LockKeyhole size={18} aria-hidden />
+                </span>
+                <p className="text-sm font-bold text-slate-700">Data anggaran tidak tersedia untuk role ini.</p>
+              </CardContent>
+            )}
           </Card>
         </div>
       ) : (

@@ -74,7 +74,7 @@ export const NAV: NavGroup[] = [
         ready: true,
         phase: 2,
       },
-      { label: 'Progress SPK', href: '/spk/progress', icon: Kanban, module: 'spk', ready: true, phase: 2 },
+      { label: 'Progress SPK', href: '/spk/progress', icon: Kanban, module: 'progress', ready: true, phase: 2 },
       { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
@@ -122,7 +122,7 @@ export const NAV: NavGroup[] = [
     label: 'Expense',
     icon: Wallet,
     items: [
-      { label: 'Monitoring RAB', href: '/financial/rab', icon: Calculator, module: 'spending', ready: true, phase: 8 },
+      { label: 'Monitoring RAB', href: '/financial/rab', icon: Calculator, module: 'rab_monitoring', ready: true, phase: 8 },
       { label: 'UMK', href: '/financial/umk', icon: Banknote, module: 'spending', ready: true, phase: 8 },
       { label: 'SPPD', href: '/financial/sppd', icon: Plane, module: 'spending', ready: true, phase: 8 },
       { label: 'PPBJ Barang', href: '/financial/ppbj-barang', icon: Package, module: 'spending', ready: true, phase: 8 },
