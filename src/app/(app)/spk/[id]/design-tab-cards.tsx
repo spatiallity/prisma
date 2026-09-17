@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { DesignDetailModal } from '../../design/design-detail-modal'
 import { cn, formatDate } from '@/lib/utils'
-import { PHASE_LABEL, PHASE_STAGES, STAGE_ORDER, daysInStage, stageDisplayLabel } from '@/lib/design'
+import { PHASE_LABEL, PHASE_STAGES, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import type { PicOption } from '../../design/forms'
 
@@ -54,15 +54,16 @@ export function DesignTabCards({
           const designRevisions = revisionsByDesign[design.id] ?? []
           const isDraft = designRevisions.length === 0
           const isComplete = Boolean(design.approved_at)
-          const currentOrder = STAGE_ORDER[design.current_stage]
           const held = daysInStage(design.updated_at)
           const stages = PHASE_STAGES[design.phase]
+          const currentIndex = stages.indexOf(design.current_stage)
 
-          const chainSteps: ChainStep[] = stages.map((stage) => {
+          const chainSteps: ChainStep[] = stages.map((stage, index) => {
             const stageRevisions = designRevisions.filter((r) => r.stage === stage)
             const latestRevision = stageRevisions[0]
+            const inferredDone = !isDraft && index < currentIndex
             const done =
-              STAGE_ORDER[stage] < currentOrder ||
+              inferredDone ||
               (stage === design.current_stage && Boolean(design.approved_at || latestRevision?.completed_at))
             const now = stage === design.current_stage && !done
             return {
@@ -98,6 +99,8 @@ export function DesignTabCards({
                       </li>
                     ))}
                   </ul>
+                ) : inferredDone ? (
+                  <span>Data lama · tanggal belum tercatat.</span>
                 ) : undefined,
             }
           })

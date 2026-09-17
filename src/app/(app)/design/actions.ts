@@ -621,6 +621,48 @@ export async function updateRevisionEntry(
   return { error: null, success: 'Entri diperbarui.' }
 }
 
+/** Restores the editable fields of one stage entry after its latest save.
+ *  Advancing/completing stages intentionally uses a separate undo path because
+ *  those mutations also synchronize the SPK workflow. */
+export async function restoreRevisionEntry(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  await requirePermission('design', 'edit')
+
+  const entryId = text(formData, 'entry_id')
+  const designId = text(formData, 'design_id')
+  if (!entryId || !designId) return { error: 'Entri tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { data: design, error: designError } = await supabase
+    .from('designs')
+    .select('spk_id')
+    .eq('id', designId)
+    .maybeSingle()
+  if (designError) return { error: designError.message }
+  if (!design) return { error: 'Desain tidak ditemukan.' }
+
+  const startedRaw = text(formData, 'started_at')
+  const { error } = await supabase
+    .from('design_revisions')
+    .update({
+      pic_id: nullable(formData, 'pic_id'),
+      pic_pertamina: nullable(formData, 'pic_pertamina'),
+      started_at: startedRaw ? new Date(startedRaw).toISOString() : null,
+      notes: nullable(formData, 'notes'),
+    })
+    .eq('id', entryId)
+    .eq('design_id', designId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${design.spk_id}`)
+  return { error: null, success: 'Perubahan dibatalkan.' }
+}
+
 /**
  * Undoes the last stage move outright — only the LATEST revision can be
  * deleted, never one buried in the middle, because designs.current_stage

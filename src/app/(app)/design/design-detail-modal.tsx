@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/step-chain'
 import { formatDate } from '@/lib/utils'
-import { PHASE_STAGES, STAGE_ORDER, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
+import { PHASE_STAGES, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
 import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
 
@@ -68,18 +68,21 @@ export function DesignDetailModal({
   if (!design) return null
 
   const isDraft = revisions.length === 0
-  const reached = new Set(revisions.map((r) => r.stage))
-  const currentOrder = STAGE_ORDER[design.current_stage]
   const stages = PHASE_STAGES[design.phase]
+  const currentIndex = stages.indexOf(design.current_stage)
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
   const accordionSteps: AccordionStep[] = stages.map((stage, index) => {
-    const done = reached.has(stage) && STAGE_ORDER[stage] < currentOrder
-    const now = stage === design.current_stage
-    const state = now ? 'current' : done ? 'done' : 'pending'
     const stageRevisions = revisions.filter((r) => r.stage === stage)
     const latestEntry = stageRevisions[stageRevisions.length - 1]
+    // Bulk-imported legacy designs often retain only the current stage. The
+    // workflow position is still reliable, so earlier stages are shown as
+    // complete without inventing dates or history rows.
+    const inferredDone = !isDraft && index < currentIndex
+    const done = Boolean(latestEntry?.completed_at) || inferredDone
+    const now = stage === design.current_stage
+    const state = now ? 'current' : done ? 'done' : 'pending'
 
     // A freshly-opened stage's own entry has no Drafter/PIC Pertamina yet —
     // default to whoever held the stage right before it, so the common case
@@ -119,6 +122,8 @@ export function DesignDetailModal({
               )
             })}
           </ul>
+        ) : inferredDone ? (
+          'Data lama · tanggal belum tercatat.'
         ) : now ? (
           'Belum dimulai.'
         ) : undefined,

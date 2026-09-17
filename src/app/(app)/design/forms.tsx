@@ -18,6 +18,7 @@ import {
   createDesign,
   deleteRevisionEntry,
   startDesign,
+  restoreRevisionEntry,
   updateRevisionEntry,
   type DesignState,
 } from './actions'
@@ -435,7 +436,18 @@ export function StageEntryForm({
   const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
   const [advanceState, advanceAction, advancePending] = useActionState(advanceStage, initialState)
   const [completeState, completeAction, completePending] = useActionState(completeStage, initialState)
-  useActionToast(saveState, onSaved)
+  const restoreEntry = async () => {
+    const data = new FormData()
+    data.set('entry_id', entry.id)
+    data.set('design_id', designId)
+    data.set('started_at', entry.started_at ?? '')
+    data.set('pic_id', entry.pic_id ?? '')
+    data.set('pic_pertamina', entry.pic_pertamina ?? '')
+    data.set('notes', entry.notes ?? '')
+    return restoreRevisionEntry(initialState, data)
+  }
+
+  useActionToast(saveState, onSaved, { onUndo: restoreEntry })
   useActionToast(advanceState, onSaved)
   useActionToast(completeState, onSaved)
   const today = new Date().toISOString().slice(0, 10)

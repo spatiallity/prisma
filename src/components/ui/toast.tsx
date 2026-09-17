@@ -6,10 +6,15 @@ import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ToastTone = 'success' | 'danger'
-type Toast = { id: number; tone: ToastTone; message: string }
+type UndoResult = { error: string | null; success?: string }
+export type ToastUndo = {
+  label?: string
+  onUndo: () => Promise<UndoResult>
+}
+type Toast = { id: number; tone: ToastTone; message: string; undo?: ToastUndo }
 
 const ToastContext = React.createContext<{
-  push: (tone: ToastTone, message: string) => void
+  push: (tone: ToastTone, message: string, undo?: ToastUndo) => void
 } | null>(null)
 
 const DURATION_MS = 5000
@@ -34,9 +39,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const push = React.useCallback(
-    (tone: ToastTone, message: string) => {
+    (tone: ToastTone, message: string, undo?: ToastUndo) => {
       const id = nextId.current++
-      setToasts((current) => [...current, { id, tone, message }])
+      setToasts((current) => [...current, { id, tone, message, undo }])
       setTimeout(() => dismiss(id), DURATION_MS)
     },
     [dismiss],
@@ -49,7 +54,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         createPortal(
           <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:px-6">
             {toasts.map((t) => (
-              <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+              <ToastItem
+                key={t.id}
+                toast={t}
+                onDismiss={() => dismiss(t.id)}
+                onUndo={async () => {
+                  if (!t.undo) return
+                  dismiss(t.id)
+                  const result = await t.undo.onUndo()
+                  push(result.error ? 'danger' : 'success', result.error ?? result.success ?? 'Perubahan dibatalkan.')
+                }}
+              />
             ))}
           </div>,
           document.body,
@@ -58,9 +73,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastItem({
+  toast,
+  onDismiss,
+  onUndo,
+}: {
+  toast: Toast
+  onDismiss: () => void
+  onUndo: () => Promise<void>
+}) {
   const isSuccess = toast.tone === 'success'
   const Icon = isSuccess ? CheckCircle2 : AlertTriangle
+  const [undoing, setUndoing] = React.useState(false)
   return (
     <div
       role="alert"
@@ -73,6 +97,19 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <p className="min-w-0 flex-1 font-semibold text-slate-700">{toast.message}</p>
+      {toast.undo && (
+        <button
+          type="button"
+          onClick={async () => {
+            setUndoing(true)
+            await onUndo()
+          }}
+          disabled={undoing}
+          className="shrink-0 text-xs font-extrabold text-primary hover:underline disabled:cursor-wait disabled:opacity-60"
+        >
+          {undoing ? 'Mengurungkan…' : toast.undo.label ?? 'Urungkan'}
+        </button>
+      )}
       <button
         type="button"
         onClick={onDismiss}
@@ -89,7 +126,7 @@ export function useToast() {
   const ctx = React.useContext(ToastContext)
   if (!ctx) throw new Error('useToast must be used within ToastProvider')
   return {
-    success: (message: string) => ctx.push('success', message),
+    success: (message: string, undo?: ToastUndo) => ctx.push('success', message, undo),
     error: (message: string) => ctx.push('danger', message),
   }
 }
@@ -101,6 +138,7 @@ export function useToast() {
 export function useActionToast(
   state: { error: string | null; success?: string },
   onSuccess?: () => void,
+  undo?: ToastUndo,
 ) {
   const { success, error } = useToast()
   const seen = React.useRef<typeof state | null>(null)
@@ -111,7 +149,7 @@ export function useActionToast(
       error(state.error)
     }
     if (state.success) {
-      success(state.success)
+      success(state.success, undo)
       onSuccess?.()
     }
     seen.current = state
