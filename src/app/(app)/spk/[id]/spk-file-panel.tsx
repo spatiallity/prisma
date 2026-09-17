@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Download, Eye, FileText, LoaderCircle, Pencil, Upload } from 'lucide-react'
+import { Download, Eye, FileText, LoaderCircle, Pencil, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
@@ -29,6 +29,7 @@ export function SpkFilePanel({ spkId, mayEdit, file: currentFile }: { spkId: str
   const [viewerOpen, setViewerOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function upload() {
     if (!file) return error('Pilih file PDF terlebih dahulu.')
@@ -67,6 +68,23 @@ export function SpkFilePanel({ spkId, mayEdit, file: currentFile }: { spkId: str
     }
   }
 
+  async function remove() {
+    if (!currentFile || !window.confirm(`Hapus ${currentFile.filename}?`)) return
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/spk/${spkId}/documents/${currentFile.id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'File SPK gagal dihapus.')
+      setUploadOpen(false)
+      success('File SPK berhasil dihapus.')
+      window.location.reload()
+    } catch (reason) {
+      error(reason instanceof Error ? reason.message : 'File SPK gagal dihapus.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const uploadDialog = mayEdit ? (
     <Modal
       open={uploadOpen}
@@ -83,6 +101,14 @@ export function SpkFilePanel({ spkId, mayEdit, file: currentFile }: { spkId: str
           {uploading ? <LoaderCircle className="animate-spin" size={16} aria-hidden /> : <Upload size={16} aria-hidden />}
           {uploading ? 'Mengunggah…' : currentFile ? 'Simpan file pengganti' : 'Unggah file SPK'}
         </Button>
+        {currentFile && (
+          <div className="border-t border-slate-200 pt-4">
+            <Button variant="danger" className="w-full" onClick={remove} disabled={deleting}>
+              <Trash2 size={16} aria-hidden />
+              {deleting ? 'Menghapus…' : 'Hapus file SPK'}
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   ) : null
