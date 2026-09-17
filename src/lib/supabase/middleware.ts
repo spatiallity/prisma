@@ -12,6 +12,21 @@ function isPublic(pathname: string) {
   )
 }
 
+function clearInvalidSession(request: NextRequest, redirectToLogin: boolean) {
+  const loginUrl = new URL('/login', request.url)
+  if (redirectToLogin && request.nextUrl.pathname !== '/') {
+    loginUrl.search = `?next=${encodeURIComponent(request.nextUrl.pathname)}`
+  }
+  const response = redirectToLogin ? NextResponse.redirect(loginUrl) : NextResponse.next({ request })
+
+  request.cookies
+    .getAll()
+    .filter(({ name }) => name.startsWith('sb-'))
+    .forEach(({ name }) => response.cookies.delete(name))
+
+  return response
+}
+
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -44,9 +59,16 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: getUser() refreshes the session cookie.
   // Do NOT run logic between createServerClient and getUser.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    if (error) {
+      return clearInvalidSession(request, !isPublic(pathname))
+    }
+    user = data.user
+  } catch {
+    return clearInvalidSession(request, !isPublic(pathname))
+  }
 
   if (!user && !isPublic(pathname)) {
     const url = request.nextUrl.clone()

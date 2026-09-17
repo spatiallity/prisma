@@ -16,7 +16,12 @@ export function PdfViewer({ fileUrl, filename }: { fileUrl: string; filename: st
 
   useEffect(() => {
     if (!frame.current) return
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(260, Math.floor(entry.contentRect.width - 32))))
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) {
+        setWidth(Math.max(260, Math.floor(entry.contentRect.width - 32)))
+      }
+    })
     observer.observe(frame.current)
     return () => observer.disconnect()
   }, [])
