@@ -26,7 +26,6 @@ export default async function BottleneckPage() {
     { data: activeDesigns },
     { data: spkMarks },
     { data: designRevisions },
-    { data: designPics },
     { data: routingDocs },
     { data: routingHistory },
   ] =
@@ -36,13 +35,12 @@ export default async function BottleneckPage() {
       supabase.from('spks').select('id, opname_marked_at, pad_marked_at'),
       supabase
         .from('design_revisions')
-        .select('design_id, stage, pic_id, pic_pertamina, started_at, completed_at, updated_at')
+        .select('design_id, stage, started_at, completed_at, updated_at')
         .eq('status', 'Active'),
-      supabase.from('design_pics').select('id, full_name'),
       supabase.from('spk_routing').select('id, spk_id'),
       supabase
         .from('routing_history')
-        .select('spk_routing_id, step_name, pic_name, started_at, completed_at, updated_at'),
+        .select('spk_routing_id, step_name, started_at, completed_at, updated_at'),
     ])
 
   // Same lookups the Dashboard's Bottleneck card uses to say what actually
@@ -57,7 +55,7 @@ export default async function BottleneckPage() {
   const padMarkedAtBySpk = new Map((spkMarks ?? []).map((s) => [s.id, s.pad_marked_at]))
   const isMoneyReason = (reason: string) => /saldo|payment|dibayar|diterima/i.test(reason)
 
-  type LastProcess = { process: string; pic: string | null; date: string | null }
+  type LastProcess = { process: string; date: string | null }
   const lastProcessBySpk = new Map<string, LastProcess>()
   const addLastProcess = (spkId: string, candidate: LastProcess) => {
     const previous = lastProcessBySpk.get(spkId)
@@ -66,12 +64,9 @@ export default async function BottleneckPage() {
     }
   }
   const designById = new Map((activeDesigns ?? []).map((design) => [design.id, design]))
-  const picNameById = new Map((designPics ?? []).map((pic) => [pic.id, pic.full_name]))
-
   for (const design of activeDesigns ?? []) {
     addLastProcess(design.spk_id, {
       process: `${PHASE_LABEL[design.phase]} · ${stageDisplayLabel(design.current_stage)}`,
-      pic: null,
       date: design.updated_at,
     })
   }
@@ -80,7 +75,6 @@ export default async function BottleneckPage() {
     if (!design) continue
     addLastProcess(design.spk_id, {
       process: `${PHASE_LABEL[design.phase]} · ${stageDisplayLabel(revision.stage)}`,
-      pic: revision.pic_id ? (picNameById.get(revision.pic_id) ?? null) : revision.pic_pertamina,
       date: revision.completed_at ?? revision.started_at ?? revision.updated_at,
     })
   }
@@ -91,13 +85,12 @@ export default async function BottleneckPage() {
     if (!spkId) continue
     addLastProcess(spkId, {
       process: `Dokumen invoice · ${step.step_name}`,
-      pic: step.pic_name,
       date: step.completed_at ?? step.started_at ?? step.updated_at,
     })
   }
   for (const spk of spkMarks ?? []) {
-    if (spk.opname_marked_at) addLastProcess(spk.id, { process: 'Opname', pic: null, date: spk.opname_marked_at })
-    if (spk.pad_marked_at) addLastProcess(spk.id, { process: 'PAD', pic: null, date: spk.pad_marked_at })
+    if (spk.opname_marked_at) addLastProcess(spk.id, { process: 'Opname', date: spk.opname_marked_at })
+    if (spk.pad_marked_at) addLastProcess(spk.id, { process: 'PAD', date: spk.pad_marked_at })
   }
 
   const tableRows: BottleneckRow[] = (rows ?? []).map((row, index) => {
@@ -118,7 +111,6 @@ export default async function BottleneckPage() {
       tanggal,
       hari,
       prosesTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.process ?? null) : null,
-      picTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.pic ?? null) : null,
       tanggalProsesTerakhir: row.spk_id ? (lastProcessBySpk.get(row.spk_id)?.date ?? null) : null,
     }
   })

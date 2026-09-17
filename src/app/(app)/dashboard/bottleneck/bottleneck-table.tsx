@@ -19,7 +19,6 @@ export type BottleneckRow = {
   tanggal: string | null
   hari: number | null
   prosesTerakhir: string | null
-  picTerakhir: string | null
   tanggalProsesTerakhir: string | null
 }
 
@@ -71,13 +70,6 @@ export function BottleneckTable({ rows }: { rows: BottleneckRow[] }) {
       className: 'min-w-[190px]',
       sortAccessor: (row) => row.prosesTerakhir,
       render: (row) => <span className="text-sm font-bold text-slate-800">{row.prosesTerakhir ?? '—'}</span>,
-    },
-    {
-      key: 'pic-terakhir',
-      label: 'PIC terakhir',
-      className: 'min-w-[140px] text-muted-foreground',
-      sortAccessor: (row) => row.picTerakhir,
-      render: (row) => row.picTerakhir ?? '—',
     },
     {
       key: 'tanggal-proses-terakhir',
