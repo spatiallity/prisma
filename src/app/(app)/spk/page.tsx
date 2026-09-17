@@ -32,7 +32,9 @@ export default async function SpkListPage({
 
   const supabase = await createClient()
 
-  let query = supabase.from('spks').select('*').order('created_at', { ascending: false })
+  let query = supabase.from('spks').select('*')
+    .order('start_date', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   const wanted = statusFromFilterKey(status)
   if (wanted) query = query.eq('status', wanted)

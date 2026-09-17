@@ -441,7 +441,7 @@ export function RoutingMatrix({
         searchPlaceholder="Cari SPK…"
         emptyTitle="Tidak ada dokumen berjalan"
         emptyDescription="Buat dokumen invoice agar posisinya bisa dipantau."
-        defaultSort={{ key: 'pad', dir: 'desc' }}
+        defaultSort={{ key: 'opname', dir: 'desc' }}
         pageSize={100}
       />
       <RoutingDetailModal

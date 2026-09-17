@@ -4,7 +4,7 @@ import type { Database } from './types'
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from './env'
 
 /** Routes reachable without a session. */
-const PUBLIC_PREFIXES = ['/login', '/auth', '/setup', '/no-profile', '/inactive']
+const PUBLIC_PREFIXES = ['/login', '/forgot-password', '/reset-password', '/auth', '/setup', '/no-profile', '/inactive']
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some(

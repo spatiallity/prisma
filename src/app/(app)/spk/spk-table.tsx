@@ -143,6 +143,7 @@ export function SpkTable({
       columns={columns}
       rows={spks}
       rowKey={(row) => row.id}
+      defaultSort={{ key: 'start_date', dir: 'desc' }}
       emptyTitle="Belum ada SPK"
       pageSize={100}
     />

@@ -1,4 +1,5 @@
 import { LogOut } from 'lucide-react'
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { initials } from '@/lib/utils'
 import type { SessionUser } from '@/lib/auth/session'
@@ -22,7 +23,8 @@ export function Topbar({ user }: { user: SessionUser }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
+          <Link href="/profile" className="hidden rounded-lg px-1 py-0.5 hover:bg-slate-50 sm:block" title="Akun saya">
+          <div className="text-right">
             <p className="text-sm leading-tight font-bold text-slate-900">
               {user.fullName}
             </p>
@@ -30,13 +32,16 @@ export function Topbar({ user }: { user: SessionUser }) {
               {user.email}
             </p>
           </div>
+          </Link>
 
+          <Link href="/profile" className="rounded-full" title="Akun saya">
           <div
             className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
             aria-hidden
           >
             {initials(user.fullName)}
           </div>
+          </Link>
 
           <Badge tone="primary" className="hidden lg:inline-flex">
             {user.role.name}

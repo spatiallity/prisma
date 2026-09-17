@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { BRAND } from '@/lib/brand'
 import { login, type LoginState } from './actions'
+import Link from 'next/link'
 
 const initialState: LoginState = { error: null }
 
@@ -102,6 +103,10 @@ export function LoginForm({ next }: { next?: string }) {
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
+      </div>
+
+      <div className="-mt-1 text-right">
+        <Link href="/forgot-password" className="text-xs font-bold text-primary hover:underline">Lupa password?</Link>
       </div>
 
       {state.error && (
