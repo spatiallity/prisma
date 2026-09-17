@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/page-header'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
@@ -116,6 +117,9 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
           const cell = docHistory.get(s.sequence)
           return cell && cell.status !== 'Completed'
         })
+        const complete = templateSteps.length > 0 && templateSteps.every(
+          (step) => docHistory.get(step.sequence)?.status === 'Completed',
+        )
 
         const chainSteps: ChainStep[] = templateSteps.map((step) => {
           const cell = docHistory.get(step.sequence)
@@ -129,12 +133,24 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             state,
             badge: cell && chainBadge(state, routingStatusLabel(cell.status)),
             sub: cell && (
-              <>
-                {cell.pic_name ?? 'PIC belum ditentukan'}
-                {cell.started_at && ` · mulai ${formatDate(cell.started_at)}`}
-                {cell.completed_at && ` → ${formatDate(cell.completed_at)}`}
-                {cell.note && <div className="mt-0.5 text-slate-700">{cell.note}</div>}
-              </>
+              <div>
+                <div>{cell.pic_name ?? 'PIC belum ditentukan'}</div>
+                {(cell.started_at || cell.completed_at) && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {cell.started_at && (
+                      <span className="rounded-md bg-primary-soft px-2 py-0.5 font-bold text-primary">
+                        Mulai {formatDate(cell.started_at)}
+                      </span>
+                    )}
+                    {cell.completed_at && (
+                      <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+                        Selesai {formatDate(cell.completed_at)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {cell.note && <div className="mt-1 text-slate-600">{cell.note}</div>}
+              </div>
             ),
             action:
               mayEdit && isCurrent && cell ? (
@@ -148,11 +164,18 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             <CardHeader>
               <div>
                 <CardTitle>{doc.document_type}</CardTitle>
-                <CardDescription>Isi tanggal tiap tahap dokumen invoice secara berurutan.</CardDescription>
+                <CardDescription>
+                  {complete ? 'Selesai' : current ? `Sedang di ${current.name}` : 'Draft'}
+                </CardDescription>
               </div>
-              {doc.document_number && (
-                <span className="text-xs font-semibold text-muted-foreground">{doc.document_number}</span>
-              )}
+              <div className="flex items-center gap-2">
+                <Badge tone={complete ? 'success' : current ? 'primary' : 'neutral'}>
+                  {complete ? 'Selesai' : current ? 'Sedang Berjalan' : 'Draft'}
+                </Badge>
+                {doc.document_number && (
+                  <span className="text-xs font-semibold text-muted-foreground">{doc.document_number}</span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <StepChain steps={chainSteps} />

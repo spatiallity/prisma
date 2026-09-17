@@ -42,6 +42,8 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   const opnameDone = !!spk?.opname_marked_at
   const padDone = !!spk?.pad_marked_at
   const invoiceDone = (invoices ?? []).some((invoice) => invoice.status === 'Approved' && !!invoice.invoice_date)
+  const financialComplete = opnameDone && padDone && invoiceDone
+  const currentLabel = invoiceDone ? 'Invoice' : padDone ? 'Invoice' : opnameDone ? 'PAD' : 'Opname'
 
   const steps: ChainStep[] = [
     {
@@ -56,11 +58,19 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       state: opnameDone ? 'done' : 'current',
       badge: chainBadge(opnameDone ? 'done' : 'current'),
       sub: opnameDone ? (
-        <>
-          {formatDate(spk!.opname_marked_at)}
-          {spk?.opname_marked_by && ` · ${markerName.get(spk.opname_marked_by) ?? ''}`}
-          {spk?.opname_value != null && ` · ${formatRupiah(spk.opname_value)}`}
-        </>
+        <div>
+          {spk?.opname_marked_by && <div>{markerName.get(spk.opname_marked_by) ?? ''}</div>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+              Selesai {formatDate(spk!.opname_marked_at)}
+            </span>
+            {spk?.opname_value != null && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-700">
+                {formatRupiah(spk.opname_value)}
+              </span>
+            )}
+          </div>
+        </div>
       ) : undefined,
       action: mayEdit ? (
         <OpnamePadRow
@@ -80,11 +90,19 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
       state: padDone ? 'done' : opnameDone ? 'current' : 'pending',
       badge: chainBadge(padDone ? 'done' : opnameDone ? 'current' : 'pending'),
       sub: padDone ? (
-        <>
-          {formatDate(spk!.pad_marked_at)}
-          {spk?.pad_marked_by && ` · ${markerName.get(spk.pad_marked_by) ?? ''}`}
-          {spk?.pad_value != null && ` · ${formatRupiah(spk.pad_value)}`}
-        </>
+        <div>
+          {spk?.pad_marked_by && <div>{markerName.get(spk.pad_marked_by) ?? ''}</div>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+              Selesai {formatDate(spk!.pad_marked_at)}
+            </span>
+            {spk?.pad_value != null && (
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-slate-700">
+                {formatRupiah(spk.pad_value)}
+              </span>
+            )}
+          </div>
+        </div>
       ) : !opnameDone ? (
         'Tandai opname selesai dulu.'
       ) : undefined,
@@ -150,10 +168,13 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <div>
-          <CardTitle>Keuangan</CardTitle>
-          <CardDescription>Ringkasan nilai SPK, opname, PAD, dan invoice untuk SPK ini.</CardDescription>
-        </div>
+          <div>
+            <CardTitle>Keuangan</CardTitle>
+          <CardDescription>{financialComplete ? 'Selesai' : `Sedang di ${currentLabel}`}</CardDescription>
+          </div>
+        <Badge tone={financialComplete ? 'success' : 'primary'}>
+          {financialComplete ? 'Selesai' : 'Sedang Berjalan'}
+        </Badge>
       </CardHeader>
       <CardContent>
         <StepChain steps={steps} />

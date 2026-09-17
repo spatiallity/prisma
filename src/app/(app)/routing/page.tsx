@@ -26,11 +26,14 @@ export const metadata: Metadata = { title: 'Routing Monitor' }
 export async function RoutingMonitor({
   mode = 'open',
   step,
+  open,
 }: {
   mode?: 'open' | 'history'
   /** Narrows the open list to documents currently sitting at this step —
    *  set by clicking one of the summary cards. */
   step?: string
+  /** Routing document opened immediately after Add Data succeeds. */
+  open?: string
 }) {
   const user = await requirePermission('routing', 'view')
   const mayEdit = can(user.permissions, 'routing', 'edit')
@@ -210,6 +213,7 @@ export async function RoutingMonitor({
             dendaValueBySpk={dendaValueBySpk}
             virtualSpkIds={step ? [] : virtualSpkIds}
             stepFilter={step}
+            initialOpenRowId={open}
           />
         ) : (
           <RoutingTable
@@ -343,6 +347,7 @@ async function RoutingMatrixSection({
   dendaValueBySpk,
   virtualSpkIds,
   stepFilter,
+  initialOpenRowId,
 }: {
   docs: RoutingDoc[]
   spkById: Record<string, { id: string; spk_number: string; site_code: string | null; work_name?: string }>
@@ -362,6 +367,7 @@ async function RoutingMatrixSection({
   /** The `?step=` filter currently active — passed through so RoutingMatrix
    *  can close any open row popup when it changes. */
   stepFilter?: string
+  initialOpenRowId?: string
 }) {
   const supabase = await createClient()
   const docIds = docs.map((d) => d.id)
@@ -423,6 +429,7 @@ async function RoutingMatrixSection({
       padValueBySpk={padValueBySpk}
       dendaValueBySpk={dendaValueBySpk}
       stepFilter={stepFilter}
+      initialOpenRowId={initialOpenRowId}
     />
   )
 }
@@ -473,8 +480,8 @@ async function StageAverages() {
 export default async function RoutingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ step?: string }>
+  searchParams: Promise<{ step?: string; open?: string }>
 }) {
-  const { step } = await searchParams
-  return <RoutingMonitor mode="open" step={step} />
+  const { step, open } = await searchParams
+  return <RoutingMonitor mode="open" step={step} open={open} />
 }

@@ -282,6 +282,8 @@ export function RoutingMatrix({
   padBySpk,
   padValueBySpk,
   dendaValueBySpk,
+  stepFilter,
+  initialOpenRowId,
 }: {
   docs: RoutingDoc[]
   /** SPKs eligible for routing with no spk_routing document yet. */
@@ -304,8 +306,16 @@ export function RoutingMatrix({
    *  left open must close instead of possibly matching a same-id row in the
    *  new set and popping back open on its own. */
   stepFilter?: string
+  /** Set by Add Data so the new routing document opens immediately. */
+  initialOpenRowId?: string
 }) {
-  const [openRowId, setOpenRowId] = useState<string | null>(null)
+  const [openRowId, setOpenRowId] = useState<string | null>(initialOpenRowId ?? null)
+
+  useEffect(() => {
+    if (initialOpenRowId && docs.some((doc) => doc.id === initialOpenRowId)) {
+      setOpenRowId(initialOpenRowId)
+    }
+  }, [docs, initialOpenRowId])
 
   const rows = rowsWithVirtual(docs, virtualSpkIds)
   const openRow = rows.find((r) => r.id === openRowId) ?? null

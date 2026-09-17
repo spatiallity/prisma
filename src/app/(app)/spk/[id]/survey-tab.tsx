@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
@@ -22,6 +23,13 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
     : { data: null }
 
   const surveyDone = !!spk?.terrain_survey_completed_at
+  const jointCheckDone = !!spk?.joint_check_date
+  const surveyComplete = surveyDone && jointCheckDone
+  const currentLabel = surveyComplete
+    ? 'Pengecekan Bersama'
+    : surveyDone
+      ? 'Pengecekan Bersama'
+      : 'Survei Terestris'
 
   const steps: ChainStep[] = [
     {
@@ -30,10 +38,14 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       state: surveyDone ? 'done' : 'current',
       badge: chainBadge(surveyDone ? 'done' : 'current'),
       sub: surveyDone ? (
-        <>
-          {formatDate(spk!.terrain_survey_completed_at)}
-          {marker?.full_name && ` · ${marker.full_name}`}
-        </>
+        <div>
+          {marker?.full_name && <div>{marker.full_name}</div>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+              Selesai {formatDate(spk!.terrain_survey_completed_at)}
+            </span>
+          </div>
+        </div>
       ) : undefined,
       action: mayEdit ? (
         <OpnamePadRow
@@ -51,8 +63,14 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       state: spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
       badge: chainBadge(
         spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
-        spk?.joint_check_date ? formatDate(spk.joint_check_date) : 'Belum dijadwalkan',
       ),
+      sub: spk?.joint_check_date ? (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+            Selesai {formatDate(spk.joint_check_date)}
+          </span>
+        </div>
+      ) : surveyDone ? 'Siap dijadwalkan.' : 'Menunggu survei terestris selesai.',
       action: mayEdit ? <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} /> : undefined,
     },
   ]
@@ -60,10 +78,15 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <div>
-          <CardTitle>Survei Lapangan</CardTitle>
-          <CardDescription>Isi status survei terestris dan tanggal pengecekan bersama sebelum masuk desain.</CardDescription>
-        </div>
+          <div>
+            <CardTitle>Survei Lapangan</CardTitle>
+            <CardDescription>
+              {surveyComplete ? 'Selesai' : `Sedang di ${currentLabel}`}
+            </CardDescription>
+          </div>
+          <Badge tone={surveyComplete ? 'success' : surveyDone ? 'primary' : 'neutral'}>
+            {surveyComplete ? 'Selesai' : surveyDone ? 'Sedang Berjalan' : 'Draft'}
+          </Badge>
       </CardHeader>
       <CardContent>
         <StepChain steps={steps} />

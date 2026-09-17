@@ -111,10 +111,9 @@ export async function createRouting(
 
   revalidatePath('/routing')
   revalidatePath(`/spk/${spkId}`)
-  if (text(formData, 'return_to_spk')) {
-    redirect(`/spk/${spkId}?tab=routing`)
-  }
-  redirect(`/routing/${routing.id}`)
+  // Stay on Routing Monitor and open the new document there, so Opname/PAD
+  // and routing stages can be filled without another page transition.
+  redirect(`/routing?open=${routing.id}`)
 }
 
 /**
