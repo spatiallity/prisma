@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { BRAND } from '@/lib/brand'
 import { BrandLogo } from '@/components/brand-logo'
 import { LoginForm } from './login-form'
@@ -15,46 +16,44 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-dvh">
       {/* Left — branding */}
-      <div
-        className="relative hidden flex-col overflow-hidden lg:flex lg:w-[52%]"
-        style={{
-          background:
-            'linear-gradient(135deg, #1e3a5f 0%, #0f2744 40%, #0c3a4a 70%, #0d4a42 100%)',
-        }}
-      >
-        <div
-          className="absolute -top-32 -left-32 h-96 w-96 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #13B2AA, transparent)' }}
-        />
-        <div
-          className="absolute -right-24 -bottom-24 h-80 w-80 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, white, transparent)' }}
-        />
-
-        <div className="relative z-10 flex h-full flex-col justify-between p-12">
-          <div className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-            {BRAND.owner}
+      <div className="hidden flex-col bg-[#123254] lg:flex lg:w-[52%]">
+        <div className="flex h-full flex-col justify-between p-12">
+          <div className="flex items-center gap-4">
+            <Image
+              src="/idsurvey-logo.png"
+              alt="IDSurvey"
+              width={180}
+              height={36}
+              className="h-9 w-auto object-contain"
+              priority
+            />
+            <span className="h-8 w-px bg-white/25" aria-hidden />
+            <div className="relative h-11 w-32 overflow-hidden">
+              <Image
+                src="/sucofindo-logo.png"
+                alt="PT Sucofindo"
+                fill
+                sizes="128px"
+                className="object-cover object-bottom"
+                priority
+              />
+            </div>
           </div>
 
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <h1
-              className="text-5xl font-black tracking-tight text-white"
-              style={{ letterSpacing: '0.02em' }}
-            >
-              {BRAND.name}
-            </h1>
-            <p className="max-w-xs text-sm leading-relaxed text-slate-300">
-              Sistem kontrol project {BRAND.project} — {BRAND.client}.
+          <div className="flex flex-1 flex-col justify-center">
+            <h1 className="text-6xl font-black text-white">{BRAND.name}</h1>
+            <p className="mt-3 max-w-lg text-base font-medium leading-7 text-slate-200">
+              {BRAND.expansion}
             </p>
+            <div className="mt-8 border-l-2 border-primary pl-4 text-sm leading-6 text-slate-200">
+              <p>Sistem Monitoring Survei Topografi Lokasi Bor dan Fasilitas Produksi</p>
+              <p>PT Pertamina EP Zona 4 Prabumulih</p>
+            </div>
           </div>
 
           <div className="border-t border-white/10 pt-4">
             <p className="text-[11px] text-slate-500">
-              © {BRAND.year} {BRAND.owner} · {BRAND.project}
+              © {BRAND.year} {BRAND.owner}
             </p>
           </div>
         </div>
