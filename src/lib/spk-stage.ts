@@ -69,6 +69,7 @@ export async function loadStageBySpk(
 
   const currentByRouting = new Map<string, { step_name: string; started_at: string | null; sequence: number }>()
   for (const row of lead ?? []) {
+    if (row.step_name === 'Finance') continue
     if (row.status === 'Completed') continue
     const held = currentByRouting.get(row.spk_routing_id)
     if (!held || row.sequence < held.sequence) currentByRouting.set(row.spk_routing_id, row)

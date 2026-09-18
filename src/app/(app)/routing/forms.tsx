@@ -215,9 +215,19 @@ export function RoutingStepDateForm({
   const isInvoiced = stepName === 'Invoiced'
   const isDone = entry.status === 'Completed'
 
-  const invoiceFields = isInvoiced && (
-    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-      <Field label="Nomor invoice" htmlFor="rd_inv_number" required>
+  if (isInvoiced) {
+    return (
+      <form action={formAction} className="grid gap-3">
+        <Feedback state={state} />
+        <input type="hidden" name="routing_id" value={routingId} />
+        <input type="hidden" name="step_id" value={stepId} />
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+          <span className="text-sm font-bold text-slate-700">Status invoice</span>
+          <span className={isDone ? 'text-sm font-black text-success' : 'text-sm font-black text-slate-500'}>
+            {isDone ? 'Sudah' : 'Belum'}
+          </span>
+        </div>
+        <Field label="Nomor invoice" htmlFor="rd_inv_number">
         <Input id="rd_inv_number" name="invoice_number" defaultValue={entry.invoice_number ?? ''} placeholder="INV-2026-014" />
       </Field>
       <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
@@ -229,8 +239,12 @@ export function RoutingStepDateForm({
       <Field label="Denda (Rp)" htmlFor="rd_denda" hint="Kosongkan kalau tidak ada denda.">
         <Input id="rd_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={dendaValue ?? ''} />
       </Field>
-    </div>
-  )
+        <div>
+          <Submit label={isDone ? 'Simpan perubahan invoice' : 'Simpan invoice'} icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
+        </div>
+      </form>
+    )
+  }
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -276,7 +290,6 @@ export function RoutingStepDateForm({
           <Field label="Tanggal selesai" htmlFor="rd_completed">
             <Input id="rd_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? ''} />
           </Field>
-          {invoiceFields}
           <div>
             <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
           </div>
@@ -287,7 +300,6 @@ export function RoutingStepDateForm({
             <Field label="Tanggal selesai" htmlFor="rd_completed" required>
               <Input id="rd_completed" name="completed_at" type="date" defaultValue={today} required />
             </Field>
-            {invoiceFields}
           </div>
 
           <div className="flex flex-wrap gap-2">

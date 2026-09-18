@@ -194,8 +194,9 @@ async function openRoutingFromFinalisasi(
     .single()
   if (error || !routing) return false
 
+  const visibleSteps = steps.filter((step) => step.name !== 'Finance')
   const { error: historyError } = await supabase.from('routing_history').insert(
-    steps.map((step, index) => ({
+    visibleSteps.map((step, index) => ({
       spk_routing_id: routing.id,
       template_step_id: step.id,
       step_name: step.name,

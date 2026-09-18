@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requirePermission } from '@/lib/auth/session'
 import {
   ALL_ACTIONS,
@@ -103,13 +104,16 @@ export async function deleteRole(
     .eq('role_id', roleId)
   if (userError) return { error: userError.message }
   if ((count ?? 0) > 0) {
-    return { error: 'Pindahkan seluruh user dari role ini sebelum menghapusnya.' }
+    return { error: `Role ini masih digunakan oleh ${count} pengguna. Pindahkan pengguna tersebut ke role lain terlebih dahulu.` }
   }
 
-  const { error: grantsError } = await supabase.from('role_permissions').delete().eq('role_id', roleId)
+  // Authorization has been checked above. This avoids stale browser JWT
+  // permissions blocking a valid Super Admin deletion.
+  const admin = createAdminClient()
+  const { error: grantsError } = await admin.from('role_permissions').delete().eq('role_id', roleId)
   if (grantsError) return { error: grantsError.message }
 
-  const { error } = await supabase.from('roles').delete().eq('id', roleId)
+  const { error } = await admin.from('roles').delete().eq('id', roleId)
   if (error) return { error: error.message }
 
   revalidatePath('/admin/roles')

@@ -42,14 +42,29 @@ type Revision = { id: string; note: string | null; resubmit_at: string }
  *  whole row opens the full chain + edit popup now. */
 function StepCell({
   cell,
+  stepName,
   isCurrent,
   isOverdue,
 }: {
   cell: HistoryCell | undefined
+  stepName: string
   isCurrent: boolean
   isOverdue: boolean
 }) {
   if (!cell) return <span className="text-muted-foreground">—</span>
+
+  if (stepName === 'Invoiced') {
+    const alreadyInvoiced = cell.status === 'Completed'
+    return (
+      <div>
+        <Badge tone={alreadyInvoiced ? 'success' : 'neutral'}>{alreadyInvoiced ? 'Sudah' : 'Belum'}</Badge>
+        {cell.invoice_date && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.invoice_date)}</div>}
+        {alreadyInvoiced && (!cell.invoice_date || cell.invoice_value === null) && (
+          <div className="mt-1 text-[11px] font-semibold text-warning">Data belum lengkap</div>
+        )}
+      </div>
+    )
+  }
 
   if (cell.status === 'Completed') {
     return (
@@ -390,6 +405,7 @@ export function RoutingMatrix({
           ) : (
             <StepCell
               cell={historyByDoc[row.id]?.[step.sequence]}
+              stepName={step.name}
               isCurrent={currentSequenceByDoc[row.id] === step.sequence}
               isOverdue={currentSequenceByDoc[row.id] === step.sequence && !!overdueByDoc[row.id]}
             />

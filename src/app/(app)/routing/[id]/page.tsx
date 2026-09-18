@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate } from '@/lib/utils'
 import { ROUTING_TONE, formatDays, routingStatusLabel, stageTone } from '@/lib/routing'
-import { StepReviewForm } from '../forms'
+import { RoutingStepDateForm } from '../forms'
 
 export const metadata: Metadata = { title: 'Detail routing' }
 
@@ -41,12 +41,13 @@ export default async function RoutingDetailPage({
     supabase.from('v_routing_lead_time').select('*').eq('spk_routing_id', id),
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, work_name')
+      .select('id, spk_number, site_code, work_name, denda_value')
       .eq('id', routing.spk_id)
       .maybeSingle(),
   ])
 
-  const stepIds = (steps ?? []).map((s) => s.id)
+  const visibleSteps = (steps ?? []).filter((step) => step.step_name !== 'Finance')
+  const stepIds = visibleSteps.map((s) => s.id)
   const { data: revisions } = stepIds.length
     ? await supabase
         .from('routing_step_revisions')
@@ -65,12 +66,14 @@ export default async function RoutingDetailPage({
   const leadByStep = new Map((lead ?? []).map((row) => [row.routing_history_id, row]))
 
   // The stage holding the document: lowest sequence that has not completed.
-  const current = (steps ?? []).find((step) => step.status !== 'Completed')
-  const totalDays = (steps ?? []).reduce(
+  const current = visibleSteps.find((step) => step.status !== 'Completed')
+  const currentIndex = current ? visibleSteps.findIndex((step) => step.id === current.id) : -1
+  const previousCompletedAt = currentIndex > 0 ? visibleSteps[currentIndex - 1]?.completed_at : null
+  const totalDays = visibleSteps.reduce(
     (sum, step) => sum + Number(step.duration_days ?? 0),
     0,
   )
-  const done = (steps ?? []).filter((s) => s.status === 'Completed').length
+  const done = visibleSteps.filter((s) => s.status === 'Completed').length
 
   return (
     <>
@@ -114,7 +117,7 @@ export default async function RoutingDetailPage({
               Tahap selesai
             </div>
             <div className="tnum mt-1 text-2xl font-black text-slate-900">
-              {done}/{steps?.length ?? 0}
+              {done}/{visibleSteps.length}
             </div>
           </CardContent>
         </Card>
@@ -149,13 +152,13 @@ export default async function RoutingDetailPage({
           </CardHeader>
           <CardContent>
             <ol className="grid">
-              {(steps ?? []).map((step, index) => {
+              {visibleSteps.map((step, index) => {
                 const stat = leadByStep.get(step.id)
                 const late = stat?.is_overdue ?? false
                 const isCurrent = current?.id === step.id
                 const finished = step.status === 'Completed'
                 const refused = step.status === 'Rejected'
-                const last = index === (steps?.length ?? 0) - 1
+                const last = index === visibleSteps.length - 1
 
                 return (
                   <li key={step.id} className="grid grid-cols-[26px_1fr_auto] gap-3">
@@ -227,7 +230,11 @@ export default async function RoutingDetailPage({
 
                     <div className="flex flex-col items-end gap-1 pb-5">
                       <Badge tone={stageTone(step.status, late)}>
-                        {late && step.status !== 'Completed' ? 'Lewat SLA' : routingStatusLabel(step.status)}
+                        {late && step.status !== 'Completed'
+                          ? 'Lewat SLA'
+                          : step.step_name === 'Invoiced'
+                            ? step.status === 'Completed' ? 'Sudah' : 'Belum'
+                            : routingStatusLabel(step.status)}
                       </Badge>
                       <span
                         className={cn(
@@ -255,10 +262,13 @@ export default async function RoutingDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <StepReviewForm
+                <RoutingStepDateForm
                   routingId={routing.id}
                   stepId={current.id}
-                  defaultPic={current.pic_name}
+                  stepName={current.step_name}
+                  entry={current}
+                  previousCompletedAt={previousCompletedAt}
+                  dendaValue={spk?.denda_value}
                 />
               </CardContent>
             </Card>

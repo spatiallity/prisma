@@ -96,6 +96,7 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
 
   const stepsByTemplate = new Map<string, { id: string; name: string; sequence: number }[]>()
   for (const step of allSteps ?? []) {
+    if (step.name === 'Finance') continue
     const list = stepsByTemplate.get(step.template_id) ?? []
     list.push(step)
     stepsByTemplate.set(step.template_id, list)
@@ -131,7 +132,12 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             key: step.id,
             label: step.name,
             state,
-            badge: cell && chainBadge(state, routingStatusLabel(cell.status)),
+            badge: cell && chainBadge(
+              state,
+              step.name === 'Invoiced'
+                ? cell.status === 'Completed' ? 'Sudah' : 'Belum'
+                : routingStatusLabel(cell.status),
+            ),
             sub: cell && (
               <div>
                 <div>{cell.pic_name ?? 'PIC belum ditentukan'}</div>

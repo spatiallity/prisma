@@ -75,7 +75,6 @@ export const NAV: NavGroup[] = [
         phase: 2,
       },
       { label: 'Progress SPK', href: '/spk/progress', icon: Kanban, module: 'progress', ready: true, phase: 2 },
-      { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
   // Schedule and Vendor Jasa Survey are hidden from the menu for now (asked
@@ -116,6 +115,7 @@ export const NAV: NavGroup[] = [
     icon: FileStack,
     items: [
       { label: 'Routing Monitor', href: '/routing', icon: Route, module: 'routing', ready: true, phase: 6 },
+      { label: 'Financial Report', href: '/reports/financial', icon: LineChart, module: 'report', ready: true, phase: 8 },
     ],
   },
   {

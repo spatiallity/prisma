@@ -92,7 +92,8 @@ export async function createRouting(
   if (error) return { error: error.message }
 
   const now = pickedOrNow(formData, 'tanggal')
-  const rows = steps.map((step, index) => ({
+  const visibleSteps = steps.filter((step) => step.name !== 'Finance')
+  const rows = visibleSteps.map((step, index) => ({
     spk_routing_id: routing.id,
     template_step_id: step.id,
     step_name: step.name,
@@ -221,6 +222,51 @@ export async function updateRoutingStepDates(
     return { error: 'Selesaikan tahap sebelumnya dulu.' }
   }
 
+  // Invoiced is a final event, not a stage with a working period. It is
+  // complete the moment its invoice details are recorded.
+  if (step.step_name === 'Invoiced') {
+    const invoiceNumber = nullable(formData, 'invoice_number')
+    const invoiceValueRaw = nullable(formData, 'invoice_value')
+    const invoiceDate = nullable(formData, 'invoice_date')
+    if (!invoiceValueRaw || !invoiceDate) {
+      return { error: 'Nilai invoice dan tanggal invoice wajib diisi.' }
+    }
+
+    const invoiceAt = new Date(`${invoiceDate}T12:00:00`).toISOString()
+    const { error } = await supabase
+      .from('routing_history')
+      .update({
+        status: 'Completed' satisfies RoutingStatus,
+        started_at: null,
+        completed_at: invoiceAt,
+        pic_name: nullable(formData, 'pic_name') ?? undefined,
+        note: nullable(formData, 'note') ?? undefined,
+        invoice_number: invoiceNumber,
+        invoice_value: Number(invoiceValueRaw),
+        invoice_date: invoiceDate,
+      })
+      .eq('id', stepId)
+    if (error) return { error: error.message }
+
+    const dendaRaw = nullable(formData, 'denda_value')
+    const { data: routingDoc } = await supabase
+      .from('spk_routing')
+      .select('spk_id')
+      .eq('id', routingId)
+      .maybeSingle()
+    if (routingDoc) {
+      await supabase
+        .from('spks')
+        .update({ denda_value: dendaRaw ? Number(dendaRaw) : null })
+        .eq('id', routingDoc.spk_id)
+    }
+
+    revalidatePath('/routing')
+    revalidatePath(`/routing/${routingId}`)
+    revalidatePath('/reports/financial')
+    return { error: null, success: 'Invoice disimpan.' }
+  }
+
   const startedRaw = text(formData, 'started_at')
   if (!startedRaw) return { error: 'Tanggal mulai wajib diisi.' }
   const startedAt = new Date(`${startedRaw}T12:00:00`).toISOString()
@@ -258,17 +304,6 @@ export async function updateRoutingStepDates(
   }
   const status: RoutingStatus = completedAt ? 'Completed' : 'In Progress'
 
-  // The Invoiced step's whole point is capturing the invoice itself — closing
-  // it without those fields would leave a "Done" badge with nothing behind it.
-  const invoiceNumber = nullable(formData, 'invoice_number')
-  const invoiceValueRaw = nullable(formData, 'invoice_value')
-  const invoiceDate = nullable(formData, 'invoice_date')
-  if (step.step_name === 'Invoiced' && completedAt) {
-    if (!invoiceNumber || !invoiceValueRaw || !invoiceDate) {
-      return { error: 'Nomor invoice, nilai invoice, dan tanggal invoice wajib diisi.' }
-    }
-  }
-
   const { error } = await supabase
     .from('routing_history')
     .update({
@@ -277,35 +312,9 @@ export async function updateRoutingStepDates(
       status,
       pic_name: nullable(formData, 'pic_name') ?? undefined,
       note: nullable(formData, 'note') ?? undefined,
-      ...(step.step_name === 'Invoiced'
-        ? {
-            invoice_number: invoiceNumber,
-            invoice_value: invoiceValueRaw ? Number(invoiceValueRaw) : null,
-            invoice_date: invoiceDate,
-          }
-        : {}),
     })
     .eq('id', stepId)
   if (error) return { error: error.message }
-
-  // Denda is decided at the same moment as the invoice itself — captured
-  // here rather than as its own separate step, straight onto the SPK
-  // (Financial Report reads it from there, same as Opname/PAD).
-  if (step.step_name === 'Invoiced') {
-    const dendaRaw = nullable(formData, 'denda_value')
-    const { data: routingDoc } = await supabase
-      .from('spk_routing')
-      .select('spk_id')
-      .eq('id', routingId)
-      .maybeSingle()
-    if (routingDoc) {
-      await supabase
-        .from('spks')
-        .update({ denda_value: dendaRaw ? Number(dendaRaw) : null })
-        .eq('id', routingDoc.spk_id)
-    }
-    revalidatePath('/reports/financial')
-  }
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)

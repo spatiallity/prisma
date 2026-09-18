@@ -221,10 +221,12 @@ export default async function DashboardPage() {
   for (const current of currentByRoutingDoc.values()) {
     routingStepCounts.set(current.step_name, (routingStepCounts.get(current.step_name) ?? 0) + 1)
   }
-  const routingStageChartData = (templateSteps ?? []).map((step) => ({
+  const routingStageChartData = (templateSteps ?? [])
+    .filter((step) => step.name !== 'Finance')
+    .map((step) => ({
     label: step.name,
     count: routingStepCounts.get(step.name) ?? 0,
-  }))
+    }))
 
   // Bottleneck card (right column) needs to name the actual stage/date behind
   // "Opname belum ditandai" and "Design tidak berubah status" — group every

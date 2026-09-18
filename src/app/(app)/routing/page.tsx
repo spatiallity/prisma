@@ -258,10 +258,11 @@ async function StepSummaryCards({
     countByStep.set(current.step_name, (countByStep.get(current.step_name) ?? 0) + 1)
   }
 
-  if (!steps || steps.length === 0) return null
+  const visibleSteps = (steps ?? []).filter((step) => step.name !== 'Finance')
+  if (visibleSteps.length === 0) return null
 
   const totalOpen = Object.keys(currentByDoc).length
-  const maxCount = Math.max(1, ...steps.map((step) => countByStep.get(step.name) ?? 0))
+  const maxCount = Math.max(1, ...visibleSteps.map((step) => countByStep.get(step.name) ?? 0))
   const accents = [
     'from-primary/80 to-primary',
     'from-info/80 to-info',
@@ -273,7 +274,7 @@ async function StepSummaryCards({
 
   return (
     <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8">
-      {steps.map((step, index) => {
+      {visibleSteps.map((step, index) => {
         const active = activeStep === step.name
         const count = countByStep.get(step.name) ?? 0
         const percentOfMax = Math.max(4, Math.round((count / maxCount) * 100))
@@ -412,12 +413,14 @@ async function RoutingMatrixSection({
     Object.entries(currentByDoc).map(([docId, current]) => [docId, current.sequence]),
   )
 
+  const visibleSteps = (steps ?? []).filter((step) => step.name !== 'Finance')
+
   return (
     <RoutingMatrix
       docs={docs}
       virtualSpkIds={virtualSpkIds}
       spkById={spkById}
-      steps={steps ?? []}
+      steps={visibleSteps}
       historyByDoc={historyByDoc}
       revisionsByStep={revisionsByStep}
       currentSequenceByDoc={currentSequenceByDoc}

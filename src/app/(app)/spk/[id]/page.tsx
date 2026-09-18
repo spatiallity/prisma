@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Banknote, CalendarDays, Clock3, FileText, MapPin, Pencil } from 'lucide-react'
+import { ArrowLeft, Banknote, CalendarDays, Clock3, MapPin, Pencil, Route } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
@@ -194,10 +194,6 @@ export default async function SpkDetailPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Tahap saat ini</div>
-                <div className="mt-0.5 text-sm font-black text-primary">{stage?.label ?? 'Belum mulai'}</div>
-              </div>
               {mayEdit && (
                 <Link
                   href={`/spk/${spk.id}/edit`}
@@ -235,11 +231,11 @@ export default async function SpkDetailPage({
           tone="bg-warning/15 text-warning"
         />
         <SummaryCard
-          label="Jenis Pekerjaan"
-          value={spk.work_type ?? 'Belum diisi'}
-          helper={spkStatusLabel(spk.status)}
-          icon={<FileText size={17} aria-hidden />}
-          tone="bg-brand-orange/10 text-brand-orange"
+          label="Tahap Saat Ini"
+          value={stage?.label ?? 'Belum mulai'}
+          helper={stage?.date ? formatDate(stage.date) : spkStatusLabel(spk.status)}
+          icon={<Route size={17} aria-hidden />}
+          tone="bg-primary-soft text-primary"
         />
       </div>
 

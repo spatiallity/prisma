@@ -352,7 +352,7 @@ on conflict (template_id, name) do update
 -- ---------------------------------------------------------------------------
 insert into routing_templates (code, name, description) values
   ('RT-PERTAMINA', 'Routing Dokumen Pertamina',
-   'Document Control -> GIS Engineer -> Lead GIS Engineer -> User -> Manager Engineering & Project -> Finance')
+   'Document Control -> GIS Engineer -> Lead GIS Engineer -> User -> Manager Engineering & Project -> Invoiced')
 on conflict (code) do update set name = excluded.name;
 
 with tpl as (select id from routing_templates where code = 'RT-PERTAMINA'),
@@ -363,7 +363,7 @@ steps(name, sequence, sla_days, default_pic_role) as (
     ('Lead GIS Engineer',             3, 3.0, 'Lead GIS Engineer'),
     ('User',                          4, 3.0, 'User'),
     ('Manager Engineering & Project', 5, 3.0, 'Manager Engineering & Project'),
-    ('Finance',                       6, 5.0, 'Finance')
+    ('Invoiced',                      6, null, 'Finance')
 )
 insert into routing_template_steps (template_id, name, sequence, sla_days, default_pic_role)
 select tpl.id, s.name, s.sequence, s.sla_days, s.default_pic_role
