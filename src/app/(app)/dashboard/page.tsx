@@ -222,7 +222,6 @@ export default async function DashboardPage() {
     routingStepCounts.set(current.step_name, (routingStepCounts.get(current.step_name) ?? 0) + 1)
   }
   const routingStageChartData = (templateSteps ?? [])
-    .filter((step) => step.name !== 'Finance')
     .map((step) => ({
     label: step.name,
     count: routingStepCounts.get(step.name) ?? 0,

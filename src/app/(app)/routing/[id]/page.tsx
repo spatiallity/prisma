@@ -46,7 +46,7 @@ export default async function RoutingDetailPage({
       .maybeSingle(),
   ])
 
-  const visibleSteps = (steps ?? []).filter((step) => step.step_name !== 'Finance')
+  const visibleSteps = steps ?? []
   const stepIds = visibleSteps.map((s) => s.id)
   const { data: revisions } = stepIds.length
     ? await supabase

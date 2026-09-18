@@ -96,7 +96,6 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
 
   const stepsByTemplate = new Map<string, { id: string; name: string; sequence: number }[]>()
   for (const step of allSteps ?? []) {
-    if (step.name === 'Finance') continue
     const list = stepsByTemplate.get(step.template_id) ?? []
     list.push(step)
     stepsByTemplate.set(step.template_id, list)

@@ -12,17 +12,24 @@ import { JointCheckDateRow } from './joint-check-date'
 export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
   const supabase = await createClient()
 
-  const { data: spk } = await supabase
-    .from('spks')
-    .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date')
-    .eq('id', spkId)
-    .maybeSingle()
+  const [{ data: spk }, { data: design }, { data: routing }] = await Promise.all([
+    supabase
+      .from('spks')
+      .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date')
+      .eq('id', spkId)
+      .maybeSingle(),
+    supabase.from('designs').select('id').eq('spk_id', spkId).eq('status', 'Active').limit(1).maybeSingle(),
+    supabase.from('spk_routing').select('id').eq('spk_id', spkId).limit(1).maybeSingle(),
+  ])
 
   const { data: marker } = spk?.terrain_survey_marked_by
     ? await supabase.from('users').select('full_name').eq('id', spk.terrain_survey_marked_by).maybeSingle()
     : { data: null }
 
-  const surveyDone = !!spk?.terrain_survey_completed_at
+  // Older SPKs began Desain or Routing before field survey was tracked here.
+  // Treat that prerequisite as completed, but leave its unknown date blank.
+  const inferredSurveyDone = !spk?.terrain_survey_completed_at && Boolean(design || routing)
+  const surveyDone = !!spk?.terrain_survey_completed_at || inferredSurveyDone
   const jointCheckDone = !!spk?.joint_check_date
   const surveyComplete = surveyDone && jointCheckDone
   const currentLabel = surveyComplete
@@ -40,14 +47,18 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       sub: surveyDone ? (
         <div>
           {marker?.full_name && <div>{marker.full_name}</div>}
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
-              Selesai {formatDate(spk!.terrain_survey_completed_at)}
-            </span>
-          </div>
+          {spk?.terrain_survey_completed_at ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
+                Selesai {formatDate(spk.terrain_survey_completed_at)}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-1 text-sm text-muted-foreground">Selesai · tanggal belum tercatat.</div>
+          )}
         </div>
       ) : undefined,
-      action: mayEdit ? (
+      action: mayEdit && !inferredSurveyDone ? (
         <OpnamePadRow
           label="Survei Terestris"
           spkId={spkId}

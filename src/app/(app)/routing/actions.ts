@@ -92,8 +92,7 @@ export async function createRouting(
   if (error) return { error: error.message }
 
   const now = pickedOrNow(formData, 'tanggal')
-  const visibleSteps = steps.filter((step) => step.name !== 'Finance')
-  const rows = visibleSteps.map((step, index) => ({
+  const rows = steps.map((step, index) => ({
     spk_routing_id: routing.id,
     template_step_id: step.id,
     step_name: step.name,

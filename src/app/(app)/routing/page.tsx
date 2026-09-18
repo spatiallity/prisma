@@ -27,6 +27,7 @@ export async function RoutingMonitor({
   mode = 'open',
   step,
   open,
+  invoiced = false,
 }: {
   mode?: 'open' | 'history'
   /** Narrows the open list to documents currently sitting at this step —
@@ -34,6 +35,8 @@ export async function RoutingMonitor({
   step?: string
   /** Routing document opened immediately after Add Data succeeds. */
   open?: string
+  /** Shows documents whose invoice event has been recorded. */
+  invoiced?: boolean
 }) {
   const user = await requirePermission('routing', 'view')
   const mayEdit = can(user.permissions, 'routing', 'edit')
@@ -89,6 +92,7 @@ export async function RoutingMonitor({
     .filter((doc) => {
       if (mode === 'history') return doc.status === 'Completed' || doc.status === 'Rejected'
       if (doc.status === 'Rejected') return false
+      if (invoiced) return doc.status === 'Completed'
       if (step && currentByDoc.get(doc.id)?.step_name !== step) return false
       return true
     })
@@ -164,6 +168,9 @@ export async function RoutingMonitor({
           templateId={defaultTemplateId}
           currentByDoc={currentBySummaryDoc}
           activeStep={step}
+          activeInvoiced={invoiced}
+          completedInvoicedCount={(documents ?? []).filter((doc) => doc.status === 'Completed').length}
+          totalDocumentCount={(documents ?? []).filter((doc) => doc.status !== 'Rejected').length}
         />
       )}
 
@@ -171,9 +178,9 @@ export async function RoutingMonitor({
         <CardHeader>
           <div>
             <CardTitle>{filtered.length} dokumen</CardTitle>
-            {step && (
+            {(step || invoiced) && (
               <CardDescription>
-                Difilter ke tahap <strong className="text-slate-700">{step}</strong> —{' '}
+                Difilter ke <strong className="text-slate-700">{invoiced ? 'Invoiced' : step}</strong> —{' '}
                 <Link href="/routing" className="font-bold text-primary hover:underline">
                   hapus filter
                 </Link>
@@ -239,10 +246,16 @@ async function StepSummaryCards({
   templateId,
   currentByDoc,
   activeStep,
+  activeInvoiced,
+  completedInvoicedCount,
+  totalDocumentCount,
 }: {
   templateId: string | null
   currentByDoc: Record<string, RoutingLeadTimeView>
   activeStep?: string
+  activeInvoiced: boolean
+  completedInvoicedCount: number
+  totalDocumentCount: number
 }) {
   const supabase = await createClient()
   const { data: steps } = templateId
@@ -258,11 +271,15 @@ async function StepSummaryCards({
     countByStep.set(current.step_name, (countByStep.get(current.step_name) ?? 0) + 1)
   }
 
-  const visibleSteps = (steps ?? []).filter((step) => step.name !== 'Finance')
+  const visibleSteps = steps ?? []
   if (visibleSteps.length === 0) return null
 
   const totalOpen = Object.keys(currentByDoc).length
-  const maxCount = Math.max(1, ...visibleSteps.map((step) => countByStep.get(step.name) ?? 0))
+  const maxCount = Math.max(
+    1,
+    completedInvoicedCount,
+    ...visibleSteps.map((step) => countByStep.get(step.name) ?? 0),
+  )
   const accents = [
     'from-primary/80 to-primary',
     'from-info/80 to-info',
@@ -275,14 +292,21 @@ async function StepSummaryCards({
   return (
     <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8">
       {visibleSteps.map((step, index) => {
-        const active = activeStep === step.name
-        const count = countByStep.get(step.name) ?? 0
+        const isInvoiced = step.name === 'Invoiced'
+        const active = isInvoiced ? activeInvoiced : activeStep === step.name
+        const count = isInvoiced ? completedInvoicedCount : countByStep.get(step.name) ?? 0
         const percentOfMax = Math.max(4, Math.round((count / maxCount) * 100))
-        const percentOfTotal = totalOpen > 0 ? Math.round((count / totalOpen) * 100) : 0
+        const denominator = isInvoiced ? totalDocumentCount : totalOpen
+        const percentOfTotal = denominator > 0 ? Math.round((count / denominator) * 100) : 0
+        const href = active
+          ? '/routing'
+          : isInvoiced
+            ? '/routing?invoiced=1'
+            : `/routing?step=${encodeURIComponent(step.name)}`
         return (
           <Link
             key={step.id}
-            href={active ? '/routing' : `/routing?step=${encodeURIComponent(step.name)}`}
+            href={href}
             className={cn(
               'group block overflow-hidden rounded-lg border bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
               active
@@ -296,7 +320,9 @@ async function StepSummaryCards({
                   {step.name}
                 </div>
                 <div className="mt-1 text-xs font-semibold text-muted-foreground">
-                  {count > 0 ? `${percentOfTotal}% dari dokumen aktif` : 'Tidak ada dokumen'}
+                  {count > 0
+                    ? `${percentOfTotal}% dari ${isInvoiced ? 'seluruh dokumen' : 'dokumen aktif'}`
+                    : 'Tidak ada dokumen'}
                 </div>
               </div>
               <div className="tnum shrink-0 text-2xl font-black text-slate-900">
@@ -413,7 +439,7 @@ async function RoutingMatrixSection({
     Object.entries(currentByDoc).map(([docId, current]) => [docId, current.sequence]),
   )
 
-  const visibleSteps = (steps ?? []).filter((step) => step.name !== 'Finance')
+  const visibleSteps = steps ?? []
 
   return (
     <RoutingMatrix
@@ -483,8 +509,8 @@ async function StageAverages() {
 export default async function RoutingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ step?: string; open?: string }>
+  searchParams: Promise<{ step?: string; open?: string; invoiced?: string }>
 }) {
-  const { step, open } = await searchParams
-  return <RoutingMonitor mode="open" step={step} open={open} />
+  const { step, open, invoiced } = await searchParams
+  return <RoutingMonitor mode="open" step={step} open={open} invoiced={invoiced === '1'} />
 }
