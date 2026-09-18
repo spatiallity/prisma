@@ -37,7 +37,7 @@ export type ProgressStatus = {
   area: string
   stage: string
   pic: string | null
-  /** PIC internal for design, and the assigned PIC for routing. */
+  /** PIC Pertamina assigned to the active design or routing stage. */
   assignee: string | null
   startedAt: string | null
   completedAt: string | null
@@ -161,18 +161,24 @@ function PicWorkload({
     .filter((row) => row.progress.assignee)
   const workload = [...assignedRows.reduce((counts, row) => {
     const name = row.progress.assignee as string
-    counts.set(name, (counts.get(name) ?? 0) + 1)
+    const current = counts.get(name) ?? { count: 0, maxDays: 0 }
+    counts.set(name, {
+      count: current.count + 1,
+      maxDays: Math.max(current.maxDays, row.progress.durationDays ?? 0),
+    })
     return counts
-  }, new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'id'))
-  const max = Math.max(1, ...workload.map(([, count]) => count))
+  }, new Map<string, { count: number; maxDays: number }>()).entries()].sort(
+    (a, b) => b[1].maxDays - a[1].maxDays || b[1].count - a[1].count || a[0].localeCompare(b[0], 'id'),
+  )
+  const max = Math.max(1, ...workload.map(([, metrics]) => metrics.count))
   const areaLabel = area === 'design' ? 'Desain' : 'Routing Dokumen'
 
   return (
     <Card className="mb-5 overflow-hidden">
       <CardHeader className="border-b border-slate-100">
         <div>
-          <CardTitle>Sebaran SPK per PIC</CardTitle>
-          <CardDescription>Klik PIC untuk menyaring card SPK pada board di bawah.</CardDescription>
+          <CardTitle>Sebaran SPK per PIC Pertamina</CardTitle>
+          <CardDescription>Jumlah pekerjaan aktif dan durasi terlama yang masih tertahan. Klik PIC untuk menyaring card SPK.</CardDescription>
         </div>
         <div className="flex rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Jenis beban kerja PIC">
           {(['design', 'routing'] as const).map((tab) => {
@@ -189,7 +195,7 @@ function PicWorkload({
                   active ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900',
                 )}
               >
-                {tab === 'design' ? 'PIC Desain' : 'PIC Routing Dokumen'}
+                {tab === 'design' ? 'Desain' : 'Routing Dokumen'}
               </button>
             )
           })}
@@ -197,7 +203,7 @@ function PicWorkload({
       </CardHeader>
       <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="space-y-2.5">
-          {workload.length > 0 ? workload.map(([name, count]) => {
+          {workload.length > 0 ? workload.map(([name, metrics]) => {
             const active = selectedAssignee === name
             return (
               <button
@@ -205,15 +211,16 @@ function PicWorkload({
                 type="button"
                 onClick={() => onAssigneeChange(active ? null : name)}
                 className={cn(
-                  'grid w-full grid-cols-[minmax(120px,220px)_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-left transition focus:ring-2 focus:ring-primary/30 focus:outline-none',
+                  'grid w-full grid-cols-[minmax(120px,220px)_1fr_auto_auto] items-center gap-3 rounded-md px-2 py-1.5 text-left transition focus:ring-2 focus:ring-primary/30 focus:outline-none',
                   active ? 'bg-primary-soft' : 'hover:bg-slate-50',
                 )}
               >
                 <span className="truncate text-sm font-bold text-slate-900">{name}</span>
                 <span className="h-2 overflow-hidden rounded-full bg-slate-100">
-                  <span className={cn('block h-full rounded-full', active ? 'bg-primary' : area === 'design' ? 'bg-info' : 'bg-brand-orange')} style={{ width: `${Math.max(8, (count / max) * 100)}%` }} />
+                  <span className={cn('block h-full rounded-full', active ? 'bg-primary' : area === 'design' ? 'bg-info' : 'bg-brand-orange')} style={{ width: `${Math.max(8, (metrics.count / max) * 100)}%` }} />
                 </span>
-                <span className="tnum text-sm font-black text-slate-900">{count}</span>
+                <span className="tnum whitespace-nowrap text-xs font-bold text-muted-foreground">{metrics.maxDays} hari</span>
+                <span className="tnum text-sm font-black text-slate-900">{metrics.count}</span>
               </button>
             )
           }) : (

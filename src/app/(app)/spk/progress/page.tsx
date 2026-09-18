@@ -137,7 +137,7 @@ export default async function SpkProgressPage() {
       area: PHASE_LABEL[design.phase],
       stage: stageDisplayLabel(design.current_stage),
       pic,
-      assignee: internalPic,
+      assignee: revision?.pic_pertamina ?? null,
       startedAt,
       completedAt,
       durationDays: completedAt ? daysBetween(startedAt, completedAt) : daysInStage(startedAt ?? design.updated_at),
