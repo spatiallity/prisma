@@ -55,10 +55,11 @@ function StepCell({
 
   if (stepName === 'Invoiced') {
     const alreadyInvoiced = cell.status === 'Completed'
+    const inProgress = isCurrent && !alreadyInvoiced
     return (
       <div>
-        <Badge tone={alreadyInvoiced ? 'success' : 'neutral'}>{alreadyInvoiced ? 'Sudah' : 'Belum'}</Badge>
-        {cell.invoice_date && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.invoice_date)}</div>}
+        <Badge tone={alreadyInvoiced ? 'success' : inProgress ? 'primary' : 'neutral'}>{alreadyInvoiced ? 'Invoiced' : inProgress ? 'Sedang Berjalan' : 'Belum'}</Badge>
+        {(cell.invoice_date ?? cell.started_at) && <div className="tnum text-xs text-muted-foreground">{formatDate(cell.invoice_date ?? cell.started_at)}</div>}
         {alreadyInvoiced && (!cell.invoice_date || cell.invoice_value === null) && (
           <div className="mt-1 text-[11px] font-semibold text-warning">Data belum lengkap</div>
         )}

@@ -214,6 +214,7 @@ export function RoutingStepDateForm({
   const picListId = useId()
   const isInvoiced = stepName === 'Invoiced'
   const isDone = entry.status === 'Completed'
+  const [finishingInvoice, setFinishingInvoice] = useState(isDone)
 
   if (isInvoiced) {
     return (
@@ -221,26 +222,62 @@ export function RoutingStepDateForm({
         <Feedback state={state} />
         <input type="hidden" name="routing_id" value={routingId} />
         <input type="hidden" name="step_id" value={stepId} />
+        <input type="hidden" name="invoice_complete" value={finishingInvoice ? '1' : '0'} />
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <span className="text-sm font-bold text-slate-700">Status invoice</span>
-          <span className={isDone ? 'text-sm font-black text-success' : 'text-sm font-black text-slate-500'}>
-            {isDone ? 'Sudah' : 'Belum'}
+          <span className={isDone ? 'text-sm font-black text-success' : 'text-sm font-black text-primary'}>
+            {isDone ? 'Invoiced' : 'Sedang Berjalan'}
           </span>
         </div>
-        <Field label="Nomor invoice" htmlFor="rd_inv_number">
-        <Input id="rd_inv_number" name="invoice_number" defaultValue={entry.invoice_number ?? ''} placeholder="INV-2026-014" />
-      </Field>
-      <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
-        <Input id="rd_inv_value" name="invoice_value" inputMode="numeric" defaultValue={entry.invoice_value ?? ''} />
-      </Field>
-      <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
-        <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? ''} />
-      </Field>
-      <Field label="Denda (Rp)" htmlFor="rd_denda" hint="Kosongkan kalau tidak ada denda.">
-        <Input id="rd_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={dendaValue ?? ''} />
-      </Field>
-        <div>
-          <Submit label={isDone ? 'Simpan perubahan invoice' : 'Simpan invoice'} icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
+        <Field label="Tanggal mulai" htmlFor="rd_inv_started" required>
+          <Input
+            id="rd_inv_started"
+            name="started_at"
+            type="date"
+            defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
+            required
+          />
+        </Field>
+        <Field label="PIC Pertamina" htmlFor="rd_inv_pic">
+          <Input id="rd_inv_pic" name="pic_name" list={picListId} defaultValue={entry.pic_name ?? ''} autoComplete="off" />
+          <datalist id={picListId}>
+            {PIC_PERTAMINA_SUGGESTIONS.map((name) => <option key={name} value={name} />)}
+          </datalist>
+        </Field>
+        <Field label="Catatan" htmlFor="rd_inv_note">
+          <Textarea id="rd_inv_note" name="note" rows={3} defaultValue={entry.note ?? ''} />
+        </Field>
+        {finishingInvoice && (
+          <div className="grid gap-3 border-t border-slate-200 pt-3">
+            <Field label="Tanggal selesai" htmlFor="rd_inv_completed" required>
+              <Input id="rd_inv_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? today} required />
+            </Field>
+            <Field label="Nomor invoice" htmlFor="rd_inv_number">
+              <Input id="rd_inv_number" name="invoice_number" defaultValue={entry.invoice_number ?? ''} placeholder="INV-2026-014" />
+            </Field>
+            <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
+              <Input id="rd_inv_value" name="invoice_value" inputMode="numeric" defaultValue={entry.invoice_value ?? ''} required />
+            </Field>
+            <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
+              <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? entry.completed_at?.slice(0, 10) ?? today} required />
+            </Field>
+            <Field label="Denda (Rp)" htmlFor="rd_denda" hint="Kosongkan kalau tidak ada denda.">
+              <Input id="rd_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={dendaValue ?? ''} />
+            </Field>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {finishingInvoice ? (
+            <>
+              {!isDone && <Button type="button" variant="secondary" onClick={() => setFinishingInvoice(false)}><Undo2 size={16} aria-hidden /> Kembali ke progres</Button>}
+              <Submit label={isDone ? 'Simpan perubahan invoice' : 'Simpan invoice'} icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
+            </>
+          ) : (
+            <>
+              <Submit label="Simpan progres" icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
+              <Button type="button" variant="secondary" onClick={() => setFinishingInvoice(true)}>Selesaikan invoice</Button>
+            </>
+          )}
         </div>
       </form>
     )

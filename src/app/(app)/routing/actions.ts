@@ -221,23 +221,49 @@ export async function updateRoutingStepDates(
     return { error: 'Selesaikan tahap sebelumnya dulu.' }
   }
 
-  // Invoiced is a final event, not a stage with a working period. It is
-  // complete the moment its invoice details are recorded.
+  // Invoice remains one routing stage. It may be saved as In Progress with a
+  // start date, then becomes Invoiced once its finish date and invoice value
+  // are recorded.
   if (step.step_name === 'Invoiced') {
+    const startedRaw = text(formData, 'started_at')
+    if (!startedRaw) return { error: 'Tanggal mulai wajib diisi.' }
+    const startedAt = new Date(`${startedRaw}T12:00:00`).toISOString()
+    const completeInvoice = text(formData, 'invoice_complete') === '1'
+
+    if (!completeInvoice) {
+      const { error } = await supabase
+        .from('routing_history')
+        .update({
+          status: 'In Progress' satisfies RoutingStatus,
+          started_at: startedAt,
+          completed_at: null,
+          pic_name: nullable(formData, 'pic_name') ?? undefined,
+          note: nullable(formData, 'note') ?? undefined,
+        })
+        .eq('id', stepId)
+      if (error) return { error: error.message }
+
+      revalidatePath('/routing')
+      revalidatePath(`/routing/${routingId}`)
+      return { error: null, success: 'Progres invoice disimpan.' }
+    }
+
     const invoiceNumber = nullable(formData, 'invoice_number')
     const invoiceValueRaw = nullable(formData, 'invoice_value')
     const invoiceDate = nullable(formData, 'invoice_date')
-    if (!invoiceValueRaw || !invoiceDate) {
-      return { error: 'Nilai invoice dan tanggal invoice wajib diisi.' }
+    const completedRaw = text(formData, 'completed_at')
+    if (!completedRaw || !invoiceValueRaw || !invoiceDate) {
+      return { error: 'Tanggal selesai, nilai invoice, dan tanggal invoice wajib diisi.' }
     }
 
-    const invoiceAt = new Date(`${invoiceDate}T12:00:00`).toISOString()
+    const completedAt = new Date(`${completedRaw}T12:00:00`).toISOString()
+    if (completedAt < startedAt) return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
     const { error } = await supabase
       .from('routing_history')
       .update({
         status: 'Completed' satisfies RoutingStatus,
-        started_at: null,
-        completed_at: invoiceAt,
+        started_at: startedAt,
+        completed_at: completedAt,
         pic_name: nullable(formData, 'pic_name') ?? undefined,
         note: nullable(formData, 'note') ?? undefined,
         invoice_number: invoiceNumber,

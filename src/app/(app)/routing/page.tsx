@@ -18,6 +18,14 @@ import { RoutingMatrix } from './routing-matrix'
 
 export const metadata: Metadata = { title: 'Routing Monitor' }
 
+type RoutingSummaryStep = {
+  id: string
+  name: string
+  sequence: number
+  sourceName: string
+  kind: 'stage' | 'ongoing' | 'completed'
+}
+
 /**
  * Section 23/24 — where every document sits and how long it has been there.
  * `mode` narrows the same table: the Section 7 submenu entries are views of
@@ -271,14 +279,21 @@ async function StepSummaryCards({
     countByStep.set(current.step_name, (countByStep.get(current.step_name) ?? 0) + 1)
   }
 
-  const visibleSteps = steps ?? []
+  const visibleSteps: RoutingSummaryStep[] = (steps ?? []).flatMap<RoutingSummaryStep>((step): RoutingSummaryStep[] =>
+    step.name === 'Invoiced'
+      ? [
+          { ...step, id: `${step.id}-invoicing`, name: 'Invoicing', sourceName: 'Invoiced', kind: 'ongoing' as const },
+          { ...step, sourceName: 'Invoiced', kind: 'completed' as const },
+        ]
+      : [{ ...step, sourceName: step.name, kind: 'stage' as const }],
+  )
   if (visibleSteps.length === 0) return null
 
   const totalOpen = Object.keys(currentByDoc).length
   const maxCount = Math.max(
     1,
     completedInvoicedCount,
-    ...visibleSteps.map((step) => countByStep.get(step.name) ?? 0),
+    ...visibleSteps.map((step) => countByStep.get(step.sourceName) ?? 0),
   )
   const accents = [
     'from-primary/80 to-primary',
@@ -292,9 +307,9 @@ async function StepSummaryCards({
   return (
     <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8">
       {visibleSteps.map((step, index) => {
-        const isInvoiced = step.name === 'Invoiced'
-        const active = isInvoiced ? activeInvoiced : activeStep === step.name
-        const count = isInvoiced ? completedInvoicedCount : countByStep.get(step.name) ?? 0
+        const isInvoiced = step.kind === 'completed'
+        const active = isInvoiced ? activeInvoiced : activeStep === step.sourceName
+        const count = isInvoiced ? completedInvoicedCount : countByStep.get(step.sourceName) ?? 0
         const percentOfMax = Math.max(4, Math.round((count / maxCount) * 100))
         const denominator = isInvoiced ? totalDocumentCount : totalOpen
         const percentOfTotal = denominator > 0 ? Math.round((count / denominator) * 100) : 0
@@ -302,7 +317,7 @@ async function StepSummaryCards({
           ? '/routing'
           : isInvoiced
             ? '/routing?invoiced=1'
-            : `/routing?step=${encodeURIComponent(step.name)}`
+            : `/routing?step=${encodeURIComponent(step.sourceName)}`
         return (
           <Link
             key={step.id}
