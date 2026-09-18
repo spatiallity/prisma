@@ -186,6 +186,7 @@ export async function advanceStep(
  *  - "revisi": stays open, status Returned, Catatan required (what needs
  *    fixing) — no separate revision sub-form or table any more.
  *  - "lanjut": closes the step, Tanggal selesai required.
+ *  - "simpan": keeps the step in progress while correcting its fields.
  *  - omitted: a past (already Completed) step's Simpan — just corrects the
  *    fields, status untouched.
  * The previous step must already be Completed — mirrors the gate the
@@ -317,6 +318,27 @@ export async function updateRoutingStepDates(
     revalidatePath('/routing')
     revalidatePath(`/routing/${routingId}`)
     return { error: null, success: 'Dicatat sebagai revisi.' }
+  }
+
+  // Saving an open stage is deliberately separate from advancing it: users
+  // often need to correct its PIC, start date, or note before it is ready to
+  // be completed. Never let the prefilled finish-date input close the stage.
+  if (decision === 'simpan') {
+    const { error } = await supabase
+      .from('routing_history')
+      .update({
+        started_at: startedAt,
+        completed_at: null,
+        status: 'In Progress' satisfies RoutingStatus,
+        pic_name: nullable(formData, 'pic_name') ?? undefined,
+        note: nullable(formData, 'note') ?? undefined,
+      })
+      .eq('id', stepId)
+    if (error) return { error: error.message }
+
+    revalidatePath('/routing')
+    revalidatePath(`/routing/${routingId}`)
+    return { error: null, success: 'Perubahan tahap disimpan.' }
   }
 
   const completedRaw = text(formData, 'completed_at')

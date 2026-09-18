@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useId, useState } from 'react'
-import { ArrowRight, Plus, Undo2 } from 'lucide-react'
+import { ArrowRight, Plus, Save, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
@@ -38,12 +38,14 @@ function Submit({
   value,
   pending = false,
   disabled = false,
+  formNoValidate = false,
 }: {
   label: string
   icon?: React.ReactNode
   variant?: 'primary' | 'secondary'
   pending?: boolean
   disabled?: boolean
+  formNoValidate?: boolean
   /** Set both to make this button's own name=value pair distinguish which
    *  of several submit buttons in one form was clicked (e.g. Lanjut vs
    *  Masih Revisi both posting to the same action). */
@@ -51,7 +53,7 @@ function Submit({
   value?: string
 }) {
   return (
-    <Button type="submit" name={name} value={value} variant={variant} disabled={disabled || pending}>
+    <Button type="submit" name={name} value={value} variant={variant} disabled={disabled || pending} formNoValidate={formNoValidate}>
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -178,10 +180,10 @@ export type RoutingStepEntry = {
 
 /**
  * Section 23 — the popup version of step review. A step still open (not yet
- * Completed) gets two plain outcomes instead of a mode picker or a separate
- * revision sub-form: Lanjut ke Tahap Selanjutnya (the default — closes it,
- * Tanggal selesai required) or Masih Revisi (stays open, status Returned,
- * the same Catatan field says what needs fixing — required for this one).
+ * Completed) gets three plain outcomes instead of a mode picker or a separate
+ * revision sub-form: Simpan perubahan (keeps it open), Lanjut ke Tahap
+ * Selanjutnya (closes it, Tanggal selesai required), or Masih Revisi (stays
+ * open, status Returned, and Catatan is required for this one).
  * An already-Completed step just gets Simpan, correcting the fields in
  * place without touching its status.
  */
@@ -308,7 +310,7 @@ export function RoutingStepDateForm({
         </datalist>
       </Field>
 
-      <Field label="Catatan" htmlFor="rd_note" required={!isDone}>
+      <Field label="Catatan" htmlFor="rd_note">
         <Textarea
           id="rd_note"
           name="note"
@@ -340,6 +342,15 @@ export function RoutingStepDateForm({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Submit
+              label="Simpan perubahan"
+              variant="secondary"
+              icon={<Save size={16} aria-hidden />}
+              name="decision"
+              value="simpan"
+              formNoValidate
+              pending={pending}
+            />
             <Submit
               label="Lanjutkan ke Tahap Selanjutnya"
               icon={<ArrowRight size={16} aria-hidden />}
