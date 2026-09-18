@@ -20,7 +20,7 @@ export default async function LoginPage({
         <div className="flex h-full flex-col justify-between p-12">
           <div className="flex items-center gap-4">
             <Image
-              src="/idsurvey-logo.png"
+              src="/idsurvey-white.png"
               alt="IDSurvey"
               width={180}
               height={36}
@@ -28,16 +28,14 @@ export default async function LoginPage({
               priority
             />
             <span className="h-8 w-px bg-white/25" aria-hidden />
-            <div className="relative h-11 w-32 overflow-hidden">
-              <Image
-                src="/sucofindo-logo.png"
-                alt="PT Sucofindo"
-                fill
-                sizes="128px"
-                className="object-cover object-bottom"
-                priority
-              />
-            </div>
+            <Image
+              src="/sucofindo-white.png"
+              alt="PT Sucofindo"
+              width={120}
+              height={82}
+              className="h-11 w-auto object-contain"
+              priority
+            />
           </div>
 
           <div className="flex flex-1 flex-col justify-center">
