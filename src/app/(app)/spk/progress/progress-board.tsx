@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { CalendarDays, ExternalLink, MapPin, Ruler, WalletCards } from 'lucide-react'
+import { CalendarDays, ExternalLink, MapPin, Ruler, UsersRound, WalletCards } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { linkButtonClass } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,6 +37,8 @@ export type ProgressStatus = {
   area: string
   stage: string
   pic: string | null
+  /** PIC internal for design, and the assigned PIC for routing. */
+  assignee: string | null
   startedAt: string | null
   completedAt: string | null
   durationDays: number | null
@@ -57,11 +59,33 @@ export type ProgressColumn = {
 
 export function ProgressBoard({ columns }: { columns: ProgressColumn[] }) {
   const [selected, setSelected] = useState<{ row: ProgressRow; column: ProgressColumn } | null>(null)
+  const [workloadArea, setWorkloadArea] = useState<'design' | 'routing'>('design')
+  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null)
+  const filteredColumns = columns.map((column) => ({
+    ...column,
+    rows:
+      selectedAssignee === null
+        ? column.rows
+        : column.rows.filter((row) => row.progress.assignee === selectedAssignee),
+  }))
+
+  function selectWorkloadArea(area: 'design' | 'routing') {
+    setWorkloadArea(area)
+    setSelectedAssignee(null)
+  }
 
   return (
     <>
+      <PicWorkload
+        columns={columns}
+        area={workloadArea}
+        selectedAssignee={selectedAssignee}
+        onAreaChange={selectWorkloadArea}
+        onAssigneeChange={setSelectedAssignee}
+      />
+
       <div className="grid gap-4 lg:grid-cols-5">
-        {columns.map((col) => (
+        {filteredColumns.map((col) => (
           <Card key={col.key} className="flex max-h-[calc(100vh-240px)] min-h-[360px] flex-col overflow-hidden">
             <CardHeader className="shrink-0">
               <div>
@@ -114,6 +138,105 @@ export function ProgressBoard({ columns }: { columns: ProgressColumn[] }) {
         {selected && <ProgressDetail row={selected.row} column={selected.column} />}
       </Modal>
     </>
+  )
+}
+
+function PicWorkload({
+  columns,
+  area,
+  selectedAssignee,
+  onAreaChange,
+  onAssigneeChange,
+}: {
+  columns: ProgressColumn[]
+  area: 'design' | 'routing'
+  selectedAssignee: string | null
+  onAreaChange: (area: 'design' | 'routing') => void
+  onAssigneeChange: (assignee: string | null) => void
+}) {
+  const targetColumns = area === 'design' ? ['desain_awal', 'finalisasi'] : ['invoicing']
+  const assignedRows = columns
+    .filter((column) => targetColumns.includes(column.key))
+    .flatMap((column) => column.rows)
+    .filter((row) => row.progress.assignee)
+  const workload = [...assignedRows.reduce((counts, row) => {
+    const name = row.progress.assignee as string
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+    return counts
+  }, new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'id'))
+  const max = Math.max(1, ...workload.map(([, count]) => count))
+  const areaLabel = area === 'design' ? 'Desain' : 'Routing Dokumen'
+
+  return (
+    <Card className="mb-5 overflow-hidden">
+      <CardHeader className="border-b border-slate-100">
+        <div>
+          <CardTitle>Sebaran SPK per PIC</CardTitle>
+          <CardDescription>Klik PIC untuk menyaring card SPK pada board di bawah.</CardDescription>
+        </div>
+        <div className="flex rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Jenis beban kerja PIC">
+          {(['design', 'routing'] as const).map((tab) => {
+            const active = area === tab
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onAreaChange(tab)}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs font-extrabold transition focus:ring-2 focus:ring-primary/30 focus:outline-none',
+                  active ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900',
+                )}
+              >
+                {tab === 'design' ? 'PIC Desain' : 'PIC Routing Dokumen'}
+              </button>
+            )
+          })}
+        </div>
+      </CardHeader>
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="space-y-2.5">
+          {workload.length > 0 ? workload.map(([name, count]) => {
+            const active = selectedAssignee === name
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onAssigneeChange(active ? null : name)}
+                className={cn(
+                  'grid w-full grid-cols-[minmax(120px,220px)_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-left transition focus:ring-2 focus:ring-primary/30 focus:outline-none',
+                  active ? 'bg-primary-soft' : 'hover:bg-slate-50',
+                )}
+              >
+                <span className="truncate text-sm font-bold text-slate-900">{name}</span>
+                <span className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <span className={cn('block h-full rounded-full', active ? 'bg-primary' : area === 'design' ? 'bg-info' : 'bg-brand-orange')} style={{ width: `${Math.max(8, (count / max) * 100)}%` }} />
+                </span>
+                <span className="tnum text-sm font-black text-slate-900">{count}</span>
+              </button>
+            )
+          }) : (
+            <div className="py-5 text-center text-sm font-semibold text-muted-foreground">Belum ada PIC pada SPK {areaLabel.toLowerCase()} yang berjalan.</div>
+          )}
+        </div>
+        <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-slate-500 uppercase">
+              <UsersRound size={15} className="text-primary" aria-hidden />
+              SPK ditugaskan
+            </div>
+            <div className="tnum mt-2 text-3xl font-black text-slate-900">{assignedRows.length}</div>
+            <div className="mt-1 text-xs font-semibold text-muted-foreground">pada {areaLabel.toLowerCase()}</div>
+          </div>
+          {selectedAssignee && (
+            <button type="button" onClick={() => onAssigneeChange(null)} className="mt-4 text-left text-xs font-extrabold text-primary hover:underline">
+              Tampilkan semua card
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
 
