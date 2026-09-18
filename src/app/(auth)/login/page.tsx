@@ -27,13 +27,13 @@ export default async function LoginPage({
               className="h-9 w-auto object-contain"
               priority
             />
-            <span className="h-8 w-px bg-white/25" aria-hidden />
+            <span className="h-12 w-px bg-white/25" aria-hidden />
             <Image
               src="/sucofindo-white.png"
               alt="PT Sucofindo"
-              width={120}
-              height={82}
-              className="h-11 w-auto object-contain"
+              width={160}
+              height={110}
+              className="h-16 w-auto object-contain"
               priority
             />
           </div>
