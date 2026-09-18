@@ -12,7 +12,7 @@ export default async function NewSpkPage() {
   await requirePermission('spk', 'create')
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl pb-8">
       <Link
         href="/spk"
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary"
@@ -21,9 +21,12 @@ export default async function NewSpkPage() {
         Kembali ke daftar SPK
       </Link>
 
-      <PageHeader title="Buat SPK Baru" />
+      <PageHeader
+        title="Buat SPK Baru"
+        description="Lengkapi data pekerjaan, jadwal, dan PDF SPK bila dokumen sudah tersedia."
+      />
 
-      <SpkForm action={createSpk} submitLabel="Simpan SPK" />
+      <SpkForm action={createSpk} submitLabel="Simpan SPK" allowInitialFileUpload />
     </div>
   )
 }

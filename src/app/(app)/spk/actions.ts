@@ -11,6 +11,9 @@ import { pickFormValues } from '@/lib/form-values'
 export type SpkFormState = {
   error: string | null
   success?: string
+  /** Present only when a new SPK was created from the form with a PDF waiting
+   *  to be uploaded by the browser. */
+  spkId?: string
   /** Raw submission, echoed back on error so the form can restore what the
    *  user typed instead of the action's reset wiping it. */
   values?: Record<string, string>
@@ -188,6 +191,12 @@ export async function createSpk(
   }
 
   revalidatePath('/spk')
+  // A browser-selected File cannot be forwarded through this Server Action to
+  // R2. Return the new id so the client can upload it through the existing,
+  // permission-checked document endpoint before taking the user to the SPK.
+  if (text(formData, 'create_with_file') === '1') {
+    return { error: null, spkId: data.id }
+  }
   redirect(`/spk/${data.id}?created=1`)
 }
 
