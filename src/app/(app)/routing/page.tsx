@@ -279,14 +279,29 @@ async function StepSummaryCards({
     countByStep.set(current.step_name, (countByStep.get(current.step_name) ?? 0) + 1)
   }
 
-  const visibleSteps: RoutingSummaryStep[] = (steps ?? []).flatMap<RoutingSummaryStep>((step): RoutingSummaryStep[] =>
-    step.name === 'Invoiced'
-      ? [
-          { ...step, id: `${step.id}-invoicing`, name: 'Invoicing', sourceName: 'Invoiced', kind: 'ongoing' as const },
-          { ...step, sourceName: 'Invoiced', kind: 'completed' as const },
-        ]
-      : [{ ...step, sourceName: step.name, kind: 'stage' as const }],
-  )
+  // Invoice remains a single matrix column. Its open and completed states are
+  // deliberately shown as two summary cards so the work still in progress is
+  // visible at a glance.
+  const invoiceTemplateStep = (steps ?? []).find((step) => step.name === 'Invoiced')
+  const visibleSteps: RoutingSummaryStep[] = [
+    ...(steps ?? [])
+      .filter((step) => step.name !== 'Invoiced')
+      .map((step) => ({ ...step, sourceName: step.name, kind: 'stage' as const })),
+    {
+      id: `${invoiceTemplateStep?.id ?? 'invoice'}-invoicing`,
+      name: 'Invoicing',
+      sequence: invoiceTemplateStep?.sequence ?? Number.MAX_SAFE_INTEGER - 1,
+      sourceName: 'Invoiced',
+      kind: 'ongoing',
+    },
+    {
+      id: invoiceTemplateStep?.id ?? 'invoice-invoiced',
+      name: 'Invoiced',
+      sequence: invoiceTemplateStep?.sequence ?? Number.MAX_SAFE_INTEGER,
+      sourceName: 'Invoiced',
+      kind: 'completed',
+    },
+  ]
   if (visibleSteps.length === 0) return null
 
   const totalOpen = Object.keys(currentByDoc).length
