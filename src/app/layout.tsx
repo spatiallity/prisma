@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: `%s · ${BRAND.name}`,
   },
   description: `${BRAND.expansion}. Sistem kontrol project ${BRAND.project} — ${BRAND.owner}.`,
-  icons: { icon: '/prisma-logo.svg' },
+  icons: { icon: '/prisma-logo.png' },
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
