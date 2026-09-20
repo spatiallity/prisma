@@ -7,7 +7,7 @@ import { AccordionChain, NotesList, type AccordionStep } from '@/components/ui/s
 import { formatDate } from '@/lib/utils'
 import { PHASE_STAGES, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
-import { StageEntryForm, StartDesignForm, type PicOption } from './forms'
+import { DeleteRevisionEntryButton, StageEntryForm, StartDesignForm, type PicOption } from './forms'
 
 type Revision = {
   id: string
@@ -70,6 +70,7 @@ export function DesignDetailModal({
   const isDraft = revisions.length === 0
   const stages = PHASE_STAGES[design.phase]
   const currentIndex = stages.indexOf(design.current_stage)
+  const latestRevisionId = revisions.at(-1)?.id
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
@@ -147,6 +148,7 @@ export function DesignDetailModal({
               pics={pics}
               previousDrafterName={previousDrafterName}
               previousPicPertamina={previousPicPertamina}
+              canRollback={now && latestEntry.id === latestRevisionId && revisions.length > 1}
               onSaved={() => setOpenKey(null)}
             />
           ) : undefined

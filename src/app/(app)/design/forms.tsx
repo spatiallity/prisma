@@ -412,6 +412,7 @@ export function StageEntryForm({
   pics,
   previousDrafterName,
   previousPicPertamina,
+  canRollback = false,
   onSaved,
 }: {
   designId: string
@@ -431,6 +432,8 @@ export function StageEntryForm({
    *  when this stage's own entry doesn't have one yet. */
   previousDrafterName?: string
   previousPicPertamina?: string | null
+  /** Only the newest history entry can be undone without creating a gap. */
+  canRollback?: boolean
   onSaved?: () => void
 }) {
   const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
@@ -454,8 +457,6 @@ export function StageEntryForm({
   const nextOptions = isCurrent ? DESIGN_NEXT_STAGES[stage] : []
   const isTerminal = isCurrent && nextOptions.length === 0
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
-  const [showAll, setShowAll] = useState(false)
-  const allOptions = PHASE_STAGES[phase].filter((s) => s !== stage)
   const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : (previousDrafterName ?? '')
   const anyPending = savePending || advancePending || completePending
 
@@ -538,29 +539,6 @@ export function StageEntryForm({
             </p>
           )}
 
-          {!showAll ? (
-            <button
-              type="button"
-              onClick={() => setShowAll(true)}
-              className="text-left text-xs font-bold text-primary hover:underline"
-            >
-              Pilih tahap lain…
-            </button>
-          ) : (
-            <Field label="Pindah ke tahap lain" htmlFor={`se_${entry.id}_other`}>
-              <Select
-                id={`se_${entry.id}_other`}
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-              >
-                {allOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
         </div>
       )}
 
@@ -583,6 +561,9 @@ export function StageEntryForm({
             pending={completePending}
             disabled={anyPending}
           />
+        )}
+        {canRollback && (
+          <DeleteRevisionEntryButton designId={designId} entryId={entry.id} />
         )}
       </div>
     </form>

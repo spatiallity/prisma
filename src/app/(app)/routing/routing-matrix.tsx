@@ -132,6 +132,7 @@ function RoutingDetailModal({
   const lastDocId = useRef<string | null>(null)
 
   const current = doc ? steps.find((s) => history[s.sequence] && history[s.sequence].status !== 'Completed') : undefined
+  const rollbackStepId = current?.id ?? steps.at(-1)?.id
 
   useEffect(() => {
     const key = doc?.id ?? null
@@ -205,6 +206,7 @@ function RoutingDetailModal({
             entry={cell}
             previousCompletedAt={previousCell?.completed_at}
             dendaValue={dendaValue}
+            canRollback={index > 0 && step.id === rollbackStepId}
             onSaved={() => setOpenKey(null)}
           />
         ) : undefined,

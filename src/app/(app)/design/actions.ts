@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import type { DesignStage, StageStatus } from '@/lib/supabase/types'
-import { PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
+import { DESIGN_NEXT_STAGES, PHASE_STAGES, PHASE_TERMINAL_STAGE } from '@/lib/design'
 
 export type DesignState = { error: string | null; success?: string }
 
@@ -403,6 +403,9 @@ export async function advanceStage(
   if (entryId && !current) return { error: 'Tahap aktif tidak ditemukan.' }
   if (current?.stage === stage) {
     return { error: `Desain sudah berada di tahap ${stage}.` }
+  }
+  if (current && !DESIGN_NEXT_STAGES[current.stage].includes(stage)) {
+    return { error: 'Tahap tidak dapat dilompati. Batalkan tahap terakhir untuk kembali ke tahap sebelumnya.' }
   }
 
   const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])

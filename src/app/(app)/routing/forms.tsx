@@ -7,12 +7,14 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field'
 import { Alert } from '@/components/ui/alert'
 import { Modal } from '@/components/ui/modal'
 import { Combobox } from '@/components/ui/combobox'
+import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
 import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import {
   advanceStep,
   addRoutingRevision,
   createRouting,
+  rollbackRoutingStep,
   updateRoutingStepDates,
   type RoutingState,
 } from './actions'
@@ -194,6 +196,7 @@ export function RoutingStepDateForm({
   entry,
   previousCompletedAt,
   dendaValue,
+  canRollback = false,
   onSaved,
 }: {
   routingId: string
@@ -208,6 +211,7 @@ export function RoutingStepDateForm({
   /** The SPK's current denda_value — only meaningful alongside the Invoiced
    *  fields, since that's the moment denda actually gets decided. */
   dendaValue?: number | null
+  canRollback?: boolean
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(updateRoutingStepDates, initialState)
@@ -279,6 +283,15 @@ export function RoutingStepDateForm({
               <Submit label="Simpan progres" icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
               <Button type="button" variant="secondary" onClick={() => setFinishingInvoice(true)}>Selesaikan invoice</Button>
             </>
+          )}
+          {canRollback && (
+            <DeleteButton
+              action={rollbackRoutingStep}
+              hiddenFields={{ routing_id: routingId, step_id: stepId }}
+              label="Batalkan tahap"
+              itemLabel="progres tahap ini"
+              confirmText="Batalkan progres tahap ini? Data pada tahap ini akan dikosongkan dan dokumen kembali ke tahap sebelumnya."
+            />
           )}
         </div>
       </form>
@@ -366,6 +379,15 @@ export function RoutingStepDateForm({
               value="revisi"
               pending={pending}
             />
+            {canRollback && (
+              <DeleteButton
+                action={rollbackRoutingStep}
+                hiddenFields={{ routing_id: routingId, step_id: stepId }}
+                label="Batalkan tahap"
+                itemLabel="progres tahap ini"
+                confirmText="Batalkan progres tahap ini? Data pada tahap ini akan dikosongkan dan dokumen kembali ke tahap sebelumnya."
+              />
+            )}
           </div>
         </>
       )}

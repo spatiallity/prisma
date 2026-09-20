@@ -434,3 +434,79 @@ export async function deleteRouting(
   revalidatePath(`/spk/${routingRow.spk_id}`)
   return { error: null }
 }
+
+/**
+ * Clears the active routing stage and reopens the one immediately before it.
+ * Routing history is pre-created for every template step, so this is a reset
+ * of one step, not a row deletion: the document retains its full route.
+ */
+export async function rollbackRoutingStep(
+  _prev: RoutingState,
+  formData: FormData,
+): Promise<RoutingState> {
+  await requirePermission('routing', 'edit')
+
+  const routingId = text(formData, 'routing_id')
+  const stepId = text(formData, 'step_id')
+  if (!routingId || !stepId) return { error: 'Tahap tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { data: routing, error: routingError } = await supabase
+    .from('spk_routing')
+    .select('spk_id')
+    .eq('id', routingId)
+    .maybeSingle()
+  if (routingError) return { error: routingError.message }
+  if (!routing) return { error: 'Dokumen routing tidak ditemukan.' }
+
+  const { data: steps, error: stepsError } = await supabase
+    .from('routing_history')
+    .select('id, sequence, step_name, status')
+    .eq('spk_routing_id', routingId)
+    .order('sequence')
+  if (stepsError) return { error: stepsError.message }
+  if (!steps?.length) return { error: 'Tahap routing tidak ditemukan.' }
+
+  const firstOpenIndex = steps.findIndex((step) => step.status !== 'Completed')
+  const currentIndex = firstOpenIndex === -1 ? steps.length - 1 : firstOpenIndex
+  const current = steps[currentIndex]
+  const previous = steps[currentIndex - 1]
+  if (!previous) return { error: 'Tahap pertama tidak dapat dibatalkan.' }
+  if (current.id !== stepId) return { error: 'Hanya tahap yang sedang berjalan yang dapat dibatalkan.' }
+
+  const { error: revisionError } = await supabase
+    .from('routing_step_revisions')
+    .delete()
+    .eq('routing_history_id', current.id)
+  if (revisionError) return { error: revisionError.message }
+
+  const { error: clearError } = await supabase
+    .from('routing_history')
+    .update({
+      status: 'Pending' satisfies RoutingStatus,
+      started_at: null,
+      completed_at: null,
+      pic_name: null,
+      note: null,
+      invoice_number: null,
+      invoice_value: null,
+      invoice_date: null,
+    })
+    .eq('id', current.id)
+  if (clearError) return { error: clearError.message }
+
+  const { error: reopenError } = await supabase
+    .from('routing_history')
+    .update({ status: 'In Progress' satisfies RoutingStatus, completed_at: null })
+    .eq('id', previous.id)
+  if (reopenError) return { error: reopenError.message }
+
+  if (current.step_name === 'Invoiced') {
+    await supabase.from('spks').update({ denda_value: null }).eq('id', routing.spk_id)
+  }
+
+  revalidatePath('/routing')
+  revalidatePath(`/routing/${routingId}`)
+  revalidatePath(`/spk/${routing.spk_id}`)
+  return { error: null, success: `Tahap dibatalkan. Kembali ke ${previous.step_name}.` }
+}
