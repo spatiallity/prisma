@@ -35,12 +35,12 @@ export default async function BottleneckPage() {
       supabase.from('spks').select('id, opname_marked_at, pad_marked_at'),
       supabase
         .from('design_revisions')
-        .select('design_id, stage, started_at, completed_at, updated_at')
+        .select('design_id, stage, pic_pertamina, started_at, completed_at, updated_at')
         .eq('status', 'Active'),
       supabase.from('spk_routing').select('id, spk_id'),
       supabase
         .from('routing_history')
-        .select('spk_routing_id, step_name, started_at, completed_at, updated_at'),
+        .select('spk_routing_id, step_name, status, pic_name, started_at, completed_at, updated_at'),
     ])
 
   // Same lookups the Dashboard's Bottleneck card uses to say what actually
@@ -93,6 +93,33 @@ export default async function BottleneckPage() {
     if (spk.pad_marked_at) addLastProcess(spk.id, { process: 'PAD', date: spk.pad_marked_at })
   }
 
+  // The "longest held" callout is for work that is waiting on a person, not
+  // operational milestones such as Opname or PAD. A design is PIC-owned only
+  // when its current stage has a Pertamina PIC; routing follows the same rule.
+  const picOwnedDesignSpks = new Set<string>()
+  for (const revision of designRevisions ?? []) {
+    const design = designById.get(revision.design_id)
+    if (
+      design?.current_stage === revision.stage &&
+      !revision.completed_at &&
+      revision.pic_pertamina?.trim()
+    ) {
+      picOwnedDesignSpks.add(design.spk_id)
+    }
+  }
+  const picOwnedRoutingSpks = new Set<string>()
+  for (const step of routingHistory ?? []) {
+    const spkId = routingSpkById.get(step.spk_routing_id)
+    if (
+      spkId &&
+      step.status !== 'Completed' &&
+      !step.completed_at &&
+      step.pic_name?.trim()
+    ) {
+      picOwnedRoutingSpks.add(spkId)
+    }
+  }
+
   const tableRows: BottleneckRow[] = (rows ?? []).map((row, index) => {
     const tanggal = bottleneckSinceDate(row, designsBySpk, opnameMarkedAtBySpk, padMarkedAtBySpk)
     const hari = tanggal
@@ -122,8 +149,14 @@ export default async function BottleneckPage() {
 
   const critical = tableRows.filter((row) => row.severity === 'critical').length
   const warning = tableRows.filter((row) => row.severity === 'warning').length
-  const oldest = tableRows
-    .filter((row) => row.hari !== null)
+  const oldestPicOwned = tableRows
+    .filter(
+      (row) =>
+        row.hari !== null &&
+        row.spk_id !== null &&
+        ((row.area === 'design' && picOwnedDesignSpks.has(row.spk_id)) ||
+          (row.area === 'routing' && picOwnedRoutingSpks.has(row.spk_id))),
+    )
     .sort((a, b) => (b.hari ?? 0) - (a.hari ?? 0))[0]
   const topReasons = [...tableRows.reduce((acc, row) => {
     acc.set(row.reason, (acc.get(row.reason) ?? 0) + 1)
@@ -164,9 +197,14 @@ export default async function BottleneckPage() {
               { label: 'Warning', value: warning, tone: 'text-warning', helper: 'pantau hari ini' },
               {
                 label: 'Tertahan Terlama',
-                value: oldest?.hari !== null && oldest?.hari !== undefined ? oldest.hari : 0,
+                value:
+                  oldestPicOwned?.hari !== null && oldestPicOwned?.hari !== undefined
+                    ? oldestPicOwned.hari
+                    : 0,
                 tone: 'text-info',
-                helper: oldest ? `${oldest.site_code ?? oldest.spk_number ?? 'SPK'} · hari` : 'tidak ada data',
+                helper: oldestPicOwned
+                  ? `${oldestPicOwned.site_code ?? oldestPicOwned.spk_number ?? 'SPK'} · ${oldestPicOwned.prosesTerakhir ?? 'menunggu PIC'}`
+                  : 'tidak ada proses PIC yang tertahan',
               },
             ].map((item) => (
               <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
