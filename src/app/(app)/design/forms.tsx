@@ -41,6 +41,8 @@ function Submit({
   formAction,
   pending = false,
   disabled = false,
+  name,
+  value,
 }: {
   label: string
   icon?: React.ReactNode
@@ -50,9 +52,18 @@ function Submit({
   /** Routes this button's submit to a different action than the form's own
    *  — used when one form offers two outcomes (Simpan vs Lanjutkan). */
   formAction?: (formData: FormData) => void
+  name?: string
+  value?: string
 }) {
   return (
-    <Button type="submit" variant={variant} disabled={disabled || pending} formAction={formAction}>
+    <Button
+      type="submit"
+      variant={variant}
+      disabled={disabled || pending}
+      formAction={formAction}
+      name={name}
+      value={value}
+    >
       {icon}
       {pending ? 'Menyimpan…' : label}
     </Button>
@@ -317,7 +328,11 @@ export function StageReviewForm({
   const [revisionState, revisionAction, revisionPending] = useActionState(addDesignRevision, initialState)
   useActionToast(advanceState)
   useActionToast(revisionState)
-  const options = PHASE_STAGES[phase].filter((stage) => stage !== currentStage)
+  const stageIndex = PHASE_STAGES[phase].indexOf(currentStage)
+  const options = [
+    ...DESIGN_NEXT_STAGES[currentStage],
+    ...PHASE_STAGES[phase].slice(0, Math.max(0, stageIndex)),
+  ]
   const today = new Date().toISOString().slice(0, 10)
 
   return (
@@ -343,7 +358,9 @@ export function StageReviewForm({
             <Select id="a_stage" name="stage" required>
               {options.map((stage) => (
                 <option key={stage} value={stage}>
-                  {stage}
+                  {DESIGN_NEXT_STAGES[currentStage].includes(stage)
+                    ? `Lanjut — ${stage}`
+                    : `Kembalikan — ${stage}`}
                 </option>
               ))}
             </Select>
@@ -398,9 +415,9 @@ export function StageReviewForm({
  * Drafter, PIC Pertamina, Catatan) without moving anything; Lanjutkan closes
  * it and opens the next stage, shown only on the current stage and only when
  * one exists. The target stage defaults to the one true next stage (see
- * DESIGN_NEXT_STAGES) so there's no picker for the common case — Review
- * Desain Awal is the one real fork, and "Pilih tahap lain" stays tucked away
- * for the rare manual correction.
+ * DESIGN_NEXT_STAGES) so there's no picker for the common case. "Pilih tahap
+ * lain" stays tucked away for a real correction: returning a finished review
+ * to a prior stage within the same design phase.
  */
 export function StageEntryForm({
   designId,
@@ -455,8 +472,11 @@ export function StageEntryForm({
   useActionToast(completeState, onSaved)
   const today = new Date().toISOString().slice(0, 10)
   const nextOptions = isCurrent ? DESIGN_NEXT_STAGES[stage] : []
+  const stageIndex = PHASE_STAGES[phase].indexOf(stage)
+  const previousOptions = isCurrent ? PHASE_STAGES[phase].slice(0, Math.max(0, stageIndex)) : []
   const isTerminal = isCurrent && nextOptions.length === 0
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
+  const [alternativeTarget, setAlternativeTarget] = useState('')
   const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : (previousDrafterName ?? '')
   const anyPending = savePending || advancePending || completePending
 
@@ -465,7 +485,6 @@ export function StageEntryForm({
       <Feedback state={saveState.error ? saveState : advanceState.error ? advanceState : completeState} />
       <input type="hidden" name="design_id" value={designId} />
       <input type="hidden" name="entry_id" value={entry.id} />
-      <input type="hidden" name="stage" value={target} />
 
       <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`} required>
         <Input
@@ -551,6 +570,8 @@ export function StageEntryForm({
             formAction={advanceAction}
             pending={advancePending}
             disabled={anyPending}
+            name="stage"
+            value={target}
           />
         )}
         {isTerminal && (
@@ -566,6 +587,39 @@ export function StageEntryForm({
           <DeleteRevisionEntryButton designId={designId} entryId={entry.id} />
         )}
       </div>
+
+      {isCurrent && previousOptions.length > 0 && (
+        <details className="border-t border-slate-200 pt-3">
+          <summary className="cursor-pointer text-sm font-bold text-primary">Pilih tahap lain</summary>
+          <div className="mt-3 grid gap-3">
+            <Field label="Kembalikan ke tahap" htmlFor={`se_${entry.id}_alternative_target`}>
+              <Select
+                id={`se_${entry.id}_alternative_target`}
+                value={alternativeTarget}
+                onChange={(event) => setAlternativeTarget(event.target.value)}
+              >
+                <option value="">Pilih tahap sebelumnya</option>
+                {previousOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <div>
+              <Submit
+                label="Pindahkan ke tahap pilihan"
+                variant="secondary"
+                formAction={advanceAction}
+                pending={advancePending}
+                disabled={anyPending || !alternativeTarget}
+                name="stage"
+                value={alternativeTarget}
+              />
+            </div>
+          </div>
+        </details>
+      )}
     </form>
   )
 }

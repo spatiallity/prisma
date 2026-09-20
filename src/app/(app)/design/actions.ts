@@ -404,8 +404,15 @@ export async function advanceStage(
   if (current?.stage === stage) {
     return { error: `Desain sudah berada di tahap ${stage}.` }
   }
-  if (current && !DESIGN_NEXT_STAGES[current.stage].includes(stage)) {
-    return { error: 'Tahap tidak dapat dilompati. Batalkan tahap terakhir untuk kembali ke tahap sebelumnya.' }
+  const currentStageIndex = current ? PHASE_STAGES[designRow.phase].indexOf(current.stage) : -1
+  const allowedPreviousStages =
+    currentStageIndex > 0 ? PHASE_STAGES[designRow.phase].slice(0, currentStageIndex) : []
+  if (
+    current &&
+    !DESIGN_NEXT_STAGES[current.stage].includes(stage) &&
+    !allowedPreviousStages.includes(stage)
+  ) {
+    return { error: 'Pilih tahap berikutnya atau kembalikan ke tahap sebelumnya dalam fase yang sama.' }
   }
 
   const now = pickedOrNowMulti(formData, ['completed_at', 'tanggal'])
