@@ -94,10 +94,6 @@ export async function deleteRole(
     .maybeSingle()
   if (roleError) return { error: roleError.message }
   if (!role) return { error: 'Role tidak ditemukan.' }
-  if (PROTECTED_ROLE_CODES.has(role.code)) {
-    return { error: 'Role inti sistem tidak dapat dihapus.' }
-  }
-
   const { count, error: userError } = await supabase
     .from('users')
     .select('id', { count: 'exact', head: true })

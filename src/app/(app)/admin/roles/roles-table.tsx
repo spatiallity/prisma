@@ -76,7 +76,7 @@ export function RolesTable({
           >
             <Pencil size={16} aria-hidden />
           </Link>
-          {mayManageRoles && !['administration', 'drafter', 'management', 'operational', 'project_manager', 'super_admin', 'tester', 'vendor'].includes(row.code) && (
+          {mayManageRoles && (
             <DeleteButton
               action={deleteRole}
               hiddenFields={{ id: row.id }}
