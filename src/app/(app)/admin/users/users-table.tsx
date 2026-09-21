@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { Badge, StatusBadge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -80,15 +81,17 @@ export function UsersTable({
             label: 'Aksi',
             align: 'right' as const,
             render: (row: UserRow) => (
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-1">
                 <Link
                   href={`/admin/users/${row.id}`}
-                  className="text-sm font-medium text-primary hover:underline"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-primary hover:border-primary/20 hover:bg-primary-soft"
+                  aria-label="Kelola user"
+                  title="Kelola user"
                 >
-                  Kelola
+                  <Pencil size={16} aria-hidden />
                 </Link>
                 {row.id !== currentUserId && (
-                  <DeleteButton action={deleteUserProfile} hiddenFields={{ id: row.id }} />
+                  <DeleteButton action={deleteUserProfile} hiddenFields={{ id: row.id }} iconOnly />
                 )}
               </div>
             ),

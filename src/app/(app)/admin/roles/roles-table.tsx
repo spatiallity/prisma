@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Pencil } from 'lucide-react'
 import { Badge, StatusBadge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { DeleteButton } from '@/components/ui/delete-button'
@@ -66,9 +67,14 @@ export function RolesTable({
       label: 'Aksi',
       align: 'right',
       render: (row) => (
-        <div className="flex justify-end gap-3">
-          <Link href={`/admin/roles/${row.id}`} className="text-sm font-medium text-primary hover:underline">
-            {mayEdit ? 'Atur permission' : 'Lihat permission'}
+        <div className="flex justify-end gap-1">
+          <Link
+            href={`/admin/roles/${row.id}`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-primary hover:border-primary/20 hover:bg-primary-soft"
+            aria-label={mayEdit ? 'Atur permission' : 'Lihat permission'}
+            title={mayEdit ? 'Atur permission' : 'Lihat permission'}
+          >
+            <Pencil size={16} aria-hidden />
           </Link>
           {mayManageRoles && !['administration', 'drafter', 'management', 'operational', 'project_manager', 'super_admin', 'tester', 'vendor'].includes(row.code) && (
             <DeleteButton
@@ -76,6 +82,7 @@ export function RolesTable({
               hiddenFields={{ id: row.id }}
               itemLabel={`role ${row.name}`}
               confirmText={`Hapus role ${row.name}? Role ini beserta seluruh permission-nya akan dihapus permanen.`}
+              iconOnly
             />
           )}
         </div>

@@ -29,12 +29,15 @@ export function DeleteButton({
   action,
   hiddenFields,
   label = 'Hapus',
+  iconOnly = false,
   itemLabel = 'data ini',
   confirmText,
 }: {
   action: (prevState: DeleteState, formData: FormData) => Promise<DeleteState>
   hiddenFields?: Record<string, string>
   label?: string
+  /** A compact icon trigger for dense table action cells. */
+  iconOnly?: boolean
   /** Named in the confirm dialog: "Apakah Anda yakin ingin menghapus {itemLabel}?" */
   itemLabel?: string
   /** Overrides the generated question entirely, if a longer explanation is needed. */
@@ -73,11 +76,16 @@ export function DeleteButton({
       trigger={
         <button
           type="button"
-          className="inline-flex items-center gap-1 text-xs font-bold text-danger hover:underline"
+          className={
+            iconOnly
+              ? 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-danger hover:border-red-200 hover:bg-red-50'
+              : 'inline-flex items-center gap-1 text-xs font-bold text-danger hover:underline'
+          }
           aria-label={label}
+          title={label}
         >
-          <Trash2 size={14} aria-hidden />
-          {label}
+          <Trash2 size={iconOnly ? 16 : 14} aria-hidden />
+          {!iconOnly && label}
         </button>
       }
     >
