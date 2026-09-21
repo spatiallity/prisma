@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Download, Plus } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
@@ -55,12 +55,21 @@ export default async function SpkListPage({
         title="SPK"
         description="Setiap progress, desain, routing, dan angka financial menempel pada salah satu SPK di sini."
         actions={
-          mayCreate && (
-            <Link href="/spk/new" className={linkButtonClass}>
-              <Plus size={16} aria-hidden />
-              Buat SPK Baru
-            </Link>
-          )
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/spk/export"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <Download size={16} aria-hidden />
+              Download data SPK
+            </a>
+            {mayCreate && (
+              <Link href="/spk/new" className={linkButtonClass}>
+                <Plus size={16} aria-hidden />
+                Buat SPK Baru
+              </Link>
+            )}
+          </div>
         }
       />
 
