@@ -301,64 +301,64 @@ export default async function DashboardPage() {
       <PageHeader title={`Selamat datang, ${user.fullName.split(' ')[0]}`} />
 
       {seeFinance ? (
-        <div className="mb-5 grid items-start gap-5 xl:grid-cols-[1.12fr_0.88fr]">
+        <div className="mb-5 grid gap-5">
           <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Nilai SPK</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="px-5 pt-5 pb-4">
-                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
-                <div className="tnum mt-1 text-3xl font-black text-slate-900">
-                  {formatRupiah(nilaiSpkTotal)}
+              {/* Total sits beside the six metrics rather than above them —
+                  at full width a lone figure on its own row left most of the
+                  card empty. */}
+              <div className="grid xl:grid-cols-[minmax(0,0.85fr)_minmax(0,2.15fr)]">
+                <div className="border-b border-slate-100 px-5 py-5 xl:flex xl:flex-col xl:justify-center xl:border-r xl:border-b-0">
+                  <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
+                  <div className="tnum mt-1 text-3xl font-black text-slate-900">
+                    {formatRupiah(nilaiSpkTotal)}
+                  </div>
                 </div>
-              </div>
-              <div className="grid border-y border-slate-100 sm:grid-cols-3">
-                {[
-                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, tone: 'bg-info', valueTone: 'text-info' },
-                  { label: 'PAD', value: padTotal, tone: 'bg-warning', valueTone: 'text-warning' },
-                  { label: 'Invoiced', value: invoiceTotal, tone: 'bg-success', valueTone: 'text-success' },
-                ].map((m, index) => (
-                  <div key={m.label} className={cn('min-w-0 px-4 py-3.5', index > 0 && 'border-t border-slate-100 sm:border-t-0 sm:border-l')}>
-                    <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
-                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
-                      {m.label}
+
+                <div className="grid sm:grid-cols-3">
+                  {[
+                    { label: 'SPK Sudah Opname/BAST', detail: null, value: opnameTotal, tone: 'bg-info', valueTone: 'text-info' },
+                    { label: 'PAD', detail: null, value: padTotal, tone: 'bg-warning', valueTone: 'text-warning' },
+                    { label: 'Invoiced', detail: null, value: invoiceTotal, tone: 'bg-success', valueTone: 'text-success' },
+                    { label: 'Total Pengeluaran', detail: null, value: expenseTotal, tone: 'bg-danger', valueTone: 'text-danger' },
+                    {
+                      label: 'Laba Rugi Nilai SPK',
+                      detail: 'Nilai SPK - Pengeluaran',
+                      value: labaRugiNilaiSpk,
+                      tone: labaRugiNilaiSpk < 0 ? 'bg-danger' : 'bg-success',
+                      valueTone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
+                    },
+                    {
+                      label: 'Laba Rugi Teropname',
+                      detail: 'Teropname - Pengeluaran',
+                      value: labaRugiOpname,
+                      tone: labaRugiOpname < 0 ? 'bg-danger' : 'bg-success',
+                      valueTone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
+                    },
+                  ].map((m, index) => (
+                    <div
+                      key={m.label}
+                      className={cn(
+                        'min-w-0 border-slate-100 px-4 py-3.5',
+                        index > 0 && 'border-t',
+                        index > 0 && index < 3 && 'sm:border-t-0',
+                        index % 3 !== 0 && 'sm:border-l',
+                      )}
+                    >
+                      <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
+                        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
+                        {m.label}
+                      </div>
+                      {m.detail ? <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{m.detail}</div> : null}
+                      <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
+                        {formatRupiah(m.value)}
+                      </div>
                     </div>
-                    <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
-                      {formatRupiah(m.value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid sm:grid-cols-3">
-                {[
-                  { label: 'Total Pengeluaran', detail: null, value: expenseTotal, tone: 'bg-danger', valueTone: 'text-danger' },
-                  {
-                    label: 'Laba Rugi Nilai SPK',
-                    detail: 'Nilai SPK - Pengeluaran',
-                    value: labaRugiNilaiSpk,
-                    tone: labaRugiNilaiSpk < 0 ? 'bg-danger' : 'bg-success',
-                    valueTone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
-                  },
-                  {
-                    label: 'Laba Rugi Teropname',
-                    detail: 'Teropname - Pengeluaran',
-                    value: labaRugiOpname,
-                    tone: labaRugiOpname < 0 ? 'bg-danger' : 'bg-success',
-                    valueTone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
-                  },
-                ].map((m, index) => (
-                  <div key={m.label} className={cn('min-w-0 px-4 py-3.5', index > 0 && 'border-t border-slate-100 sm:border-t-0 sm:border-l')}>
-                    <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
-                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
-                      {m.label}
-                    </div>
-                    {m.detail ? <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{m.detail}</div> : null}
-                    <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
-                      {formatRupiah(m.value)}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
               <div className="border-t border-slate-100 px-5 py-3">
                 <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
@@ -368,20 +368,20 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-5">
-            <Card className="overflow-hidden">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>Ringkasan Kontrak</CardTitle>
                   <CardDescription>Serapan nilai kontrak Top SCR</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="p-5">
+              <CardContent className="flex flex-1 flex-col justify-center p-5">
                 <ContractAbsorptionChart capacity={TOP_SCR_CONTRACT_VALUE} issued={nilaiSpkTotal} />
               </CardContent>
             </Card>
 
-            <Card className="overflow-hidden">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
@@ -389,7 +389,7 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               {seeRabBudget ? (
-                <CardContent className="grid gap-5 p-5 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
+                <CardContent className="grid flex-1 gap-5 p-5 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
                   <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2">
                     <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
                   </div>
@@ -418,7 +418,7 @@ export default async function DashboardPage() {
                   </div>
                 </CardContent>
               ) : (
-                <CardContent className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+                <CardContent className="flex min-h-48 flex-1 flex-col items-center justify-center gap-2 text-center">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
                     <LockKeyhole size={18} aria-hidden />
                   </span>
