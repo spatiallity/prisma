@@ -24,6 +24,7 @@ type DesignLite = {
   id: string
   phase: DesignPhase
   current_stage: DesignStage
+  approved_at: string | null
 }
 
 /** The chain for one design, plus its review form — a popup instead of a
@@ -68,6 +69,7 @@ export function DesignDetailModal({
   if (!design) return null
 
   const isDraft = revisions.length === 0
+  const isComplete = Boolean(design.approved_at)
   const stages = PHASE_STAGES[design.phase]
   const currentIndex = stages.indexOf(design.current_stage)
   const latestRevisionId = revisions.at(-1)?.id
@@ -81,8 +83,8 @@ export function DesignDetailModal({
     // workflow position is still reliable, so earlier stages are shown as
     // complete without inventing dates or history rows.
     const inferredDone = !isDraft && index < currentIndex
-    const done = Boolean(latestEntry?.completed_at) || inferredDone
-    const now = stage === design.current_stage
+    const done = Boolean(latestEntry?.completed_at) || inferredDone || (isComplete && stage === design.current_stage)
+    const now = stage === design.current_stage && !done
     const state = now ? 'current' : done ? 'done' : 'pending'
 
     // A freshly-opened stage's own entry has no Drafter/PIC Pertamina yet —
