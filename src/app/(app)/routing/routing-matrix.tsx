@@ -12,7 +12,7 @@ import { DeleteButton } from '@/components/ui/delete-button'
 import { cn, formatDate } from '@/lib/utils'
 import { daysBetween, daysInStage } from '@/lib/design'
 import { RoutingStepDateForm } from './forms'
-import { deleteRouting } from './actions'
+import { rollbackRoutingStep } from './actions'
 import { OpnamePadRow } from '../spk/[id]/opname-pad-mark'
 import { markOpname, markPad, unmarkOpname, unmarkPad } from '../spk/actions'
 import type { Database } from '@/lib/supabase/types'
@@ -422,6 +422,10 @@ export function RoutingMatrix({
       stopRowClick: true,
       render: (row) => {
         const spk = spkById[row.spk_id]
+        const currentSequence = currentSequenceByDoc[row.id] ?? steps.at(-1)?.sequence
+        const currentStepIndex = steps.findIndex((step) => step.sequence === currentSequence)
+        const currentStep = currentStepIndex >= 0 ? steps[currentStepIndex] : undefined
+        const currentHistory = currentStep ? historyByDoc[row.id]?.[currentStep.sequence] : undefined
         return (
           <RowActions>
             <button
@@ -432,12 +436,13 @@ export function RoutingMatrix({
               <Eye size={14} aria-hidden />
               Detail
             </button>
-            {mayEdit && !isVirtual(row) && (
+            {mayEdit && !isVirtual(row) && currentHistory && currentStepIndex > 0 && (
               <DeleteButton
-                action={deleteRouting}
-                hiddenFields={{ routing_id: row.id }}
-                label="Hapus Progress"
-                confirmText={`Progres dokumen invoice untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — dokumen invoice bisa dibuat lagi dari sini.`}
+                action={rollbackRoutingStep}
+                hiddenFields={{ routing_id: row.id, step_id: currentHistory.id }}
+                label="Batalkan tahap terakhir"
+                itemLabel={`tahap ${currentStep?.name ?? 'saat ini'}`}
+                confirmText={`Tahap ${currentStep?.name ?? 'saat ini'} untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dikosongkan dan dikembalikan ke tahap sebelumnya. Riwayat tahap lain tetap tersimpan.`}
               />
             )}
           </RowActions>

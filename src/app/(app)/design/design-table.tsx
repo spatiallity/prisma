@@ -10,7 +10,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { STAGE_TONE, daysInStage, stageDisplayLabel } from '@/lib/design'
 import type { Database, DesignPhase } from '@/lib/supabase/types'
 import { DesignDetailModal } from './design-detail-modal'
-import { deleteDesign } from './actions'
+import { deleteRevisionEntry } from './actions'
 import type { PicOption } from './forms'
 
 type DesignRow = Database['public']['Tables']['designs']['Row']
@@ -171,6 +171,8 @@ export function DesignTable({
       stopRowClick: true,
       render: (row) => {
         const spk = spkById[row.spk_id]
+        const revisions = revisionsByDesign?.[row.id] ?? []
+        const latestRevision = revisions.at(-1)
         return (
           <RowActions>
             <button
@@ -181,12 +183,13 @@ export function DesignTable({
               <Eye size={14} aria-hidden />
               Detail
             </button>
-            {mayEdit && (
+            {mayEdit && latestRevision && revisions.length > 1 && (
               <DeleteButton
-                action={deleteDesign}
-                hiddenFields={{ design_id: row.id }}
-                label="Hapus Progress"
-                confirmText={`Progres desain untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dihapus permanen (seluruh riwayat tahap ikut terhapus). SPK-nya sendiri tidak terhapus — bisa dimulai ulang dari sini.`}
+                action={deleteRevisionEntry}
+                hiddenFields={{ design_id: row.id, entry_id: latestRevision.id }}
+                label="Batalkan tahap terakhir"
+                itemLabel={`tahap ${stageDisplayLabel(latestRevision.stage as DesignRow['current_stage'])}`}
+                confirmText={`Tahap terakhir Desain untuk ${spk?.site_code ?? spk?.spk_number ?? 'SPK ini'} akan dibatalkan. Riwayat tahap sebelumnya tetap tersimpan.`}
               />
             )}
           </RowActions>
