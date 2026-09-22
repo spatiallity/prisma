@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useId, useMemo, useState } from 'react'
+import { useActionState, useId, useMemo, useRef, useState } from 'react'
 import { ArrowRight, Pencil, Plus, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Field, Input, Select, Textarea } from '@/components/ui/field'
@@ -41,8 +41,7 @@ function Submit({
   formAction,
   pending = false,
   disabled = false,
-  name,
-  value,
+  onClick,
 }: {
   label: string
   icon?: React.ReactNode
@@ -52,8 +51,12 @@ function Submit({
   /** Routes this button's submit to a different action than the form's own
    *  — used when one form offers two outcomes (Simpan vs Lanjutkan). */
   formAction?: (formData: FormData) => void
-  name?: string
-  value?: string
+  /** Runs before the native submit fires — used to sync a shared hidden
+   *  field to whichever target this specific button means (see
+   *  StageEntryForm's stageInputRef). A button's own name/value attrs
+   *  aren't reliably included in FormData when formAction is a function
+   *  reference rather than a URL, so that's not used here. */
+  onClick?: () => void
 }) {
   return (
     <Button
@@ -61,8 +64,7 @@ function Submit({
       variant={variant}
       disabled={disabled || pending}
       formAction={formAction}
-      name={name}
-      value={value}
+      onClick={onClick}
     >
       {icon}
       {pending ? 'Menyimpan…' : label}
@@ -477,6 +479,7 @@ export function StageEntryForm({
   const isTerminal = isCurrent && nextOptions.length === 0
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
   const [alternativeTarget, setAlternativeTarget] = useState('')
+  const stageInputRef = useRef<HTMLInputElement>(null)
   const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : (previousDrafterName ?? '')
   const anyPending = savePending || advancePending || completePending
 
@@ -485,6 +488,7 @@ export function StageEntryForm({
       <Feedback state={saveState.error ? saveState : advanceState.error ? advanceState : completeState} />
       <input type="hidden" name="design_id" value={designId} />
       <input type="hidden" name="entry_id" value={entry.id} />
+      <input type="hidden" name="stage" ref={stageInputRef} defaultValue={target} />
 
       <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`} required>
         <Input
@@ -570,8 +574,9 @@ export function StageEntryForm({
             formAction={advanceAction}
             pending={advancePending}
             disabled={anyPending}
-            name="stage"
-            value={target}
+            onClick={() => {
+              if (stageInputRef.current) stageInputRef.current.value = target
+            }}
           />
         )}
         {isTerminal && (
@@ -613,8 +618,9 @@ export function StageEntryForm({
                 formAction={advanceAction}
                 pending={advancePending}
                 disabled={anyPending || !alternativeTarget}
-                name="stage"
-                value={alternativeTarget}
+                onClick={() => {
+                  if (stageInputRef.current) stageInputRef.current.value = alternativeTarget
+                }}
               />
             </div>
           </div>
