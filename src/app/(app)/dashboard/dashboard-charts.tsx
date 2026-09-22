@@ -147,14 +147,14 @@ export function ContractAbsorptionChart({ capacity, issued }: { capacity: number
       </div>
       <div className="flex h-8 overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-center text-[10px] font-bold text-white">
         <div
-          className="flex min-w-0 items-center justify-center bg-brand-navy px-2 whitespace-nowrap"
+          className="flex min-w-0 items-center justify-center bg-primary px-2 whitespace-nowrap"
           style={{ width: `${issuedPercent}%` }}
         >
           {formatRupiahCompact(issued)} ({issuedPercent.toFixed(0)}%)
         </div>
         {remainingPercent > 0 ? (
           <div
-            className="flex min-w-0 items-center justify-center bg-brand-orange px-2 whitespace-nowrap"
+            className="flex min-w-0 items-center justify-center bg-slate-200 px-2 text-slate-700 whitespace-nowrap"
             style={{ width: `${remainingPercent}%` }}
           >
             {formatRupiahCompact(remaining)} ({remainingPercent.toFixed(0)}%)
