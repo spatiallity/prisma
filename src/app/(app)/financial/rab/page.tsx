@@ -36,11 +36,16 @@ export default async function MonitoringRabPage({
   const mayEdit = can(user.permissions, 'rab_monitoring', 'edit')
 
   const supabase = await createClient()
-  const [{ data: akunSummary }, { data: coa }, { data: allTx }, { data: recent }, { data: bulanRealisasi }] =
+  const [{ data: akunSummary }, { data: coa }, { data: bulananTotal }, { data: recent }, { data: bulanRealisasi }] =
     await Promise.all([
       supabase.from('v_finance_akun_summary').select('*').order('kode_akun'),
       supabase.from('chart_of_accounts').select('kode_akun, uraian, kategori_roman_label'),
-      supabase.from('finance_transactions').select('bulan, jumlah').eq('status', 'Active'),
+      // Summed in Postgres, not fetched raw — finance_transactions already
+      // has 1000+ Active rows, past Supabase's default unbounded-select cap,
+      // so pulling every row client-side to sum per bulan silently dropped
+      // whichever rows fell outside that cap (see migration
+      // 20260922000100_finance_realisasi_bulanan_total).
+      supabase.from('v_finance_realisasi_bulanan_total').select('bulan, realisasi').order('bulan'),
       bulan
         ? supabase
             .from('finance_transactions')
@@ -72,15 +77,12 @@ export default async function MonitoringRabPage({
     (bulanRealisasi ?? []).map((r) => [r.kode_akun, Number(r.realisasi)]),
   )
 
-  const months = [...new Set((allTx ?? []).map((r) => r.bulan))].sort()
+  const months = (bulananTotal ?? []).map((r) => r.bulan).sort()
   const monthOptions = months.map((m) => m.slice(0, 7))
 
-  const monthlySpend = months.map((m) => ({
-    bulan: m,
-    jumlah: (allTx ?? [])
-      .filter((r) => r.bulan === m)
-      .reduce((sum, r) => sum + Number(r.jumlah), 0),
-  }))
+  const monthlySpend = (bulananTotal ?? [])
+    .map((r) => ({ bulan: r.bulan, jumlah: Number(r.realisasi) }))
+    .sort((a, b) => a.bulan.localeCompare(b.bulan))
 
   // Bulan filtered: realisasi (and the selisih derived from it) becomes that
   // month's spend per akun instead of the always-accumulated view value.

@@ -730,6 +730,11 @@ export type FinanceRealisasiBulananView = {
   realisasi: number
 }
 
+export type FinanceRealisasiBulananTotalView = {
+  bulan: string
+  realisasi: number
+}
+
 /** migrations/20260830000100 — Anggaran vs Realisasi vs Selisih per kode_akun, all-time. */
 export type FinanceAkunSummaryView = {
   kode_akun: string
@@ -1078,6 +1083,7 @@ export type Database = {
       v_bottleneck: { Row: BottleneckView; Relationships: [] }
       v_spk_financial: { Row: SpkFinancialView; Relationships: [] }
       v_finance_realisasi_bulanan: { Row: FinanceRealisasiBulananView; Relationships: [] }
+      v_finance_realisasi_bulanan_total: { Row: FinanceRealisasiBulananTotalView; Relationships: [] }
       v_finance_akun_summary: { Row: FinanceAkunSummaryView; Relationships: [] }
       v_routing_stage_average: { Row: RoutingStageAverageView; Relationships: [] }
       v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }
