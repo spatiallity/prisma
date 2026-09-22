@@ -280,12 +280,15 @@ export default async function DashboardPage() {
     icon: LucideIcon
     accent: 'primary' | 'info' | 'navy' | 'gold' | 'orange'
   }[] = [
+    // Every tile but Total SPK points at Progress SPK — a status breakdown
+    // reads as "where in the funnel", which the Kanban view answers better
+    // than a filtered SPK list.
     { label: 'Total SPK', value: kpi?.total_spk ?? 0, href: '/spk', icon: FolderKanban, accent: 'primary' },
-    { label: 'On Going', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
-    { label: 'Survei Terestris', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
-    { label: 'Design', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
-    { label: 'Invoicing', value: progressCounts.invoicing, href: '/routing', icon: Route, accent: 'orange' },
-    { label: 'Invoiced', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
+    { label: 'On Going', value: kpi?.spk_on_going ?? 0, href: '/spk/progress', icon: Workflow, accent: 'gold' },
+    { label: 'Survei Terestris', value: fieldOnGoingCount, href: '/spk/progress', icon: MapIcon, accent: 'info' },
+    { label: 'Design', value: designOnGoingCount, href: '/spk/progress', icon: PencilRuler, accent: 'navy' },
+    { label: 'Invoicing', value: progressCounts.invoicing, href: '/spk/progress', icon: Route, accent: 'orange' },
+    { label: 'Invoiced', value: kpi?.spk_selesai ?? 0, href: '/spk/progress', icon: CheckCircle2, accent: 'primary' },
   ]
 
   const ACCENT_CLASS: Record<(typeof tiles)[number]['accent'], string> = {
@@ -373,7 +376,7 @@ export default async function DashboardPage() {
               <CardHeader>
                 <div>
                   <CardTitle>Ringkasan Kontrak</CardTitle>
-                  <CardDescription>Serapan nilai kontrak Top SCR</CardDescription>
+                  <CardDescription>Progress Serapan Kontrak</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col p-4">
@@ -389,10 +392,13 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               {seeRabBudget ? (
-                <CardContent className="grid flex-1 gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
-                  <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2">
+                <CardContent className="grid flex-1 content-start gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start">
+                  <Link
+                    href="/financial/rab"
+                    className="flex justify-center border-b border-slate-100 pb-4 transition-opacity hover:opacity-80 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2"
+                  >
                     <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-                  </div>
+                  </Link>
                   <div className="grid gap-3">
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-sm text-muted-foreground">Anggaran</span>
