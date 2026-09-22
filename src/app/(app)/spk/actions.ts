@@ -306,6 +306,9 @@ export async function markOpname(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/design')
+  revalidatePath('/spk/progress')
+  revalidatePath('/dashboard')
   return { error: null, success: 'Opname disimpan.' }
 }
 
@@ -334,6 +337,9 @@ export async function unmarkOpname(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/design')
+  revalidatePath('/spk/progress')
+  revalidatePath('/dashboard')
   return { error: null, success: 'Tanda opname dibatalkan.' }
 }
 

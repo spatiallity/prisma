@@ -25,6 +25,18 @@ function money(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+/** Invoice completion also changes the terminal Routing state and SPK status
+ * through the database trigger. Invalidate every screen that reports either
+ * of those values so the next navigation always reads the same milestone. */
+function revalidateInvoiceWorkflow(spkId?: string) {
+  revalidatePath('/routing')
+  revalidatePath('/spk')
+  revalidatePath('/spk/progress')
+  revalidatePath('/dashboard')
+  revalidatePath('/reports/financial')
+  if (spkId) revalidatePath(`/spk/${spkId}`)
+}
+
 // --- Revenue documents (Section 25.1-25.5) ----------------------------------
 
 /**
@@ -115,6 +127,7 @@ export async function saveRevenueDoc(
 
   revalidatePath(`/financial/${meta.slug}`)
   revalidatePath(`/spk/${spkId}`)
+  if (kind === 'invoice') revalidateInvoiceWorkflow(spkId)
   return { error: null, success: `${meta.label} tersimpan.` }
 }
 
@@ -211,6 +224,7 @@ export async function updateRevenueDoc(
 
   revalidatePath(`/financial/${meta.slug}`)
   revalidatePath(`/spk/${spkId}`)
+  if (kind === 'invoice') revalidateInvoiceWorkflow(spkId)
   return { error: null, success: `${meta.label} tersimpan.` }
 }
 
@@ -232,10 +246,16 @@ export async function setRevenueDocStatus(
   const table = kind === 'contract' ? 'contracts' : kind === 'invoice' ? 'invoices' : 'payments'
 
   const supabase = await createClient()
-  const { error } = await supabase.from(table).update({ status }).eq('id', id)
+  const { data: document, error } = await supabase
+    .from(table)
+    .update({ status })
+    .eq('id', id)
+    .select('spk_id')
+    .maybeSingle()
   if (error) return { error: error.message }
 
   revalidatePath(`/financial/${meta.slug}`)
+  if (kind === 'invoice') revalidateInvoiceWorkflow(document?.spk_id)
   return { error: null, success: `Status diubah menjadi ${status}.` }
 }
 
@@ -269,5 +289,6 @@ export async function deleteRevenueDoc(
 
   revalidatePath(`/financial/${meta.slug}`)
   if (spkId) revalidatePath(`/spk/${spkId}`)
+  if (kind === 'invoice') revalidateInvoiceWorkflow(spkId)
   return { error: null }
 }
