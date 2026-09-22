@@ -302,43 +302,54 @@ export default async function DashboardPage() {
         <div className="mb-5 grid gap-5 lg:grid-cols-2">
           <Card className="overflow-hidden rounded-2xl">
             <CardHeader>
-              <div>
-                <CardTitle>Nilai SPK</CardTitle>
-              </div>
+              <CardTitle>Nilai SPK</CardTitle>
             </CardHeader>
-            <CardContent className="grid content-start gap-4">
-              <div>
-                <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
-                <div className="tnum mt-1 text-4xl font-black text-slate-900">
+            <CardContent className="grid content-start gap-5 p-5">
+              <div className="border-b border-slate-100 pb-4">
+                <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
+                <div className="tnum mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
                   {formatRupiah(nilaiSpkTotal)}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, tone: 'text-info' },
-                  { label: 'PAD', value: padTotal, tone: 'text-warning' },
-                  { label: 'Invoiced', value: invoiceTotal, tone: 'text-success' },
-                  { label: 'Total Pengeluaran', value: expenseTotal, tone: 'text-danger' },
-                  {
-                    label: 'Total Nilai SPK - Pengeluaran',
-                    value: labaRugiNilaiSpk,
-                    tone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
-                  },
-                  {
-                    label: 'Laba Rugi (Teropname - Pengeluaran)',
-                    value: labaRugiOpname,
-                    tone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
-                  },
+                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, border: 'border-info', valueTone: 'text-info' },
+                  { label: 'PAD', value: padTotal, border: 'border-warning', valueTone: 'text-warning' },
+                  { label: 'Invoiced', value: invoiceTotal, border: 'border-success', valueTone: 'text-success' },
                 ].map((m) => (
-                  <div key={m.label}>
-                    <div className="text-[11px] font-bold text-muted-foreground uppercase">{m.label}</div>
-                    <div className={cn('tnum mt-0.5 text-base font-black', m.tone)}>
+                  <div key={m.label} className={cn('min-w-0 border-l-2 pl-3', m.border)}>
+                    <div className="min-h-10 text-[10px] leading-4 font-extrabold tracking-wide text-slate-500 uppercase">{m.label}</div>
+                    <div className={cn('tnum mt-1 text-[15px] font-black whitespace-nowrap', m.valueTone)}>
                       {formatRupiah(m.value)}
                     </div>
                   </div>
                 ))}
               </div>
-              <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
+              <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
+                {[
+                  { label: 'Total Pengeluaran', value: expenseTotal, border: 'border-danger', valueTone: 'text-danger' },
+                  {
+                    label: 'Total Nilai SPK - Pengeluaran',
+                    value: labaRugiNilaiSpk,
+                    border: labaRugiNilaiSpk < 0 ? 'border-danger' : 'border-success',
+                    valueTone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
+                  },
+                  {
+                    label: 'Laba Rugi (Teropname - Pengeluaran)',
+                    value: labaRugiOpname,
+                    border: labaRugiOpname < 0 ? 'border-danger' : 'border-success',
+                    valueTone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
+                  },
+                ].map((m) => (
+                  <div key={m.label} className={cn('min-w-0 border-l-2 pl-3', m.border)}>
+                    <div className="min-h-10 text-[10px] leading-4 font-extrabold tracking-wide text-slate-500 uppercase">{m.label}</div>
+                    <div className={cn('tnum mt-1 text-[15px] font-black whitespace-nowrap', m.valueTone)}>
+                      {formatRupiah(m.value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/reports/financial" className="w-fit text-xs font-bold text-primary hover:underline">
                 Rincian per SPK
               </Link>
             </CardContent>

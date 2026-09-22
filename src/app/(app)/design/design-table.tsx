@@ -66,6 +66,7 @@ export function DesignTable({
     {
       key: 'spk',
       label: 'SPK',
+      className: 'min-w-44',
       sortAccessor: (row) => {
         const spk = spkById[row.spk_id]
         return spk?.site_code ?? spk?.spk_number ?? null
@@ -84,7 +85,8 @@ export function DesignTable({
     },
     {
       key: 'stage',
-      label: 'Tahap',
+      label: 'Tahap Aktif',
+      className: 'min-w-40',
       sortAccessor: (row) => (currentByDesign[row.id] ? row.current_stage : ''),
       render: (row) =>
         currentByDesign[row.id] ? (
@@ -96,7 +98,7 @@ export function DesignTable({
     {
       key: 'pic',
       label: 'Drafter',
-      className: 'text-muted-foreground',
+      className: 'min-w-36 text-muted-foreground',
       sortAccessor: (row) => {
         const picId = currentByDesign[row.id]?.picId ?? row.pic_id
         return picId ? (picName[picId] ?? null) : null
@@ -109,7 +111,7 @@ export function DesignTable({
     {
       key: 'pic_pertamina',
       label: 'PIC Pertamina',
-      className: 'text-muted-foreground',
+      className: 'min-w-40 text-muted-foreground',
       sortAccessor: (row) => currentByDesign[row.id]?.picPertamina ?? null,
       render: (row) => currentByDesign[row.id]?.picPertamina ?? '—',
     },
@@ -117,14 +119,14 @@ export function DesignTable({
       ? {
           key: 'topo',
           label: 'Data topografi masuk',
-          className: 'tnum text-muted-foreground',
+          className: 'min-w-36 tnum text-muted-foreground',
           sortAccessor: (row) => row.topo_data_received_at,
           render: (row) => (row.topo_data_received_at ? formatDate(row.topo_data_received_at) : '—'),
         }
       : {
           key: 'siteplan_approved',
           label: 'Desain Awal Selesai',
-          className: 'tnum text-muted-foreground',
+          className: 'min-w-36 tnum text-muted-foreground',
           sortAccessor: (row) => siteplanApprovedBySpk?.[row.spk_id] ?? null,
           render: (row) => {
             const at = siteplanApprovedBySpk?.[row.spk_id]
@@ -132,26 +134,10 @@ export function DesignTable({
           },
         },
     {
-      key: 'keterangan',
-      label: 'Keterangan',
-      className: 'text-muted-foreground',
-      render: (row) => {
-        const current = currentByDesign[row.id]
-        if (!current) return '—'
-        return (
-          <>
-            {current.rounds > 0 ? `Revisi ke-${current.rounds}` : 'Submission pertama'}
-            {current.startedAt && (
-              <div className="text-xs">mulai {formatDate(current.startedAt)}</div>
-            )}
-          </>
-        )
-      },
-    },
-    {
       key: 'held',
-      label: 'Di tahap ini',
+      label: 'Durasi',
       align: 'right',
+      className: 'w-24 whitespace-nowrap',
       sortAccessor: (row) => (currentByDesign[row.id] ? daysInStage(row.updated_at) : null),
       render: (row) => {
         if (!currentByDesign[row.id]) return <span className="tnum">—</span>
@@ -168,6 +154,7 @@ export function DesignTable({
       key: 'aksi',
       label: 'Aksi',
       align: 'right',
+      className: 'w-20',
       stopRowClick: true,
       render: (row) => {
         const spk = spkById[row.spk_id]
