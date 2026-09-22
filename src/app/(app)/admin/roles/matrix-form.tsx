@@ -52,17 +52,17 @@ export function MatrixForm({
       {state.error && <Alert tone="danger">{state.error}</Alert>}
       {state.success && <Alert tone="success">{state.success}</Alert>}
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="max-h-[70vh] overflow-auto rounded-lg border border-border">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className="border-b border-border bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <th className="sticky top-0 z-10 border-b border-border bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Modul
               </th>
               {ALL_ACTIONS.map((action) => (
                 <th
                   key={action}
-                  className="w-44 border-b border-border bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                  className="sticky top-0 z-10 w-44 border-b border-border bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                 >
                   {ACTION_LABEL[action]}
                 </th>

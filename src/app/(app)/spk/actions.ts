@@ -215,6 +215,24 @@ export async function updateSpk(
   const stakeOutTarget = fields.work_type === 'Stake Out' ? numeric(formData, 'stake_out_target') : null
 
   const supabase = await createClient()
+  const { data: current } = await supabase
+    .from('spks')
+    .select('work_type')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!current) return { error: 'SPK tidak ditemukan.' }
+
+  if (current.work_type !== fields.work_type) {
+    const [{ count: designCount }, { count: routingCount }] = await Promise.all([
+      supabase.from('designs').select('*', { count: 'exact', head: true }).eq('spk_id', id).eq('status', 'Active'),
+      supabase.from('spk_routing').select('*', { count: 'exact', head: true }).eq('spk_id', id),
+    ])
+    if ((designCount ?? 0) > 0 || (routingCount ?? 0) > 0) {
+      return { error: 'Jenis pekerjaan tidak dapat diubah setelah proses desain atau routing dimulai.' }
+    }
+  }
+
   const { error } = await supabase
     .from('spks')
     .update({ ...fields, stake_out_patok: stakeOutTarget, updated_by: user.id })

@@ -24,6 +24,7 @@ import { loadStageBySpk } from '@/lib/spk-stage'
 import { SEVERITY_RANK, formatMetric } from '@/lib/dashboard'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { PHASE_LABEL, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
+import { classifySpkProgress, type SpkProgressBucket } from '@/lib/spk-progress'
 import type { DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
 import { RabDonutChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
 import { EqualHeightRow } from './equal-height-row'
@@ -106,6 +107,7 @@ export default async function DashboardPage() {
     { data: leadTime },
     { data: templates },
     { data: invoicedSteps },
+    { data: routingDocuments },
   ] = await Promise.all([
     supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
     supabase.from('v_bottleneck').select('*'),
@@ -135,6 +137,7 @@ export default async function DashboardPage() {
     seeFinance
       ? supabase.from('routing_history').select('invoice_value').eq('step_name', 'Invoiced')
       : Promise.resolve({ data: [] }),
+    supabase.from('spk_routing').select('spk_id'),
   ])
 
   const stageBySpk = await loadStageBySpk(supabase, onGoing ?? [])
@@ -180,32 +183,27 @@ export default async function DashboardPage() {
   const expenseTotal = rabTotals.realisasi
   const labaRugi = nilaiSpkTotal - expenseTotal
 
-  // Section 8.3 — one funnel stage per SPK: still out in the field (nothing
-  // started at all yet), in Design (an active design that hasn't reached its
-  // own "done" stage), or in Routing/Invoicing (a document not yet
-  // Completed). Deliberately not mutually exclusive across the three the way
-  // status counts are. Survei Terestris reuses loadStageBySpk's own
-  // waterfall below (design/PAD/Opname/routing/joint-check/invoice, in that
-  // order) instead of a separate "no siteplan design opened" heuristic — an
-  // SPK with a design row that's merely sitting Draft (opened but not
-  // actually started) used to still get excluded here, overcounting this
-  // tile against what the SPK Sedang Berjalan list right below it shows for
-  // the same SPKs.
-  const fieldOnGoingCount = (onGoing ?? []).filter(
-    (s) => stageBySpk[s.id]?.label === 'Survei Terestris: Sedang Berjalan',
-  ).length
-  // Opname (Siteplan's own terminal stage) and Acc PIC Pertamina
-  // (Finalisasi's) mean that phase is actually done, even though the design
-  // row itself is still Active — only stages before that count as "still in
-  // design".
-  const designOnGoingSpkIds = new Set(
-    (activeDesigns ?? [])
-      .filter((d) =>
-        d.phase === 'siteplan' ? d.current_stage !== 'Opname' : d.current_stage !== 'Acc PIC Pertamina',
-      )
-      .map((d) => d.spk_id),
+  // Dashboard and Progress SPK deliberately share one mutually exclusive
+  // classifier. The older dashboard independently counted active design and
+  // routing rows, letting one SPK inflate two tiles and making the screens
+  // disagree.
+  const designsBySpk = new Map<string, DesignSummary[]>()
+  for (const design of activeDesigns ?? []) {
+    const list = designsBySpk.get(design.spk_id) ?? []
+    list.push({ phase: design.phase, current_stage: design.current_stage, updated_at: design.updated_at })
+    designsBySpk.set(design.spk_id, list)
+  }
+  const routedSpkIds = new Set((routingDocuments ?? []).map((document) => document.spk_id))
+  const progressCounts = (onGoing ?? []).reduce<Record<SpkProgressBucket, number>>(
+    (counts, spk) => {
+      const bucket = classifySpkProgress(spk, designsBySpk.get(spk.id) ?? [], routedSpkIds.has(spk.id))
+      counts[bucket] += 1
+      return counts
+    },
+    { terestris: 0, desain_awal: 0, finalisasi: 0, invoicing: 0, selesai: 0 },
   )
-  const designOnGoingCount = designOnGoingSpkIds.size
+  const fieldOnGoingCount = progressCounts.terestris
+  const designOnGoingCount = progressCounts.desain_awal + progressCounts.finalisasi
 
   // The stage a routing document is actually sitting in: the first one not
   // finished — same read as Routing Monitor's own summary cards.
@@ -215,8 +213,6 @@ export default async function DashboardPage() {
     const held = currentByRoutingDoc.get(row.spk_routing_id)
     if (!held || row.sequence < held.sequence) currentByRoutingDoc.set(row.spk_routing_id, row)
   }
-  const routingOnGoingCount = currentByRoutingDoc.size
-
   const routingStepCounts = new Map<string, number>()
   for (const current of currentByRoutingDoc.values()) {
     routingStepCounts.set(current.step_name, (routingStepCounts.get(current.step_name) ?? 0) + 1)
@@ -226,16 +222,6 @@ export default async function DashboardPage() {
     label: step.name,
     count: routingStepCounts.get(step.name) ?? 0,
     }))
-
-  // Bottleneck card (right column) needs to name the actual stage/date behind
-  // "Opname belum ditandai" and "Design tidak berubah status" — group every
-  // active design by its SPK so describeBottleneck can look one up.
-  const designsBySpk = new Map<string, DesignSummary[]>()
-  for (const d of activeDesigns ?? []) {
-    const list = designsBySpk.get(d.spk_id) ?? []
-    list.push({ phase: d.phase, current_stage: d.current_stage, updated_at: d.updated_at })
-    designsBySpk.set(d.spk_id, list)
-  }
 
   // Section 8.4 — how many on-going designs sit at each stage, siteplan and
   // finalisasi charted side by side (finalisasi only exists once siteplan is
@@ -284,8 +270,8 @@ export default async function DashboardPage() {
   )
   const critical = ranked.filter((b) => b.severity === 'critical').length
 
-  // Section 8.5 — six SPK counts: overall book, then the three funnel
-  // stages (field/design/routing), not mutually exclusive with each other.
+  // Six SPK counts: the active funnel values reconcile exactly with the
+  // five Progress SPK columns; Desain combines its two adjacent columns.
   const tiles: {
     label: string
     value: number
@@ -297,7 +283,7 @@ export default async function DashboardPage() {
     { label: 'On Going', value: kpi?.spk_on_going ?? 0, href: '/spk?status=ongoing', icon: Workflow, accent: 'gold' },
     { label: 'Survei Terestris', value: fieldOnGoingCount, href: '/spk?status=ongoing', icon: MapIcon, accent: 'info' },
     { label: 'Design', value: designOnGoingCount, href: '/design', icon: PencilRuler, accent: 'navy' },
-    { label: 'Invoicing', value: routingOnGoingCount, href: '/routing', icon: Route, accent: 'orange' },
+    { label: 'Invoicing', value: progressCounts.invoicing, href: '/routing', icon: Route, accent: 'orange' },
     { label: 'Invoiced', value: kpi?.spk_selesai ?? 0, href: '/spk?status=selesai', icon: CheckCircle2, accent: 'primary' },
   ]
 

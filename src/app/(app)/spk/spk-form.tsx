@@ -175,28 +175,23 @@ export function SpkForm({
           </Field>
 
           <Field label="Jenis pekerjaan" htmlFor="work_type">
-            {spk ? (
-              <Input
-                id="work_type"
-                name="work_type"
-                defaultValue={spk.work_type ?? ''}
-                readOnly
-                className="bg-slate-50 text-muted-foreground"
-              />
-            ) : (
-              <Select
-                id="work_type"
-                name="work_type"
-                value={workType}
-                onChange={(event) => setWorkType(event.target.value)}
-              >
-                <option value="">— pilih jenis pekerjaan —</option>
-                {WORK_TYPE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
+            <Select
+              id="work_type"
+              name="work_type"
+              value={workType}
+              onChange={(event) => setWorkType(event.target.value)}
+            >
+              <option value="">— pilih jenis pekerjaan —</option>
+              {WORK_TYPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+            {spk && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Jenis pekerjaan hanya dapat diubah sebelum proses desain atau routing dimulai.
+              </p>
             )}
           </Field>
 

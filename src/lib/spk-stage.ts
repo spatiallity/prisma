@@ -1,6 +1,7 @@
 import type { createClient } from '@/lib/supabase/server'
 import type { DesignStage } from '@/lib/supabase/types'
 import { PHASE_LABEL, stageDisplayLabel } from '@/lib/design'
+import { isTerrestrialSurveyOnly } from '@/lib/spk'
 
 export type SpkStage = { label: string; date: string | null }
 
@@ -85,16 +86,45 @@ export async function loadStageBySpk(
 
     const design = designBySpk.get(spk.id)
     const routingDoc = routingBySpk.get(spk.id)
+    const terrestrialOnly = isTerrestrialSurveyOnly(spk.work_type)
+
+    // A terrestrial-only assignment has no Design Siteplan branch. Its field
+    // milestones remain the source of truth even if its invoice document was
+    // prepared early, so the current stage cannot skip Opname or PAD.
+    if (terrestrialOnly) {
+      if (!spk.terrain_survey_completed_at) {
+        stageBySpk[spk.id] = { label: 'Survei Terestris: Sedang Berjalan', date: spk.start_date }
+        continue
+      }
+      if (!spk.joint_check_date) {
+        stageBySpk[spk.id] = { label: 'Pengecekan Bersama', date: spk.terrain_survey_completed_at }
+        continue
+      }
+      if (!spk.opname_marked_at) {
+        stageBySpk[spk.id] = { label: 'Opname', date: spk.joint_check_date }
+        continue
+      }
+      if (!spk.pad_marked_at) {
+        stageBySpk[spk.id] = { label: 'PAD', date: spk.opname_marked_at }
+        continue
+      }
+    }
+
     if (routingDoc) {
       if (routingDoc.status === 'Completed') {
         stageBySpk[spk.id] = { label: 'Routing selesai', date: routingDoc.completed_at }
       } else {
         const current = currentByRouting.get(routingDoc.id)
         stageBySpk[spk.id] = {
-          label: current ? `Routing: ${current.step_name}` : 'Routing',
+          label: current ? `Routing: ${current.step_name === 'Invoiced' ? 'Proses Invoice' : current.step_name}` : 'Routing',
           date: current?.started_at ?? routingDoc.started_at,
         }
       }
+      continue
+    }
+
+    if (terrestrialOnly) {
+      stageBySpk[spk.id] = { label: 'Menunggu Proses Invoice', date: spk.pad_marked_at }
       continue
     }
 

@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { StepChain, chainBadge, type ChainStep } from '@/components/ui/step-chain'
 import { createClient } from '@/lib/supabase/server'
+import { isTerrestrialSurveyOnly } from '@/lib/spk'
 import { formatDate } from '@/lib/utils'
 import { markTerrainSurvey, unmarkTerrainSurvey } from '../actions'
 import { OpnamePadRow } from './opname-pad-mark'
@@ -15,7 +16,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
   const [{ data: spk }, { data: design }, { data: routing }] = await Promise.all([
     supabase
       .from('spks')
-      .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date')
+      .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date, work_type')
       .eq('id', spkId)
       .maybeSingle(),
     supabase.from('designs').select('id').eq('spk_id', spkId).eq('status', 'Active').limit(1).maybeSingle(),
@@ -28,7 +29,9 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
 
   // Older SPKs began Desain or Routing before field survey was tracked here.
   // Treat that prerequisite as completed, but leave its unknown date blank.
-  const inferredSurveyDone = !spk?.terrain_survey_completed_at && Boolean(design || routing)
+  const inferredSurveyDone = !isTerrestrialSurveyOnly(spk?.work_type)
+    && !spk?.terrain_survey_completed_at
+    && Boolean(design || routing)
   const surveyDone = !!spk?.terrain_survey_completed_at || inferredSurveyDone
   const jointCheckDone = !!spk?.joint_check_date
   const surveyComplete = surveyDone && jointCheckDone

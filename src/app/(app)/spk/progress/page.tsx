@@ -6,12 +6,13 @@ import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { DesignStage } from '@/lib/supabase/types'
 import { PHASE_LABEL, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
+import { classifySpkProgress, terrestrialSurveyOnlyStage, type SpkProgressBucket } from '@/lib/spk-progress'
 import { ProgressBoard, type ProgressColumn, type ProgressRow, type ProgressStatus } from './progress-board'
 import { SpkIntakeChart, type SpkIntakeMonth } from './spk-intake-chart'
 
 export const metadata: Metadata = { title: 'Progress SPK' }
 
-type Column = 'terestris' | 'desain_awal' | 'finalisasi' | 'invoicing' | 'selesai'
+type Column = SpkProgressBucket
 
 const COLUMNS: { key: Column; label: string }[] = [
   { key: 'terestris', label: 'Survei Terestris' },
@@ -76,7 +77,7 @@ export default async function SpkProgressPage() {
   ] = await Promise.all([
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, work_name, status, start_date, end_date, created_at, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi')
+      .select('id, spk_number, site_code, work_name, status, start_date, end_date, created_at, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi, terrain_survey_completed_at, joint_check_date, opname_marked_at, pad_marked_at')
       .in('status', ['On Going', 'Selesai'])
       .order('start_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false }),
@@ -116,17 +117,16 @@ export default async function SpkProgressPage() {
     routingHistoryByDoc.set(history.spk_routing_id, list)
   }
 
-  function bucketFor(spk: { id: string; status: string }): Column {
-    if (spk.status === 'Selesai') return 'selesai'
-    if (routedSpkIds.has(spk.id)) return 'invoicing'
-    const designs = designsBySpk.get(spk.id) ?? []
-    if (designs.some((d) => d.phase === 'finalisasi' && d.current_stage !== 'Acc PIC Pertamina')) {
-      return 'finalisasi'
-    }
-    if (designs.some((d) => d.phase === 'siteplan' && d.current_stage !== 'Opname')) {
-      return 'desain_awal'
-    }
-    return 'terestris'
+  function bucketFor(spk: {
+    id: string
+    status: string
+    work_type: string | null
+    terrain_survey_completed_at: string | null
+    joint_check_date: string | null
+    opname_marked_at: string | null
+    pad_marked_at: string | null
+  }): Column {
+    return classifySpkProgress(spk, designsBySpk.get(spk.id) ?? [], routedSpkIds.has(spk.id))
   }
 
   function designProgress(design: NonNullable<typeof activeDesigns>[number]): ProgressStatus {
@@ -157,7 +157,7 @@ export default async function SpkProgressPage() {
     const completedAt = current?.completed_at ?? null
     return {
       area: 'Dokumen Invoice',
-      stage: current?.step_name ?? 'Penyusunan dokumen invoice',
+      stage: current?.step_name === 'Invoiced' ? 'Proses Invoice' : (current?.step_name ?? 'Penyusunan dokumen invoice'),
       pic: current?.pic_name ?? null,
       assignee: current?.pic_name ?? null,
       startedAt,
@@ -178,14 +178,21 @@ export default async function SpkProgressPage() {
     }
     if (bucket === 'invoicing') return routingProgress(spk.id)
     if (bucket === 'terestris') {
+      const terrestrialOnly = terrestrialSurveyOnlyStage(spk)
       return {
         area: 'Survei Lapangan',
-        stage: 'Survei Terestris',
+        stage: spk.work_type === 'Hanya Survei Terestris' ? terrestrialOnly.stage : 'Survei Terestris',
         pic: null,
         assignee: null,
-        startedAt: spk.start_date,
+        startedAt: spk.work_type === 'Hanya Survei Terestris'
+          ? (terrestrialOnly.startedAt ?? spk.start_date)
+          : spk.start_date,
         completedAt: null,
-        durationDays: daysInStage(spk.start_date),
+        durationDays: daysInStage(
+          spk.work_type === 'Hanya Survei Terestris'
+            ? (terrestrialOnly.startedAt ?? spk.start_date)
+            : spk.start_date,
+        ),
       }
     }
     return {
@@ -205,19 +212,26 @@ export default async function SpkProgressPage() {
   })
   const intakeMonths = new Map<string, SpkIntakeMonth>()
   const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'short', year: '2-digit' })
-  for (let offset = 11; offset >= 0; offset -= 1) {
-    const month = new Date()
-    month.setDate(1)
-    month.setMonth(month.getMonth() - offset)
+  const startedDates = (spks ?? []).flatMap((spk) => spk.start_date ? [new Date(`${spk.start_date}T00:00:00`)] : [])
+  const firstMonth = startedDates.length > 0
+    ? new Date(Math.min(...startedDates.map((date) => date.getTime())))
+    : new Date()
+  firstMonth.setDate(1)
+  const lastMonth = new Date(Math.max(Date.now(), ...startedDates.map((date) => date.getTime())))
+  lastMonth.setDate(1)
+  for (const month = new Date(firstMonth); month <= lastMonth; month.setMonth(month.getMonth() + 1)) {
     const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
-    intakeMonths.set(key, { label: monthFormatter.format(month), total: 0 })
+    intakeMonths.set(key, { label: monthFormatter.format(month), total: 0, contractValue: 0 })
   }
   for (const spk of spks ?? []) {
-    if (!spk.created_at) continue
-    const date = new Date(spk.created_at)
+    if (!spk.start_date) continue
+    const date = new Date(`${spk.start_date}T00:00:00`)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     const month = intakeMonths.get(key)
-    if (month) month.total += 1
+    if (month) {
+      month.total += 1
+      month.contractValue += Number(spk.contract_value ?? 0)
+    }
   }
   const bySpk = progressRows.reduce<Record<Column, ProgressRow[]>>(
     (acc, s) => {
@@ -307,7 +321,7 @@ export default async function SpkProgressPage() {
         <CardHeader>
           <div>
             <CardTitle>SPK Masuk per Bulan</CardTitle>
-            <CardDescription>Jumlah SPK baru yang dicatat dalam 12 bulan terakhir.</CardDescription>
+            <CardDescription>Jumlah dan total nilai kontrak SPK berdasarkan tanggal mulai pekerjaan.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>

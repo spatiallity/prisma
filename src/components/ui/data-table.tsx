@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, ListFilter, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Funnel, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Table, Td, Th, Tr } from './table'
 import { Input } from './field'
@@ -50,6 +50,7 @@ export function DataTable<T>({
   onRowClick,
   selectedKeys,
   onSelectionChange,
+  selectionSummary,
   pageSize = 25,
   showRowNumber = true,
 }: {
@@ -68,6 +69,8 @@ export function DataTable<T>({
    *  for a bulk action (e.g. delete). Selection is keyed by rowKey(row). */
   selectedKeys?: Set<string>
   onSelectionChange?: (keys: Set<string>) => void
+  /** Optional selection feedback displayed immediately above the table headers. */
+  selectionSummary?: ReactNode
   /** Rows per page. Pass Infinity for a short list that never needs paging. */
   pageSize?: number
   /** A leading, unsortable "No" column numbering the visible rows in view
@@ -80,6 +83,8 @@ export function DataTable<T>({
     defaultSort ?? null,
   )
   const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [openFilter, setOpenFilter] = useState<string | null>(null)
+  const [filterQuery, setFilterQuery] = useState('')
 
   const filterableColumns = useMemo(
     () => columns.filter((column) => column.filterAccessor ?? column.sortAccessor),
@@ -161,6 +166,28 @@ export function DataTable<T>({
   }
 
   const activeFilterCount = Object.values(filters).reduce((count, values) => count + values.length, 0)
+  const activeFilters = filterableColumns.flatMap((column) =>
+    (filters[column.key] ?? []).map((value) => ({ column, value })),
+  )
+
+  function toggleFilterMenu(columnKey: string) {
+    setFilterQuery('')
+    setOpenFilter((current) => current === columnKey ? null : columnKey)
+  }
+
+  function selectAllFilterOptions(columnKey: string) {
+    setPage(0)
+    setFilters((current) => ({ ...current, [columnKey]: filterOptions[columnKey] ?? [] }))
+  }
+
+  function clearColumnFilter(columnKey: string) {
+    setPage(0)
+    setFilters((current) => {
+      const next = { ...current }
+      delete next[columnKey]
+      return next
+    })
+  }
 
   const hasTotals = columns.some((col) => col.renderTotal)
   const selectable = !!onSelectionChange
@@ -190,9 +217,9 @@ export function DataTable<T>({
 
   return (
     <div>
-      {(searchAccessor || filterableColumns.length > 0) && (
-        <div className="flex flex-wrap items-start gap-2 border-b border-slate-100 p-3">
-          {searchAccessor && <div className="relative w-full max-w-xs">
+      {searchAccessor && (
+        <div className="border-b border-slate-100 p-3">
+          <div className="relative w-full max-w-xs">
             <Search
               size={15}
               className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
@@ -208,43 +235,25 @@ export function DataTable<T>({
               className="pl-9"
               aria-label={searchPlaceholder}
             />
-          </div>}
-          {filterableColumns.length > 0 && (
-            <details className="group relative">
-              <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                <ListFilter size={16} aria-hidden />
-                Filter
-                {activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-white">{activeFilterCount}</span>}
-              </summary>
-              <div className="absolute z-20 mt-2 max-h-[min(70vh,520px)] w-[min(92vw,760px)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-xl">
-                <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
-                  <span className="text-sm font-black text-slate-900">Filter kolom</span>
-                  {activeFilterCount > 0 && (
-                    <button type="button" onClick={() => { setFilters({}); setPage(0) }} className="inline-flex items-center gap-1 text-xs font-extrabold text-danger hover:underline">
-                      <X size={14} aria-hidden /> Hapus semua
-                    </button>
-                  )}
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filterableColumns.map((column) => (
-                    <fieldset key={column.key} className="min-w-0">
-                      <legend className="mb-1.5 text-xs font-extrabold tracking-wide text-slate-600 uppercase">{column.label}</legend>
-                      <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 p-2">
-                        {filterOptions[column.key].map((value) => (
-                          <label key={value || '__empty'} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                            <input type="checkbox" className="size-3.5 rounded border-slate-300 accent-primary" checked={filters[column.key]?.includes(value) ?? false} onChange={() => toggleFilter(column.key, value)} />
-                            <span className="truncate">{value || '(Kosong)'}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </fieldset>
-                  ))}
-                </div>
-              </div>
-            </details>
-          )}
+          </div>
         </div>
       )}
+
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+          <span className="text-xs font-bold text-muted-foreground">Filter aktif:</span>
+          {activeFilters.map(({ column, value }) => (
+            <button key={`${column.key}-${value}`} type="button" onClick={() => toggleFilter(column.key, value)} className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-bold text-primary hover:bg-primary/15">
+              {column.label}: {value || '(Kosong)'} <X size={12} aria-hidden />
+            </button>
+          ))}
+          <button type="button" onClick={() => { setFilters({}); setPage(0) }} className="ml-auto text-xs font-extrabold text-slate-600 hover:text-danger hover:underline">
+            Hapus semua
+          </button>
+        </div>
+      )}
+
+      {selectionSummary}
 
       {sorted.length > 0 ? (
         <Table>
@@ -269,6 +278,7 @@ export function DataTable<T>({
                 <Th
                   key={col.key}
                   className={cn(
+                    'relative',
                     col.align === 'right' && 'text-right',
                     col.align === 'center' && 'text-center',
                     col.sortAccessor && 'cursor-pointer select-none hover:text-slate-700',
@@ -294,7 +304,49 @@ export function DataTable<T>({
                       ) : (
                         <ArrowUpDown size={12} className="opacity-40" aria-hidden />
                       ))}
+                    {(col.filterAccessor ?? col.sortAccessor) && (
+                      <button
+                        type="button"
+                        title={`Filter ${col.label}`}
+                        aria-label={`Filter ${col.label}`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          toggleFilterMenu(col.key)
+                        }}
+                        className={cn(
+                          'inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-slate-200 focus:ring-2 focus:ring-primary/30 focus:outline-none',
+                          filters[col.key]?.length ? 'text-primary' : 'text-slate-400 hover:text-slate-700',
+                        )}
+                      >
+                        <Funnel size={13} aria-hidden />
+                      </button>
+                    )}
                   </span>
+                  {openFilter === col.key && (
+                    <div className="absolute top-full left-0 z-30 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-2 shadow-xl" onClick={(event) => event.stopPropagation()}>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-black normal-case tracking-normal text-slate-900">Filter {col.label}</span>
+                        <button type="button" onClick={() => setOpenFilter(null)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Tutup filter">
+                          <X size={14} aria-hidden />
+                        </button>
+                      </div>
+                      <Input value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder="Cari pilihan…" className="h-8 px-2 text-xs" aria-label={`Cari pilihan ${col.label}`} />
+                      <div className="mt-2 flex gap-3 border-b border-slate-100 pb-2 text-xs font-bold">
+                        <button type="button" onClick={() => selectAllFilterOptions(col.key)} className="text-primary hover:underline">Pilih semua</button>
+                        <button type="button" onClick={() => clearColumnFilter(col.key)} className="text-slate-600 hover:text-danger hover:underline">Kosongkan</button>
+                      </div>
+                      <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
+                        {(filterOptions[col.key] ?? [])
+                          .filter((value) => (value || '(Kosong)').toLowerCase().includes(filterQuery.trim().toLowerCase()))
+                          .map((value) => (
+                            <label key={value || '__empty'} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50">
+                              <input type="checkbox" className="size-3.5 rounded border-slate-300 accent-primary" checked={filters[col.key]?.includes(value) ?? false} onChange={() => toggleFilter(col.key, value)} />
+                              <span className="truncate">{value || '(Kosong)'}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </Th>
               ))}
             </tr>

@@ -59,6 +59,7 @@ export function formatPercent(value: number | null | undefined) {
 export const WORK_TYPE_TEMPLATE_CODE: Record<string, string> = {
   'Dengan Desain Siteplan': 'TPL-A',
   'Tanpa Desain Siteplan': 'TPL-B',
+  'Hanya Survei Terestris': 'TPL-B',
   'Stake Out': 'TPL-C',
 }
 
@@ -75,9 +76,14 @@ export const LOCATION_TYPE_OPTIONS = ['Lokasi Bor', 'Fasilitas Produksi']
  *  too, so they fall into the same "Survey dan Desain" bucket. */
 export function workTypeCategory(workType: string | null) {
   if (workType === 'Stake Out') return 'Stake Out'
+  if (workType === 'Hanya Survei Terestris') return 'Survei Terestris Only'
   if (workType === 'Hanya Desain Siteplan') return 'Desain Siteplan Only'
   if (!workType) return '—'
   return 'Survey dan Desain'
+}
+
+export function isTerrestrialSurveyOnly(workType: string | null | undefined) {
+  return workType === 'Hanya Survei Terestris'
 }
 
 /** Days between today and the SPK end date; negative once it is overdue. */

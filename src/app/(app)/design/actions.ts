@@ -228,6 +228,17 @@ export async function createDesign(
   if (!spkId) return { error: 'SPK wajib dipilih.' }
 
   const supabase = await createClient()
+  const { data: spk } = await supabase
+    .from('spks')
+    .select('work_type')
+    .eq('id', spkId)
+    .maybeSingle()
+
+  if (!spk) return { error: 'SPK tidak ditemukan.' }
+  if (spk.work_type === 'Hanya Survei Terestris') {
+    return { error: 'SPK Hanya Survei Terestris tidak memiliki proses desain.' }
+  }
+
   const picId = await resolvePicId(supabase, text(formData, 'pic_name'), user.id)
 
   const { data: existing } = await supabase

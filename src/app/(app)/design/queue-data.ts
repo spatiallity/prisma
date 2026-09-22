@@ -45,7 +45,7 @@ export async function loadDesignQueue(
       supabase.from('designs').select('id, phase, spk_id').eq('status', 'Active'),
       supabase
         .from('spks')
-        .select('id, spk_number, site_code, work_name')
+        .select('id, spk_number, site_code, work_name, work_type')
         .in('status', ['Draft', 'On Going']),
       supabase.from('design_pics').select('id, full_name').order('full_name'),
     ])
@@ -117,7 +117,9 @@ export async function loadDesignQueue(
   const takenSiteplan = new Set(
     (allDesigns ?? []).filter((d) => d.phase === 'siteplan').map((d) => d.spk_id),
   )
-  const openSpks = phase === 'siteplan' ? (spks ?? []).filter((s) => !takenSiteplan.has(s.id)) : []
+  const openSpks = phase === 'siteplan'
+    ? (spks ?? []).filter((spk) => spk.work_type !== 'Hanya Survei Terestris' && !takenSiteplan.has(spk.id))
+    : []
 
   // Finalisasi Desain shows when its sibling Desain Siteplan was approved —
   // fetched once here rather than per-row in the table component.

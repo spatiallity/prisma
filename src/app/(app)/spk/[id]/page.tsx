@@ -11,7 +11,7 @@ import { requirePermission } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { can } from '@/lib/auth/permissions'
 import { cn, formatDate, formatDateTime, formatRupiah } from '@/lib/utils'
-import { SPK_STATUS_TONE, daysLeft, formatArea, spkStatusLabel } from '@/lib/spk'
+import { SPK_STATUS_TONE, daysLeft, formatArea, isTerrestrialSurveyOnly, spkStatusLabel } from '@/lib/spk'
 import { loadStageBySpk } from '@/lib/spk-stage'
 import { SurveyTab } from './survey-tab'
 import { DesignTab } from './design-tab'
@@ -107,7 +107,6 @@ export default async function SpkDetailPage({
   const user = await requirePermission('spk', 'view')
   const { id } = await params
   const { tab, created } = await searchParams
-  const activeTab = TABS.find((t) => t.key === tab)?.key ?? 'overview'
   const mayEdit = can(user.permissions, 'spk', 'edit')
 
   const supabase = await createClient()
@@ -116,6 +115,10 @@ export default async function SpkDetailPage({
   // here is either "does not exist" or "not yours" — both are a 404.
   const { data: spk } = await supabase.from('spks').select('*').eq('id', id).maybeSingle()
   if (!spk) notFound()
+  const visibleTabs = isTerrestrialSurveyOnly(spk.work_type)
+    ? TABS.filter((item) => item.key !== 'design')
+    : TABS
+  const activeTab = visibleTabs.find((item) => item.key === tab)?.key ?? 'overview'
 
   const [{ data: audit }, { data: documents }] = await Promise.all([
     supabase
@@ -241,7 +244,7 @@ export default async function SpkDetailPage({
 
       {/* Tabs */}
       <div className="mb-5 flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-surface p-1 shadow-sm">
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const built = t.ready
           const active = t.key === activeTab
           const className = cn(

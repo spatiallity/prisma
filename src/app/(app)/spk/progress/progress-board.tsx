@@ -31,6 +31,10 @@ export type ProgressRow = {
   location_type: string | null
   kabupaten: string | null
   provinsi: string | null
+  terrain_survey_completed_at: string | null
+  joint_check_date: string | null
+  opname_marked_at: string | null
+  pad_marked_at: string | null
   progress: ProgressStatus
 }
 
