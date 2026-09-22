@@ -15,8 +15,8 @@ export const metadata: Metadata = { title: 'Financial Report' }
  * Section 26.1 — the money in one place, read live from the SPK itself
  * (Nilai SPK) rather than the old standalone Contract/PAD/Invoice lists:
  * Opname/PAD are the same marks the Design Opname stage and Routing
- * Monitor's PAD column write, and Invoice is the routing document's own
- * Invoiced step — whatever's been entered there shows up here too.
+ * Monitor's PAD column write. Invoiced comes from the completed financial
+ * invoice record, which routing keeps synchronized as its final step.
  */
 export default async function FinancialReportPage() {
   const user = await requirePermission('report', 'view')
@@ -24,23 +24,24 @@ export default async function FinancialReportPage() {
 
   const supabase = await createClient()
 
-  const [{ data: spks }, { data: routingDocs }, { data: invoicedSteps }] = await Promise.all([
+  const [{ data: spks }, { data: invoices }] = await Promise.all([
     supabase
       .from('spks')
       .select('id, spk_number, site_code, status, contract_value, start_date, opname_marked_at, opname_value, pad_marked_at, pad_value, denda_value')
       .order('spk_number'),
-    supabase.from('spk_routing').select('id, spk_id'),
     supabase
-      .from('routing_history')
-      .select('spk_routing_id, status, invoice_number, invoice_value, invoice_date')
-      .eq('step_name', 'Invoiced'),
+      .from('invoices')
+      .select('spk_id, status, invoice_number, invoice_value, invoice_date')
+      .neq('status', 'Cancelled')
+      .order('invoice_date', { ascending: false, nullsFirst: false }),
   ])
 
-  const spkIdByRoutingId = new Map((routingDocs ?? []).map((r) => [r.id, r.spk_id]))
-  const invoiceBySpk = new Map<string, NonNullable<typeof invoicedSteps>[number]>()
-  for (const step of invoicedSteps ?? []) {
-    const spkId = spkIdByRoutingId.get(step.spk_routing_id)
-    if (spkId) invoiceBySpk.set(spkId, step)
+  const invoiceBySpk = new Map<string, NonNullable<typeof invoices>[number]>()
+  for (const invoice of invoices ?? []) {
+    const existing = invoiceBySpk.get(invoice.spk_id)
+    if (!existing || (invoice.status === 'Approved' && existing.status !== 'Approved')) {
+      invoiceBySpk.set(invoice.spk_id, invoice)
+    }
   }
 
   const rows: FinancialRow[] = (spks ?? [])
@@ -58,10 +59,10 @@ export default async function FinancialReportPage() {
         opnameValue: s.opname_value != null ? Number(s.opname_value) : null,
         padMarkedAt: s.pad_marked_at,
         padValue: s.pad_value != null ? Number(s.pad_value) : null,
-        invoiceDone: invoice?.status === 'Completed' && !!invoice.invoice_date,
-        invoiceNumber: invoice?.invoice_number ?? null,
-        invoiceValue: invoice?.invoice_value != null ? Number(invoice.invoice_value) : null,
-        invoiceDate: invoice?.invoice_date ?? null,
+        invoiceDone: invoice?.status === 'Approved',
+        invoiceNumber: invoice?.status === 'Approved' ? invoice.invoice_number : null,
+        invoiceValue: invoice?.status === 'Approved' && invoice.invoice_value != null ? Number(invoice.invoice_value) : null,
+        invoiceDate: invoice?.status === 'Approved' ? invoice.invoice_date : null,
         dendaValue: s.denda_value != null ? Number(s.denda_value) : null,
       }
     })
@@ -89,7 +90,7 @@ export default async function FinancialReportPage() {
     <>
       <PageHeader
         title="Laporan Keuangan SPK"
-        description="Ringkasan nilai kontrak, opname, PAD, denda, dan invoice dari data SPK yang sedang dipantau."
+        description="Ringkasan nilai kontrak, opname, PAD, denda, dan invoiced dari data SPK yang sedang dipantau."
       />
 
       <div className="mb-5 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
@@ -111,9 +112,9 @@ export default async function FinancialReportPage() {
           accent="success"
         />
         <Stat
-          label="Invoice"
+          label="Invoiced"
           value={formatRupiahCompact(totals.invoice)}
-          helper={`${counts.invoice} SPK selesai invoice`}
+          helper={`${counts.invoice} SPK sudah invoiced`}
           detail={`${invoicePercent}% dari laporan`}
           icon={<ReceiptText size={18} />}
           accent="info"
@@ -131,7 +132,7 @@ export default async function FinancialReportPage() {
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <MiniStat label="Opname" value={formatRupiah(totals.opname)} helper={`${counts.opname} SPK sudah opname`} />
         <MiniStat label="Belum PAD" value={String(rows.filter((r) => r.opnameMarkedAt && !r.padMarkedAt).length)} helper="sudah opname, menunggu PAD" />
-        <MiniStat label="Belum Invoice" value={String(rows.filter((r) => r.padMarkedAt && !r.invoiceDone).length)} helper="sudah PAD, menunggu invoice" />
+        <MiniStat label="Belum Invoiced" value={String(rows.filter((r) => r.padMarkedAt && !r.invoiceDone).length)} helper="sudah PAD, menunggu invoiced" />
       </div>
 
       <Card className="overflow-hidden">

@@ -106,7 +106,7 @@ export default async function DashboardPage() {
     { data: activeDesigns },
     { data: leadTime },
     { data: templates },
-    { data: invoicedSteps },
+    { data: invoicedInvoices },
     { data: routingDocuments },
   ] = await Promise.all([
     supabase.from('v_dashboard_kpi').select('*').maybeSingle(),
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
     supabase.from('v_routing_lead_time').select('*'),
     supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
     seeFinance
-      ? supabase.from('routing_history').select('invoice_value').eq('step_name', 'Invoiced')
+      ? supabase.from('invoices').select('invoice_value').eq('status', 'Approved')
       : Promise.resolve({ data: [] }),
     supabase.from('spk_routing').select('spk_id'),
   ])
@@ -167,11 +167,9 @@ export default async function DashboardPage() {
     rabTotals.anggaran > 0 ? (rabTotals.realisasi / rabTotals.anggaran) * 100 : null
 
   // Section 8.2 — the headline: money, by milestone reached. Contract value
-  // on every SPK, Opname/PAD value only where actually marked, Invoice value
-  // read straight off the routing document's own Invoiced step (same source
-  // Financial Report uses) rather than the deprecated standalone invoices
-  // table. Laba Rugi is what Opname says the work is worth minus what's
-  // actually been spent getting there.
+  // on every SPK, Opname/PAD value only where actually marked, and Invoiced
+  // value only from approved invoice records. This keeps the dashboard in
+  // sync with the Financial tab's completion state.
   const nilaiSpkTotal = (spkFunnel ?? []).reduce((sum, s) => sum + Number(s.contract_value ?? 0), 0)
   const opnameTotal = (spkFunnel ?? [])
     .filter((s) => s.opname_marked_at)
@@ -179,9 +177,10 @@ export default async function DashboardPage() {
   const padTotal = (spkFunnel ?? [])
     .filter((s) => s.pad_marked_at)
     .reduce((sum, s) => sum + Number(s.pad_value ?? 0), 0)
-  const invoiceTotal = (invoicedSteps ?? []).reduce((sum, h) => sum + Number(h.invoice_value ?? 0), 0)
+  const invoiceTotal = (invoicedInvoices ?? []).reduce((sum, invoice) => sum + Number(invoice.invoice_value ?? 0), 0)
   const expenseTotal = rabTotals.realisasi
-  const labaRugi = nilaiSpkTotal - expenseTotal
+  const labaRugiNilaiSpk = nilaiSpkTotal - expenseTotal
+  const labaRugiOpname = opnameTotal - expenseTotal
 
   // Dashboard and Progress SPK deliberately share one mutually exclusive
   // classifier. The older dashboard independently counted active design and
@@ -316,14 +315,19 @@ export default async function DashboardPage() {
               </div>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {[
-                  { label: 'Opname', value: opnameTotal, tone: 'text-info' },
+                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, tone: 'text-info' },
                   { label: 'PAD', value: padTotal, tone: 'text-warning' },
-                  { label: 'Invoice', value: invoiceTotal, tone: 'text-success' },
-                  { label: 'Total Expense', value: expenseTotal, tone: 'text-danger' },
+                  { label: 'Invoiced', value: invoiceTotal, tone: 'text-success' },
+                  { label: 'Total Pengeluaran', value: expenseTotal, tone: 'text-danger' },
                   {
-                    label: 'Posisi Laba Rugi',
-                    value: labaRugi,
-                    tone: labaRugi < 0 ? 'text-danger' : 'text-success',
+                    label: 'Total Nilai SPK - Pengeluaran',
+                    value: labaRugiNilaiSpk,
+                    tone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
+                  },
+                  {
+                    label: 'Laba Rugi (Teropname - Pengeluaran)',
+                    value: labaRugiOpname,
+                    tone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
                   },
                 ].map((m) => (
                   <div key={m.label}>

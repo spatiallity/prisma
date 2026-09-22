@@ -31,8 +31,8 @@ type FilterKey = 'all' | 'invoiced' | 'pad_only' | 'opname_only'
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Semua' },
-  { key: 'invoiced', label: 'Sudah Invoice' },
-  { key: 'pad_only', label: 'Sudah PAD belum Invoice' },
+  { key: 'invoiced', label: 'Sudah Invoiced' },
+  { key: 'pad_only', label: 'Sudah PAD belum Invoiced' },
   { key: 'opname_only', label: 'Sudah Opname belum PAD' },
 ]
 
@@ -88,7 +88,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
         const steps = [
           { label: 'Opname', done: !!row.opnameMarkedAt },
           { label: 'PAD', done: !!row.padMarkedAt },
-          { label: 'Invoice', done: row.invoiceDone },
+          { label: 'Invoiced', done: row.invoiceDone },
         ]
         return (
           <div className="min-w-[170px]">
@@ -102,7 +102,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
               ))}
             </div>
             <div className="mt-1 text-xs font-semibold text-muted-foreground">
-              {row.invoiceDone ? 'Invoice selesai' : row.padMarkedAt ? 'Menunggu invoice' : row.opnameMarkedAt ? 'Menunggu PAD' : 'Menunggu opname'}
+              {row.invoiceDone ? 'Invoiced selesai' : row.padMarkedAt ? 'Menunggu invoiced' : row.opnameMarkedAt ? 'Menunggu PAD' : 'Menunggu opname'}
             </div>
           </div>
         )
@@ -167,7 +167,7 @@ export function FinancialReportTable({ rows, mayEdit }: { rows: FinancialRow[]; 
     },
     {
       key: 'invoice',
-      label: 'Invoice',
+      label: 'Invoiced',
       align: 'right',
       sortAccessor: (row) => row.invoiceDate,
       renderTotal: (rows) => formatRupiah(rows.reduce((sum, r) => sum + (r.invoiceValue ?? 0), 0)),
