@@ -34,7 +34,7 @@ export async function loadStageBySpk(
     await Promise.all([
       supabase
         .from('invoices')
-        .select('spk_id, invoice_date')
+        .select('spk_id, invoice_date, status')
         .in('spk_id', spkIds)
         .neq('status', 'Cancelled')
         .order('invoice_date', { ascending: false, nullsFirst: false }),
@@ -49,7 +49,9 @@ export async function loadStageBySpk(
 
   const latestInvoiceBySpk = new Map<string, string | null>()
   for (const inv of invoices ?? []) {
-    if (!latestInvoiceBySpk.has(inv.spk_id)) latestInvoiceBySpk.set(inv.spk_id, inv.invoice_date)
+    if (inv.status === 'Approved' && !latestInvoiceBySpk.has(inv.spk_id)) {
+      latestInvoiceBySpk.set(inv.spk_id, inv.invoice_date)
+    }
   }
 
   const designIds = (designs ?? []).map((d) => d.id)

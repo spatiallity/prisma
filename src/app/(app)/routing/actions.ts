@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import type { RoutingStatus } from '@/lib/supabase/types'
+import type { FinancialDocStatus, RoutingStatus } from '@/lib/supabase/types'
 
 export type RoutingState = { error: string | null; success?: string }
 
@@ -197,7 +197,7 @@ export async function updateRoutingStepDates(
   _prev: RoutingState,
   formData: FormData,
 ): Promise<RoutingState> {
-  await requirePermission('routing', 'edit')
+  const user = await requirePermission('routing', 'edit')
 
   const routingId = text(formData, 'routing_id')
   const stepId = text(formData, 'step_id')
@@ -279,13 +279,45 @@ export async function updateRoutingStepDates(
       .eq('id', routingId)
       .maybeSingle()
     if (routingDoc) {
-      await supabase
+      // The terminal routing step and the finance invoice represent the same
+      // business event. Keep the two records in lockstep rather than leaving
+      // Detail SPK to infer an invoice from routing history.
+      const { data: existingInvoice, error: existingInvoiceError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, invoice_date')
+        .eq('spk_id', routingDoc.spk_id)
+        .neq('status', 'Cancelled')
+        .maybeSingle()
+      if (existingInvoiceError) return { error: existingInvoiceError.message }
+
+      const invoicePayload = {
+        invoice_number: invoiceNumber ?? existingInvoice?.invoice_number ?? null,
+        invoice_value: Number(invoiceValueRaw),
+        invoice_date:
+          invoiceDate ??
+          (completedAt ? completedAt.slice(0, 10) : null) ??
+          existingInvoice?.invoice_date ??
+          null,
+        status: 'Approved' as FinancialDocStatus,
+      }
+
+      const { error: invoiceError } = existingInvoice
+        ? await supabase.from('invoices').update(invoicePayload).eq('id', existingInvoice.id)
+        : await supabase.from('invoices').insert({
+            ...invoicePayload,
+            spk_id: routingDoc.spk_id,
+            created_by: user.id,
+          })
+      if (invoiceError) return { error: invoiceError.message }
+
+      const { error: spkError } = await supabase
         .from('spks')
         // Invoiced is the terminal routing state. Older records may not have
         // survey/check dates recorded, but a completed invoice is still the
         // authoritative sign that the project itself is finished.
         .update({ status: 'Selesai', denda_value: dendaRaw ? Number(dendaRaw) : null })
         .eq('id', routingDoc.spk_id)
+      if (spkError) return { error: spkError.message }
     }
 
     revalidatePath('/routing')
@@ -501,11 +533,26 @@ export async function rollbackRoutingStep(
   if (reopenError) return { error: reopenError.message }
 
   if (current.step_name === 'Invoiced') {
-    await supabase.from('spks').update({ denda_value: null }).eq('id', routing.spk_id)
+    const [{ error: invoiceError }, { error: spkError }] = await Promise.all([
+      supabase
+        .from('invoices')
+        .update({ status: 'Submitted' as FinancialDocStatus })
+        .eq('spk_id', routing.spk_id)
+        .neq('status', 'Cancelled'),
+      supabase
+        .from('spks')
+        .update({ status: 'On Going', denda_value: null })
+        .eq('id', routing.spk_id),
+    ])
+    if (invoiceError) return { error: invoiceError.message }
+    if (spkError) return { error: spkError.message }
   }
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
+  revalidatePath('/reports/financial')
+  revalidatePath('/spk')
+  revalidatePath('/spk/progress')
   revalidatePath(`/spk/${routing.spk_id}`)
   return { error: null, success: `Tahap dibatalkan. Kembali ke ${previous.step_name}.` }
 }

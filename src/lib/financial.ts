@@ -91,11 +91,10 @@ export function financialStatusLabel(status: FinancialDocStatus) {
 
 export function financialDisplayStatus(
   status: FinancialDocStatus,
-  opts?: { invoiceDate?: string | null },
+  _opts?: { invoiceDate?: string | null },
 ) {
-  if (status === 'Approved' && opts && !opts.invoiceDate) {
-    return 'Submitted' satisfies FinancialDocStatus
-  }
+  // Invoice dates are optional, so an approved invoice must remain finished
+  // even when its date has not been recorded yet.
   return status
 }
 

@@ -41,7 +41,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
   const spkChoice = spk ? [{ id: spkId, label: `${spk.spk_number} — ${spk.work_name}` }] : []
   const opnameDone = !!spk?.opname_marked_at
   const padDone = !!spk?.pad_marked_at
-  const invoiceDone = (invoices ?? []).some((invoice) => invoice.status === 'Approved' && !!invoice.invoice_date)
+  const invoiceDone = (invoices ?? []).some((invoice) => invoice.status === 'Approved')
   const financialComplete = opnameDone && padDone && invoiceDone
   const currentLabel = invoiceDone ? 'Invoice' : padDone ? 'Invoice' : opnameDone ? 'PAD' : 'Opname'
 
