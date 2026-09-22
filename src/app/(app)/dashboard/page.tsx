@@ -26,10 +26,12 @@ import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { PHASE_LABEL, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
 import { classifySpkProgress, type SpkProgressBucket } from '@/lib/spk-progress'
 import type { DesignStage, RoutingLeadTimeView } from '@/lib/supabase/types'
-import { RabDonutChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
+import { ContractAbsorptionChart, RabDonutChart, TopCategoriesChart, DesignStageChart } from './dashboard-charts'
 import { EqualHeightRow } from './equal-height-row'
 
 export const metadata: Metadata = { title: 'Dashboard' }
+
+const TOP_SCR_CONTRACT_VALUE = 14_562_975_000
 
 type DesignSummary = { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; updated_at: string }
 
@@ -369,52 +371,65 @@ export default async function DashboardPage() {
           <Card className="flex min-h-[326px] flex-col overflow-hidden">
             <CardHeader>
               <div>
-                <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
-                <CardDescription>{seeRabBudget ? `${rabLeaf.length} kode akun` : 'Akses anggaran dibatasi'}</CardDescription>
+                <CardTitle>Ringkasan Kontrak & RAB</CardTitle>
+                <CardDescription>Serapan kontrak dan anggaran proyek</CardDescription>
               </div>
             </CardHeader>
-            {seeRabBudget ? (
-              <CardContent className="flex flex-1 items-center p-5">
-                <div className="grid w-full gap-5 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
-                  <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-b-0 sm:border-r sm:py-2 sm:pr-5 sm:pb-2">
-                    <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-                  </div>
-                  <div className="grid gap-3">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">Anggaran</span>
-                      <span className="tnum font-bold whitespace-nowrap text-slate-900">
-                        {formatRupiah(rabTotals.anggaran)}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">Realisasi</span>
-                      <span className="tnum font-bold whitespace-nowrap text-slate-900">
-                        {formatRupiah(rabTotals.realisasi)}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-3 border-t border-slate-100 pt-3">
-                      <span className="text-sm text-muted-foreground">Terpakai</span>
-                      <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
-                        {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
-                      </Badge>
-                    </div>
-                    <Link
-                      href="/financial/rab"
-                      className="w-fit text-xs font-bold text-primary hover:underline"
-                    >
-                      Rincian per kode akun
-                    </Link>
-                  </div>
+            <CardContent className="flex flex-1 flex-col p-0">
+              <section className="p-5">
+                <div className="mb-3">
+                  <h3 className="text-sm font-black text-slate-900">Serapan Kontrak</h3>
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">Nilai SPK terbit dari total kontrak Top SCR</p>
                 </div>
-              </CardContent>
-            ) : (
-              <CardContent className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
-                  <LockKeyhole size={18} aria-hidden />
-                </span>
-                <p className="text-sm font-bold text-slate-700">Data anggaran tidak tersedia untuk role ini.</p>
-              </CardContent>
-            )}
+                <ContractAbsorptionChart capacity={TOP_SCR_CONTRACT_VALUE} issued={nilaiSpkTotal} />
+              </section>
+
+              <section className="flex flex-1 flex-col border-t border-slate-100">
+                <div className="px-5 pt-4">
+                  <h3 className="text-sm font-black text-slate-900">RAB — Anggaran vs Realisasi</h3>
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                    {seeRabBudget ? `${rabLeaf.length} kode akun` : 'Akses anggaran dibatasi'}
+                  </p>
+                </div>
+                {seeRabBudget ? (
+                  <div className="grid flex-1 gap-5 p-5 pt-3 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
+                    <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2">
+                      <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
+                    </div>
+                    <div className="grid gap-3">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm text-muted-foreground">Anggaran</span>
+                        <span className="tnum font-bold whitespace-nowrap text-slate-900">
+                          {formatRupiah(rabTotals.anggaran)}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm text-muted-foreground">Realisasi</span>
+                        <span className="tnum font-bold whitespace-nowrap text-slate-900">
+                          {formatRupiah(rabTotals.realisasi)}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3 border-t border-slate-100 pt-3">
+                        <span className="text-sm text-muted-foreground">Terpakai</span>
+                        <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                          {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                        </Badge>
+                      </div>
+                      <Link href="/financial/rab" className="w-fit text-xs font-bold text-primary hover:underline">
+                        Rincian per kode akun
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 py-8 text-center">
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
+                      <LockKeyhole size={18} aria-hidden />
+                    </span>
+                    <p className="text-sm font-bold text-slate-700">Data anggaran tidak tersedia untuk role ini.</p>
+                  </div>
+                )}
+              </section>
+            </CardContent>
           </Card>
         </div>
       ) : (

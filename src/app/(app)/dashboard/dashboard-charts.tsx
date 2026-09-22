@@ -25,7 +25,7 @@ export function RabDonutChart({ anggaran, realisasi }: { anggaran: number; reali
   const percent = anggaran > 0 ? (realisasi / anggaran) * 100 : null
 
   return (
-    <div className="relative h-40">
+    <div className="relative h-36 w-36 shrink-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="65%" outerRadius="100%" startAngle={90} endAngle={-270}>
@@ -128,6 +128,40 @@ export function DesignStageChart({
           <div key={item.label}>{row}</div>
         )
       })}
+    </div>
+  )
+}
+
+/** Shows how much of the overall Top SCR contract has been issued as SPK. */
+export function ContractAbsorptionChart({ capacity, issued }: { capacity: number; issued: number }) {
+  const issuedPercent = capacity > 0 ? Math.min((issued / capacity) * 100, 100) : 0
+  const remainingPercent = Math.max(100 - issuedPercent, 0)
+  const remaining = Math.max(capacity - issued, 0)
+  const overCapacity = issued > capacity
+
+  return (
+    <div className="grid gap-2.5">
+      <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
+        <span>SPK terbit</span>
+        <span>{overCapacity ? 'Melebihi kontrak' : 'Sisa kontrak'}</span>
+      </div>
+      <div className="flex h-8 overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-center text-[10px] font-bold text-white">
+        <div
+          className="flex min-w-0 items-center justify-center bg-brand-navy px-2 whitespace-nowrap"
+          style={{ width: `${issuedPercent}%` }}
+        >
+          {formatRupiahCompact(issued)} ({issuedPercent.toFixed(0)}%)
+        </div>
+        {remainingPercent > 0 ? (
+          <div
+            className="flex min-w-0 items-center justify-center bg-brand-orange px-2 whitespace-nowrap"
+            style={{ width: `${remainingPercent}%` }}
+          >
+            {formatRupiahCompact(remaining)} ({remainingPercent.toFixed(0)}%)
+          </div>
+        ) : null}
+      </div>
+      <div className="tnum text-center text-xs font-black text-slate-900">{formatRupiah(capacity)}</div>
     </div>
   )
 }
