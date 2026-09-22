@@ -83,8 +83,11 @@ export function DesignDetailModal({
     // workflow position is still reliable, so earlier stages are shown as
     // complete without inventing dates or history rows.
     const inferredDone = !isDraft && index < currentIndex
-    const done = Boolean(latestEntry?.completed_at) || inferredDone || (isComplete && stage === design.current_stage)
-    const now = stage === design.current_stage && !done
+    // Saving a finish date does not itself advance the workflow. Until the
+    // user selects Lanjutkan, the current non-terminal stage must stay open
+    // so its next-stage and jump controls remain available.
+    const now = stage === design.current_stage && !isComplete
+    const done = !now && (Boolean(latestEntry?.completed_at) || inferredDone || (isComplete && stage === design.current_stage))
     const state = now ? 'current' : done ? 'done' : 'pending'
 
     // A freshly-opened stage's own entry has no Drafter/PIC Pertamina yet —

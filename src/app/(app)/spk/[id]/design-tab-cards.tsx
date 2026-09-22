@@ -62,10 +62,11 @@ export function DesignTabCards({
             const stageRevisions = designRevisions.filter((r) => r.stage === stage)
             const latestRevision = stageRevisions[0]
             const inferredDone = !isDraft && index < currentIndex
+            const now = stage === design.current_stage && !isComplete
             const done =
-              inferredDone ||
-              (stage === design.current_stage && Boolean(design.approved_at || latestRevision?.completed_at))
-            const now = stage === design.current_stage && !done
+              !now &&
+              (inferredDone ||
+                (stage === design.current_stage && Boolean(design.approved_at || latestRevision?.completed_at)))
             return {
               key: stage,
               label: stageDisplayLabel(stage),
