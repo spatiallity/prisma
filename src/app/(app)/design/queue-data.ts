@@ -88,7 +88,16 @@ export async function loadDesignQueue(
     ;(revisionsByDesign[revision.design_id] ??= []).push(revision)
   }
 
-  const openEntries = (allRevisions ?? []).filter((r) => !r.completed_at)
+  // A date is optional: the design record's current_stage is the workflow
+  // authority. Looking for a null completed_at here would treat every older
+  // undated stage as still open.
+  const openEntries = (designs ?? []).flatMap((design) => {
+    const currentEntries = (revisionsByDesign[design.id] ?? []).filter(
+      (revision) => revision.stage === design.current_stage,
+    )
+    const latestEntry = currentEntries.at(-1)
+    return latestEntry ? [latestEntry] : []
+  })
   const { data: entryRounds } = openEntries.length
     ? await supabase
         .from('design_stage_revisions')

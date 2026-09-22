@@ -79,7 +79,6 @@ export function NewRoutingForm({
 }) {
   const [state, formAction, pending] = useActionState(createRouting, initialState)
   useActionToast(state, onSaved)
-  const today = new Date().toISOString().slice(0, 10)
 
   if (spks.length === 0 || !templateId) {
     return (
@@ -115,8 +114,8 @@ export function NewRoutingForm({
           <Input id="r_number" name="document_number" placeholder="INV-2026-014" />
         </Field>
 
-        <Field label="Tanggal masuk" htmlFor="r_date" required>
-          <Input id="r_date" name="tanggal" type="date" defaultValue={today} required />
+        <Field label="Tanggal masuk" htmlFor="r_date">
+          <Input id="r_date" name="tanggal" type="date" />
         </Field>
 
         <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2">
@@ -184,7 +183,7 @@ export type RoutingStepEntry = {
  * Section 23 — the popup version of step review. A step still open (not yet
  * Completed) gets three plain outcomes instead of a mode picker or a separate
  * revision sub-form: Simpan perubahan (keeps it open), Lanjut ke Tahap
- * Selanjutnya (closes it, Tanggal selesai required), or Masih Revisi (stays
+ * Selanjutnya (closes it), or Masih Revisi (stays
  * open, status Returned, and Catatan is required for this one).
  * An already-Completed step just gets Simpan, correcting the fields in
  * place without touching its status.
@@ -216,7 +215,6 @@ export function RoutingStepDateForm({
 }) {
   const [state, formAction, pending] = useActionState(updateRoutingStepDates, initialState)
   useActionToast(state, onSaved)
-  const today = new Date().toISOString().slice(0, 10)
   const picListId = useId()
   const isInvoiced = stepName === 'Invoiced'
   const isDone = entry.status === 'Completed'
@@ -235,13 +233,12 @@ export function RoutingStepDateForm({
             {isDone ? 'Invoiced' : 'Sedang Berjalan'}
           </span>
         </div>
-        <Field label="Tanggal mulai" htmlFor="rd_inv_started" required>
+        <Field label="Tanggal mulai" htmlFor="rd_inv_started">
           <Input
             id="rd_inv_started"
             name="started_at"
             type="date"
-            defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
-            required
+            defaultValue={entry.started_at?.slice(0, 10) ?? ''}
           />
         </Field>
         <Field label="PIC Pertamina" htmlFor="rd_inv_pic">
@@ -255,8 +252,8 @@ export function RoutingStepDateForm({
         </Field>
         {finishingInvoice && (
           <div className="grid gap-3 border-t border-slate-200 pt-3">
-            <Field label="Tanggal selesai" htmlFor="rd_inv_completed" required>
-              <Input id="rd_inv_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? today} required />
+            <Field label="Tanggal selesai" htmlFor="rd_inv_completed">
+              <Input id="rd_inv_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? ''} />
             </Field>
             <Field label="Nomor invoice" htmlFor="rd_inv_number">
               <Input id="rd_inv_number" name="invoice_number" defaultValue={entry.invoice_number ?? ''} placeholder="INV-2026-014" />
@@ -264,8 +261,8 @@ export function RoutingStepDateForm({
             <Field label="Nilai invoice" htmlFor="rd_inv_value" required>
               <Input id="rd_inv_value" name="invoice_value" inputMode="numeric" defaultValue={entry.invoice_value ?? ''} required />
             </Field>
-            <Field label="Tanggal invoice" htmlFor="rd_inv_date" required>
-              <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? entry.completed_at?.slice(0, 10) ?? today} required />
+            <Field label="Tanggal invoice" htmlFor="rd_inv_date">
+              <Input id="rd_inv_date" name="invoice_date" type="date" defaultValue={entry.invoice_date ?? ''} />
             </Field>
             <Field label="Denda (Rp)" htmlFor="rd_denda" hint="Kosongkan kalau tidak ada denda.">
               <Input id="rd_denda" name="denda_value" inputMode="numeric" placeholder="0" defaultValue={dendaValue ?? ''} />
@@ -304,13 +301,12 @@ export function RoutingStepDateForm({
       <input type="hidden" name="routing_id" value={routingId} />
       <input type="hidden" name="step_id" value={stepId} />
 
-      <Field label="Tanggal mulai" htmlFor="rd_started" required>
+      <Field label="Tanggal mulai" htmlFor="rd_started">
         <Input
           id="rd_started"
           name="started_at"
           type="date"
-          defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? today}
-          required
+          defaultValue={entry.started_at?.slice(0, 10) ?? ''}
         />
       </Field>
 
@@ -349,8 +345,8 @@ export function RoutingStepDateForm({
       ) : (
         <>
           <div className="grid gap-3 border-t border-slate-200 pt-3">
-            <Field label="Tanggal selesai" htmlFor="rd_completed" required>
-              <Input id="rd_completed" name="completed_at" type="date" defaultValue={today} required />
+            <Field label="Tanggal selesai" htmlFor="rd_completed">
+              <Input id="rd_completed" name="completed_at" type="date" />
             </Field>
           </div>
 
@@ -439,8 +435,8 @@ export function StepReviewForm({
         <form action={advanceAction} className="grid gap-3">
           <input type="hidden" name="routing_id" value={routingId} />
           <input type="hidden" name="step_id" value={stepId} />
-          <Field label="Tanggal" htmlFor="adv_date" required>
-            <Input id="adv_date" name="tanggal" type="date" defaultValue={today} required />
+          <Field label="Tanggal" htmlFor="adv_date">
+            <Input id="adv_date" name="tanggal" type="date" />
           </Field>
           <Field label="PIC Pertamina" htmlFor="adv_pic">
             <Input id="adv_pic" name="pic_name" list={picListId} defaultValue={defaultPic ?? ''} autoComplete="off" />

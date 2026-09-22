@@ -216,7 +216,6 @@ export function NewDesignForm({
 }) {
   const [state, formAction, pending] = useActionState(createDesign, initialState)
   useActionToast(state, onSaved)
-  const today = new Date().toISOString().slice(0, 10)
 
   if (spks.length === 0) {
     return (
@@ -248,8 +247,8 @@ export function NewDesignForm({
 
         <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
-        <Field label="Tanggal mulai" htmlFor="d_start" required>
-          <Input id="d_start" name="tanggal" type="date" defaultValue={today} required />
+        <Field label="Tanggal mulai" htmlFor="d_start">
+          <Input id="d_start" name="tanggal" type="date" />
         </Field>
 
         <Field
@@ -368,8 +367,8 @@ export function StageReviewForm({
             </Select>
           </Field>
 
-          <Field label="Tanggal" htmlFor="a_date" required>
-            <Input id="a_date" name="tanggal" type="date" defaultValue={today} required />
+          <Field label="Tanggal" htmlFor="a_date">
+            <Input id="a_date" name="tanggal" type="date" />
           </Field>
 
           <PicField label="Drafter" pics={pics} placeholder="Sama seperti sebelumnya" />
@@ -472,7 +471,6 @@ export function StageEntryForm({
   useActionToast(saveState, onSaved, { onUndo: restoreEntry })
   useActionToast(advanceState, onSaved)
   useActionToast(completeState, onSaved)
-  const today = new Date().toISOString().slice(0, 10)
   const nextOptions = isCurrent ? DESIGN_NEXT_STAGES[stage] : []
   const stageIndex = PHASE_STAGES[phase].indexOf(stage)
   const previousOptions = isCurrent ? PHASE_STAGES[phase].slice(0, Math.max(0, stageIndex)) : []
@@ -490,13 +488,12 @@ export function StageEntryForm({
       <input type="hidden" name="entry_id" value={entry.id} />
       <input type="hidden" name="stage" ref={stageInputRef} defaultValue={target} />
 
-      <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`} required>
+      <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`}>
         <Input
           id={`se_${entry.id}_start`}
           name="tanggal"
           type="date"
-          defaultValue={entry.started_at?.slice(0, 10) ?? today}
-          required
+          defaultValue={entry.started_at?.slice(0, 10) ?? ''}
         />
       </Field>
 
@@ -520,8 +517,8 @@ export function StageEntryForm({
 
       {isTerminal && (
         <div className="grid gap-3 border-t border-slate-200 pt-3">
-          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`} required>
-            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" defaultValue={today} required />
+          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`}>
+            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" />
           </Field>
           {stage === 'Opname' && (
             <Field label="Nilai Opname" htmlFor={`se_${entry.id}_opname_value`}>
@@ -538,8 +535,8 @@ export function StageEntryForm({
 
       {isCurrent && nextOptions.length > 0 && (
         <div className="grid gap-3 border-t border-slate-200 pt-3">
-          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`} required>
-            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" defaultValue={today} required />
+          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`}>
+            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" />
           </Field>
 
           {nextOptions.length > 1 ? (
@@ -648,7 +645,6 @@ export function StartDesignForm({
 }) {
   const [state, formAction, pending] = useActionState(startDesign, initialState)
   useActionToast(state)
-  const today = new Date().toISOString().slice(0, 10)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -660,8 +656,8 @@ export function StartDesignForm({
         <div className="mt-1 text-sm font-bold text-slate-900">{currentStage}</div>
       </div>
 
-      <Field label="Tanggal" htmlFor="s_date" required>
-        <Input id="s_date" name="tanggal" type="date" defaultValue={today} required />
+      <Field label="Tanggal" htmlFor="s_date">
+        <Input id="s_date" name="tanggal" type="date" />
       </Field>
 
       {phase === 'siteplan' && (
@@ -728,13 +724,12 @@ export function EditRevisionEntryButton({
         <input type="hidden" name="entry_id" value={entry.id} />
         <input type="hidden" name="design_id" value={designId} />
 
-        <Field label="Tanggal" htmlFor="e_tanggal" required>
+        <Field label="Tanggal" htmlFor="e_tanggal">
           <Input
             id="e_tanggal"
             name="tanggal"
             type="date"
             defaultValue={entry.started_at?.slice(0, 10)}
-            required
           />
         </Field>
 
