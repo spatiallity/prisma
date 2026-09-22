@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/modal'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { useActionToast } from '@/components/ui/toast'
 import type { DesignPhase, DesignStage } from '@/lib/supabase/types'
-import { DESIGN_NEXT_STAGES, PHASE_STAGES } from '@/lib/design'
+import { DESIGN_NEXT_STAGES, PHASE_STAGES, stageDisplayLabel } from '@/lib/design'
 import { PIC_PERTAMINA_SUGGESTIONS } from '@/lib/pic-pertamina'
 import {
   addDesignRevision,
@@ -17,6 +17,7 @@ import {
   completeStage,
   createDesign,
   deleteRevisionEntry,
+  rewindDesignToStage,
   startDesign,
   restoreRevisionEntry,
   updateRevisionEntry,
@@ -431,6 +432,7 @@ export function StageEntryForm({
   previousDrafterName,
   previousPicPertamina,
   canRollback = false,
+  canRewind = false,
   onSaved,
 }: {
   designId: string
@@ -452,6 +454,9 @@ export function StageEntryForm({
   previousPicPertamina?: string | null
   /** Only the newest history entry can be undone without creating a gap. */
   canRollback?: boolean
+  /** A previously reached stage can become the new workflow point; later
+   * history is removed, while this stage and all earlier work stay intact. */
+  canRewind?: boolean
   onSaved?: () => void
 }) {
   const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
@@ -587,6 +592,9 @@ export function StageEntryForm({
         )}
         {canRollback && (
           <DeleteRevisionEntryButton designId={designId} entryId={entry.id} />
+        )}
+        {canRewind && (
+          <RewindDesignButton designId={designId} targetStage={stage} />
         )}
       </div>
 
@@ -770,6 +778,25 @@ export function DeleteRevisionEntryButton({
       hiddenFields={{ entry_id: entryId, design_id: designId }}
       itemLabel="tahap terakhir ini"
       confirmText="Batalkan tahap terakhir ini? Desain kembali ke tahap sebelumnya, dan progress SPK yang sudah tersinkron dari tahap ini ikut dibatalkan."
+    />
+  )
+}
+
+function RewindDesignButton({
+  designId,
+  targetStage,
+}: {
+  designId: string
+  targetStage: DesignStage
+}) {
+  const targetLabel = stageDisplayLabel(targetStage)
+  return (
+    <DeleteButton
+      action={rewindDesignToStage}
+      hiddenFields={{ design_id: designId, target_stage: targetStage }}
+      label="Kembalikan ke tahap ini"
+      itemLabel={`progres setelah ${targetLabel}`}
+      confirmText={`Semua progres setelah ${targetLabel} akan dihapus. Tahap ${targetLabel} dibuka kembali, sedangkan riwayat tahap sebelumnya tetap tersimpan.`}
     />
   )
 }

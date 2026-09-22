@@ -835,6 +835,119 @@ export async function deleteRevisionEntry(
 }
 
 /**
+ * Reopens a previously reached stage and removes only the progress that came
+ * after it. This is deliberately distinct from deleting one latest entry:
+ * users can correct a workflow jump in one action (for example returning
+ * from Pembuatan Peta Inventaris to Pembuatan Desain Awal) without losing the
+ * history that led up to the selected stage.
+ */
+export async function rewindDesignToStage(
+  _prev: DesignState,
+  formData: FormData,
+): Promise<DesignState> {
+  const user = await requirePermission('design', 'edit')
+
+  const designId = text(formData, 'design_id')
+  const targetStage = text(formData, 'target_stage') as DesignStage
+  if (!designId || !targetStage) return { error: 'Tahap tujuan tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { data: designRow } = await supabase
+    .from('designs')
+    .select('spk_id, phase')
+    .eq('id', designId)
+    .maybeSingle()
+  if (!designRow) return { error: 'Desain tidak ditemukan.' }
+
+  const stages = PHASE_STAGES[designRow.phase]
+  const targetIndex = stages.indexOf(targetStage)
+  if (targetIndex === -1) return { error: 'Tahap tujuan tidak sesuai dengan fase desain ini.' }
+
+  // Going backwards after the next phase begins would leave two workflows
+  // disagreeing. Make that dependency explicit instead of silently deleting
+  // work from another phase or from the invoice route.
+  if (designRow.phase === 'siteplan' && targetIndex < stages.length - 1) {
+    const { data: finalisasi } = await supabase
+      .from('designs')
+      .select('id')
+      .eq('spk_id', designRow.spk_id)
+      .eq('phase', 'finalisasi')
+      .eq('status', 'Active')
+      .maybeSingle()
+    if (finalisasi) {
+      return { error: 'Finalisasi Desain sudah dimulai. Batalkan progres Finalisasi Desain terlebih dahulu.' }
+    }
+  }
+  if (designRow.phase === 'finalisasi' && targetIndex < stages.length - 1) {
+    const { data: routing } = await supabase
+      .from('spk_routing')
+      .select('id')
+      .eq('spk_id', designRow.spk_id)
+      .maybeSingle()
+    if (routing) {
+      return { error: 'Dokumen invoice sudah dibuat. Batalkan progres routing terlebih dahulu.' }
+    }
+  }
+
+  const { data: revisions, error: revisionsError } = await supabase
+    .from('design_revisions')
+    .select('id, stage')
+    .eq('design_id', designId)
+    .eq('status', 'Active')
+    .order('revision_no')
+    .order('created_at')
+  if (revisionsError) return { error: revisionsError.message }
+  if (!revisions?.length) return { error: 'Belum ada riwayat tahap desain.' }
+
+  const targetEntryIndex = revisions.map((revision) => revision.stage).lastIndexOf(targetStage)
+  if (targetEntryIndex === -1) return { error: `Tahap ${targetStage} belum pernah dicapai.` }
+
+  const targetEntry = revisions[targetEntryIndex]
+  const entriesToRemove = revisions.slice(targetEntryIndex + 1).map((revision) => revision.id)
+  if (entriesToRemove.length) {
+    const { error: childError } = await supabase
+      .from('design_stage_revisions')
+      .delete()
+      .in('design_revision_id', entriesToRemove)
+    if (childError) return { error: childError.message }
+
+    const { error: deleteError } = await supabase
+      .from('design_revisions')
+      .delete()
+      .in('id', entriesToRemove)
+    if (deleteError) return { error: deleteError.message }
+  }
+
+  const { error: reopenError } = await supabase
+    .from('design_revisions')
+    .update({ completed_at: null, created_at: new Date().toISOString() })
+    .eq('id', targetEntry.id)
+  if (reopenError) return { error: reopenError.message }
+
+  await supabase
+    .from('designs')
+    .update({ approved_at: null, approved_by: null })
+    .eq('id', designId)
+
+  const progressDate = new Date().toISOString().slice(0, 10)
+  for (const [index, stage] of stages.entries()) {
+    await syncSpkActivityStage(
+      supabase,
+      designRow.spk_id,
+      stage,
+      index < targetIndex ? 'Selesai' : index === targetIndex ? 'Dalam Pengerjaan' : 'Belum Mulai',
+      progressDate,
+      user.id,
+    )
+  }
+
+  revalidatePath('/design')
+  revalidatePath(`/design/${designId}`)
+  revalidatePath(`/spk/${designRow.spk_id}`)
+  return { error: null, success: `Desain dikembalikan ke ${targetStage}.` }
+}
+
+/**
  * Wipes a design record's whole progress (cascades to design_revisions and
  * design_stage_revisions), leaving the SPK itself untouched — the user can
  * start fresh via createDesign/startDesign afterwards. Distinct from

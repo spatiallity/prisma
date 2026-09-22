@@ -150,7 +150,8 @@ export function DesignDetailModal({
               pics={pics}
               previousDrafterName={previousDrafterName}
               previousPicPertamina={previousPicPertamina}
-              canRollback={now && latestEntry.id === latestRevisionId && revisions.length > 1}
+              canRollback={latestEntry.id === latestRevisionId && revisions.length > 1}
+              canRewind={latestEntry.id !== latestRevisionId}
               onSaved={() => setOpenKey(null)}
             />
           ) : undefined
