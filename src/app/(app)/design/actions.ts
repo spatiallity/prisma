@@ -428,7 +428,13 @@ export async function advanceStage(
   const typedPicName = text(formData, 'pic_name')
   const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
 
-  if (current && !current.completed_at) {
+  // Stepping back to an earlier stage doesn't mean the one we're leaving
+  // was finished — it means the opposite (that's why we're going back). Only
+  // a forward move actually completes the current entry; the accordion
+  // reads completed_at to show "Selesai", so leaving it null here is what
+  // makes the departed stage read as not-done again.
+  const isReturningToPreviousStage = allowedPreviousStages.includes(stage)
+  if (current && !current.completed_at && !isReturningToPreviousStage) {
     const { error } = await supabase
       .from('design_revisions')
       .update({
