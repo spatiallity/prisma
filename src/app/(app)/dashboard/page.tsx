@@ -311,7 +311,7 @@ export default async function DashboardPage() {
                   at full width a lone figure on its own row left most of the
                   card empty. */}
               <div className="grid xl:grid-cols-[minmax(0,0.85fr)_minmax(0,2.15fr)]">
-                <div className="border-b border-slate-100 px-5 py-3.5 xl:border-r xl:border-b-0">
+                <div className="border-b border-slate-100 px-5 py-3 xl:border-r xl:border-b-0">
                   <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
                   <div className="tnum mt-1 text-3xl font-black text-slate-900">
                     {formatRupiah(nilaiSpkTotal)}
@@ -342,7 +342,7 @@ export default async function DashboardPage() {
                     <div
                       key={m.label}
                       className={cn(
-                        'min-w-0 border-slate-100 px-4 py-3.5',
+                        'min-w-0 border-slate-100 px-4 py-3',
                         index > 0 && 'border-t',
                         index > 0 && index < 3 && 'sm:border-t-0',
                         index % 3 !== 0 && 'sm:border-l',
@@ -360,7 +360,7 @@ export default async function DashboardPage() {
                   ))}
                 </div>
               </div>
-              <div className="border-t border-slate-100 px-5 py-3">
+              <div className="border-t border-slate-100 px-5 py-2.5">
                 <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
                   Rincian per SPK
                 </Link>
@@ -368,20 +368,20 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="grid items-start gap-5 xl:grid-cols-2">
-            <Card className="overflow-hidden">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>Ringkasan Kontrak</CardTitle>
                   <CardDescription>Serapan nilai kontrak Top SCR</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="p-5">
+              <CardContent className="flex flex-1 flex-col p-4">
                 <ContractAbsorptionChart capacity={TOP_SCR_CONTRACT_VALUE} issued={nilaiSpkTotal} />
               </CardContent>
             </Card>
 
-            <Card className="overflow-hidden">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
@@ -389,7 +389,7 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               {seeRabBudget ? (
-                <CardContent className="grid gap-5 p-5 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
+                <CardContent className="grid flex-1 gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
                   <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2">
                     <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
                   </div>
@@ -418,7 +418,7 @@ export default async function DashboardPage() {
                   </div>
                 </CardContent>
               ) : (
-                <CardContent className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+                <CardContent className="flex min-h-48 flex-1 flex-col items-center justify-center gap-2 text-center">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
                     <LockKeyhole size={18} aria-hidden />
                   </span>
