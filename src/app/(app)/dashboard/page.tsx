@@ -299,63 +299,74 @@ export default async function DashboardPage() {
       <PageHeader title={`Selamat datang, ${user.fullName.split(' ')[0]}`} />
 
       {seeFinance ? (
-        <div className="mb-5 grid gap-5 lg:grid-cols-2">
-          <Card className="overflow-hidden rounded-2xl">
+        <div className="mb-5 grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
+          <Card className="flex min-h-[326px] flex-col overflow-hidden">
             <CardHeader>
               <CardTitle>Nilai SPK</CardTitle>
             </CardHeader>
-            <CardContent className="grid content-start gap-5 p-5">
-              <div className="border-b border-slate-100 pb-4">
+            <CardContent className="flex flex-1 flex-col p-0">
+              <div className="px-5 pt-5 pb-4">
                 <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
-                <div className="tnum mt-1 text-3xl font-black text-slate-900 sm:text-4xl">
+                <div className="tnum mt-1 text-3xl font-black text-slate-900">
                   {formatRupiah(nilaiSpkTotal)}
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid border-y border-slate-100 sm:grid-cols-3">
                 {[
-                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, border: 'border-info', valueTone: 'text-info' },
-                  { label: 'PAD', value: padTotal, border: 'border-warning', valueTone: 'text-warning' },
-                  { label: 'Invoiced', value: invoiceTotal, border: 'border-success', valueTone: 'text-success' },
-                ].map((m) => (
-                  <div key={m.label} className={cn('min-w-0 border-l-2 pl-3', m.border)}>
-                    <div className="min-h-10 text-[10px] leading-4 font-extrabold tracking-wide text-slate-500 uppercase">{m.label}</div>
-                    <div className={cn('tnum mt-1 text-[15px] font-black whitespace-nowrap', m.valueTone)}>
+                  { label: 'SPK Sudah Opname/BAST', value: opnameTotal, tone: 'bg-info', valueTone: 'text-info' },
+                  { label: 'PAD', value: padTotal, tone: 'bg-warning', valueTone: 'text-warning' },
+                  { label: 'Invoiced', value: invoiceTotal, tone: 'bg-success', valueTone: 'text-success' },
+                ].map((m, index) => (
+                  <div key={m.label} className={cn('min-w-0 px-4 py-3.5', index > 0 && 'border-t border-slate-100 sm:border-t-0 sm:border-l')}>
+                    <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
+                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
+                      {m.label}
+                    </div>
+                    <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
                       {formatRupiah(m.value)}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
+              <div className="grid sm:grid-cols-3">
                 {[
-                  { label: 'Total Pengeluaran', value: expenseTotal, border: 'border-danger', valueTone: 'text-danger' },
+                  { label: 'Total Pengeluaran', detail: null, value: expenseTotal, tone: 'bg-danger', valueTone: 'text-danger' },
                   {
-                    label: 'Total Nilai SPK - Pengeluaran',
+                    label: 'Laba Rugi Nilai SPK',
+                    detail: 'Nilai SPK - Pengeluaran',
                     value: labaRugiNilaiSpk,
-                    border: labaRugiNilaiSpk < 0 ? 'border-danger' : 'border-success',
+                    tone: labaRugiNilaiSpk < 0 ? 'bg-danger' : 'bg-success',
                     valueTone: labaRugiNilaiSpk < 0 ? 'text-danger' : 'text-success',
                   },
                   {
-                    label: 'Laba Rugi (Teropname - Pengeluaran)',
+                    label: 'Laba Rugi Teropname',
+                    detail: 'Teropname - Pengeluaran',
                     value: labaRugiOpname,
-                    border: labaRugiOpname < 0 ? 'border-danger' : 'border-success',
+                    tone: labaRugiOpname < 0 ? 'bg-danger' : 'bg-success',
                     valueTone: labaRugiOpname < 0 ? 'text-danger' : 'text-success',
                   },
-                ].map((m) => (
-                  <div key={m.label} className={cn('min-w-0 border-l-2 pl-3', m.border)}>
-                    <div className="min-h-10 text-[10px] leading-4 font-extrabold tracking-wide text-slate-500 uppercase">{m.label}</div>
-                    <div className={cn('tnum mt-1 text-[15px] font-black whitespace-nowrap', m.valueTone)}>
+                ].map((m, index) => (
+                  <div key={m.label} className={cn('min-w-0 px-4 py-3.5', index > 0 && 'border-t border-slate-100 sm:border-t-0 sm:border-l')}>
+                    <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
+                      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
+                      {m.label}
+                    </div>
+                    {m.detail ? <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{m.detail}</div> : null}
+                    <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
                       {formatRupiah(m.value)}
                     </div>
                   </div>
                 ))}
               </div>
-              <Link href="/reports/financial" className="w-fit text-xs font-bold text-primary hover:underline">
-                Rincian per SPK
-              </Link>
+              <div className="mt-auto border-t border-slate-100 px-5 py-3">
+                <Link href="/reports/financial" className="text-xs font-bold text-primary hover:underline">
+                  Rincian per SPK
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl">
+          <Card className="flex min-h-[326px] flex-col overflow-hidden">
             <CardHeader>
               <div>
                 <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
@@ -363,33 +374,37 @@ export default async function DashboardPage() {
               </div>
             </CardHeader>
             {seeRabBudget ? (
-              <CardContent className="grid gap-3 sm:grid-cols-2 sm:items-center">
-                <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
-                <div className="grid gap-2">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Anggaran</span>
-                    <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                      {formatRupiah(rabTotals.anggaran)}
-                    </span>
+              <CardContent className="flex flex-1 items-center p-5">
+                <div className="grid w-full gap-5 sm:grid-cols-[0.9fr_1.1fr] sm:items-center">
+                  <div className="flex justify-center border-b border-slate-100 pb-4 sm:border-b-0 sm:border-r sm:py-2 sm:pr-5 sm:pb-2">
+                    <RabDonutChart anggaran={rabTotals.anggaran} realisasi={rabTotals.realisasi} />
                   </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Realisasi</span>
-                    <span className="tnum truncate font-bold whitespace-nowrap text-slate-900">
-                      {formatRupiah(rabTotals.realisasi)}
-                    </span>
+                  <div className="grid gap-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">Anggaran</span>
+                      <span className="tnum font-bold whitespace-nowrap text-slate-900">
+                        {formatRupiah(rabTotals.anggaran)}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">Realisasi</span>
+                      <span className="tnum font-bold whitespace-nowrap text-slate-900">
+                        {formatRupiah(rabTotals.realisasi)}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 border-t border-slate-100 pt-3">
+                      <span className="text-sm text-muted-foreground">Terpakai</span>
+                      <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
+                        {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
+                      </Badge>
+                    </div>
+                    <Link
+                      href="/financial/rab"
+                      className="w-fit text-xs font-bold text-primary hover:underline"
+                    >
+                      Rincian per kode akun
+                    </Link>
                   </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">Terpakai</span>
-                    <Badge tone={rabPercent !== null && rabPercent > 100 ? 'danger' : 'info'}>
-                      {rabPercent === null ? '—' : `${rabPercent.toFixed(1)}%`}
-                    </Badge>
-                  </div>
-                  <Link
-                    href="/financial/rab"
-                    className="mt-1 text-xs font-bold text-primary hover:underline"
-                  >
-                    Rincian per kode akun
-                  </Link>
                 </div>
               </CardContent>
             ) : (
@@ -403,7 +418,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
       ) : (
-        <Card className="mb-5 overflow-hidden rounded-2xl">
+        <Card className="mb-5 overflow-hidden">
           <CardContent className="p-5">
             <div className="text-xs font-extrabold tracking-wider text-slate-500 uppercase">Total SPK</div>
             <div className="tnum mt-1 text-4xl font-black text-slate-900">{kpi?.total_spk ?? 0}</div>
@@ -417,7 +432,7 @@ export default async function DashboardPage() {
       <div className="mb-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map((tile) => (
           <Link key={tile.label} href={tile.href}>
-            <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
+            <Card className="h-full transition-shadow hover:shadow-md">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="truncate text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">
