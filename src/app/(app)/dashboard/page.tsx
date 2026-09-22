@@ -345,18 +345,18 @@ export default async function DashboardPage() {
                     <div
                       key={m.label}
                       className={cn(
-                        'min-w-0 border-slate-100 px-4 py-3',
+                        'min-w-0 border-slate-100 px-4 py-4',
                         index > 0 && 'border-t',
                         index > 0 && index < 3 && 'sm:border-t-0',
                         index % 3 !== 0 && 'sm:border-l',
                       )}
                     >
-                      <div className="flex items-center gap-2 text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">
+                      <div className="flex items-center gap-2 text-xs font-extrabold tracking-wide text-slate-500 uppercase">
                         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', m.tone)} />
                         {m.label}
                       </div>
                       {m.detail ? <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{m.detail}</div> : null}
-                      <div className={cn('tnum mt-2 text-sm font-black whitespace-nowrap', m.valueTone)}>
+                      <div className={cn('tnum mt-2 text-lg font-black whitespace-nowrap', m.valueTone)}>
                         {formatRupiah(m.value)}
                       </div>
                     </div>

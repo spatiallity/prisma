@@ -145,7 +145,7 @@ export function ContractAbsorptionChart({ capacity, issued }: { capacity: number
         <span>SPK terbit</span>
         <span>{overCapacity ? 'Melebihi kontrak' : 'Sisa kontrak'}</span>
       </div>
-      <div className="flex h-8 overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-center text-[10px] font-bold text-white">
+      <div className="flex h-14 overflow-hidden rounded-md border border-slate-200 bg-slate-100 text-center text-sm font-bold text-white">
         <div
           className="flex min-w-0 items-center justify-center bg-primary px-2 whitespace-nowrap"
           style={{ width: `${issuedPercent}%` }}
@@ -161,7 +161,7 @@ export function ContractAbsorptionChart({ capacity, issued }: { capacity: number
           </div>
         ) : null}
       </div>
-      <div className="tnum text-center text-xs font-black text-slate-900">{formatRupiah(capacity)}</div>
+      <div className="tnum text-center text-sm font-black text-slate-900">{formatRupiah(capacity)}</div>
     </div>
   )
 }

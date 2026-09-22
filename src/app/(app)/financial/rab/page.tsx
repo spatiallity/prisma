@@ -7,7 +7,7 @@ import { can } from '@/lib/auth/permissions'
 import { filterLeafAccounts, formatMonthLabel } from '@/lib/financial'
 import { AddTransactionButton, DownloadRabButton } from './finance-form'
 import { MonthFilter } from './month-filter'
-import { AnggaranRealisasiChart, MonthlySpendChart } from './rab-charts'
+import { MonthlySpendChart } from './rab-charts'
 import { AkunSummaryTable, type AkunSummaryRow } from './akun-summary-table'
 import { RabSummary } from './rab-summary'
 import { FinanceTransactionsTable } from '../finance-transactions-table'
@@ -114,12 +114,6 @@ export default async function MonitoringRabPage({
   }
   const groups = [...groupMap.entries()].map(([label, rows]) => ({ label, rows }))
 
-  const perKategoriChart = groups.map(({ label, rows }) => ({
-    kategori: label.length > 24 ? `${label.slice(0, 24)}…` : label,
-    anggaran: rows.reduce((sum, r) => sum + Number(r.anggaran_rp ?? 0), 0),
-    realisasi: rows.reduce((sum, r) => sum + Number(r.realisasi_total), 0),
-  }))
-
   const akunOptions = filterLeafAccounts(coa ?? []).sort((a, b) =>
     a.kode_akun.localeCompare(b.kode_akun),
   )
@@ -207,7 +201,6 @@ export default async function MonitoringRabPage({
       )}
 
       {monthlySpend.length > 0 && <MonthlySpendChart data={monthlySpend} />}
-      {perKategoriChart.length > 0 && <AnggaranRealisasiChart data={perKategoriChart} />}
 
       <Card className="mb-5 overflow-hidden">
         <CardHeader>

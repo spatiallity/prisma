@@ -142,3 +142,11 @@ export function formatMonthLabel(bulan: string) {
   if (Number.isNaN(d.getTime())) return bulan
   return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d)
 }
+
+/** '2025-08-01' -> 'Agu 2025' — for chart axes, where the full month name
+ *  crowds a dozen-plus categories. */
+export function formatMonthLabelShort(bulan: string) {
+  const d = new Date(`${bulan}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return bulan
+  return new Intl.DateTimeFormat('id-ID', { month: 'short', year: 'numeric' }).format(d)
+}
