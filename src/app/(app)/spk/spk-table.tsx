@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Pencil } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Pencil, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DeleteButton } from '@/components/ui/delete-button'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -29,6 +30,11 @@ export function SpkTable({
   stageBySpk: Record<string, SpkStage>
   mayEdit: boolean
 }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const selectedTotal = useMemo(
+    () => spks.filter((spk) => selected.has(spk.id)).reduce((total, spk) => total + Number(spk.contract_value ?? 0), 0),
+    [selected, spks],
+  )
   const columns: DataTableColumn<SpkRow>[] = [
     {
       key: 'spk_number',
@@ -139,13 +145,28 @@ export function SpkTable({
   ]
 
   return (
-    <DataTable
-      columns={columns}
-      rows={spks}
-      rowKey={(row) => row.id}
-      defaultSort={{ key: 'start_date', dir: 'desc' }}
-      emptyTitle="Belum ada SPK"
-      pageSize={100}
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={spks}
+        rowKey={(row) => row.id}
+        defaultSort={{ key: 'periode', dir: 'desc' }}
+        selectedKeys={selected}
+        onSelectionChange={setSelected}
+        emptyTitle="Belum ada SPK"
+        pageSize={100}
+      />
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-primary/20 bg-primary-soft px-4 py-3">
+          <div>
+            <div className="text-xs font-extrabold tracking-wide text-primary uppercase">SPK dipilih</div>
+            <div className="tnum mt-0.5 text-lg font-black text-slate-900">{selected.size} SPK · {formatRupiah(selectedTotal)}</div>
+          </div>
+          <button type="button" onClick={() => setSelected(new Set())} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white hover:text-slate-900">
+            <X size={14} aria-hidden /> Bersihkan pilihan
+          </button>
+        </div>
+      )}
+    </>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, ListFilter, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Table, Td, Th, Tr } from './table'
 import { Input } from './field'
@@ -14,6 +14,8 @@ export type DataTableColumn<T> = {
   className?: string
   /** Omit to make the column unsortable (e.g. an actions column). */
   sortAccessor?: (row: T) => string | number | null
+  /** Value used by the spreadsheet-style multi-select filter. Defaults to the sort value. */
+  filterAccessor?: (row: T) => string | number | null
   render: (row: T) => ReactNode
   /** Cell has its own clickable controls (e.g. Edit/Hapus) — don't let clicks in it trigger onRowClick. */
   stopRowClick?: boolean
@@ -77,12 +79,38 @@ export function DataTable<T>({
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(
     defaultSort ?? null,
   )
+  const [filters, setFilters] = useState<Record<string, string[]>>({})
+
+  const filterableColumns = useMemo(
+    () => columns.filter((column) => column.filterAccessor ?? column.sortAccessor),
+    [columns],
+  )
+  const filterOptions = useMemo(
+    () =>
+      Object.fromEntries(
+        filterableColumns.map((column) => {
+          const accessor = column.filterAccessor ?? column.sortAccessor!
+          const values = [...new Set(rows.map((row) => String(accessor(row) ?? '')))].sort((a, b) =>
+            a.localeCompare(b, 'id', { numeric: true }),
+          )
+          return [column.key, values]
+        }),
+      ) as Record<string, string[]>,
+    [filterableColumns, rows],
+  )
 
   const filtered = useMemo(() => {
-    if (!searchAccessor || !query.trim()) return rows
     const q = query.trim().toLowerCase()
-    return rows.filter((row) => searchAccessor(row).toLowerCase().includes(q))
-  }, [rows, query, searchAccessor])
+    return rows.filter((row) => {
+      if (searchAccessor && q && !searchAccessor(row).toLowerCase().includes(q)) return false
+      return filterableColumns.every((column) => {
+        const selected = filters[column.key]
+        if (!selected?.length) return true
+        const accessor = column.filterAccessor ?? column.sortAccessor!
+        return selected.includes(String(accessor(row) ?? ''))
+      })
+    })
+  }, [rows, query, searchAccessor, filterableColumns, filters])
 
   const sorted = useMemo(() => {
     if (!sort) return filtered
@@ -119,6 +147,21 @@ export function DataTable<T>({
     })
   }
 
+  function toggleFilter(columnKey: string, value: string) {
+    setPage(0)
+    setFilters((current) => {
+      const selected = new Set(current[columnKey] ?? [])
+      if (selected.has(value)) selected.delete(value)
+      else selected.add(value)
+      const next = { ...current }
+      if (selected.size) next[columnKey] = [...selected]
+      else delete next[columnKey]
+      return next
+    })
+  }
+
+  const activeFilterCount = Object.values(filters).reduce((count, values) => count + values.length, 0)
+
   const hasTotals = columns.some((col) => col.renderTotal)
   const selectable = !!onSelectionChange
   const allVisibleChecked =
@@ -147,9 +190,9 @@ export function DataTable<T>({
 
   return (
     <div>
-      {searchAccessor && (
-        <div className="border-b border-slate-100 p-3">
-          <div className="relative max-w-xs">
+      {(searchAccessor || filterableColumns.length > 0) && (
+        <div className="flex flex-wrap items-start gap-2 border-b border-slate-100 p-3">
+          {searchAccessor && <div className="relative w-full max-w-xs">
             <Search
               size={15}
               className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
@@ -165,7 +208,41 @@ export function DataTable<T>({
               className="pl-9"
               aria-label={searchPlaceholder}
             />
-          </div>
+          </div>}
+          {filterableColumns.length > 0 && (
+            <details className="group relative">
+              <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                <ListFilter size={16} aria-hidden />
+                Filter
+                {activeFilterCount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-black text-white">{activeFilterCount}</span>}
+              </summary>
+              <div className="absolute z-20 mt-2 max-h-[min(70vh,520px)] w-[min(92vw,760px)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-xl">
+                <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
+                  <span className="text-sm font-black text-slate-900">Filter kolom</span>
+                  {activeFilterCount > 0 && (
+                    <button type="button" onClick={() => { setFilters({}); setPage(0) }} className="inline-flex items-center gap-1 text-xs font-extrabold text-danger hover:underline">
+                      <X size={14} aria-hidden /> Hapus semua
+                    </button>
+                  )}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filterableColumns.map((column) => (
+                    <fieldset key={column.key} className="min-w-0">
+                      <legend className="mb-1.5 text-xs font-extrabold tracking-wide text-slate-600 uppercase">{column.label}</legend>
+                      <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 p-2">
+                        {filterOptions[column.key].map((value) => (
+                          <label key={value || '__empty'} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            <input type="checkbox" className="size-3.5 rounded border-slate-300 accent-primary" checked={filters[column.key]?.includes(value) ?? false} onChange={() => toggleFilter(column.key, value)} />
+                            <span className="truncate">{value || '(Kosong)'}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>
+              </div>
+            </details>
+          )}
         </div>
       )}
 
@@ -285,8 +362,8 @@ export function DataTable<T>({
         </Table>
       ) : (
         <EmptyState
-          title={query ? 'Tidak ada yang cocok' : emptyTitle}
-          description={query ? `Tidak ada baris yang cocok dengan "${query}".` : emptyDescription}
+          title={query || activeFilterCount ? 'Tidak ada yang cocok' : emptyTitle}
+          description={query ? `Tidak ada baris yang cocok dengan "${query}".` : activeFilterCount ? 'Ubah atau hapus filter kolom untuk melihat data lain.' : emptyDescription}
         />
       )}
 

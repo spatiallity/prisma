@@ -283,13 +283,19 @@ export async function updateRoutingStepDates(
     if (routingDoc) {
       await supabase
         .from('spks')
-        .update({ denda_value: dendaRaw ? Number(dendaRaw) : null })
+        // Invoiced is the terminal routing state. Older records may not have
+        // survey/check dates recorded, but a completed invoice is still the
+        // authoritative sign that the project itself is finished.
+        .update({ status: 'Selesai', denda_value: dendaRaw ? Number(dendaRaw) : null })
         .eq('id', routingDoc.spk_id)
     }
 
     revalidatePath('/routing')
     revalidatePath(`/routing/${routingId}`)
     revalidatePath('/reports/financial')
+    revalidatePath('/spk')
+    revalidatePath('/spk/progress')
+    if (routingDoc) revalidatePath(`/spk/${routingDoc.spk_id}`)
     return { error: null, success: 'Invoice disimpan.' }
   }
 

@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Uploaded/seed PDF files are not source code. Excluding the assets folder
+   prevents Tailwind's automatic scanner from interpreting PDF bytes as CSS. */
+@source not "../../assets/**";
 
 /* --------------------------------------------------------------------------
    Brand palette — navy → steel-blue → teal, teal-green dominant (matches the

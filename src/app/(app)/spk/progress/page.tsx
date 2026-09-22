@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { DesignStage } from '@/lib/supabase/types'
 import { PHASE_LABEL, daysBetween, daysInStage, stageDisplayLabel } from '@/lib/design'
 import { ProgressBoard, type ProgressColumn, type ProgressRow, type ProgressStatus } from './progress-board'
+import { SpkIntakeChart, type SpkIntakeMonth } from './spk-intake-chart'
 
 export const metadata: Metadata = { title: 'Progress SPK' }
 
@@ -75,9 +76,10 @@ export default async function SpkProgressPage() {
   ] = await Promise.all([
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, work_name, status, start_date, end_date, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi')
+      .select('id, spk_number, site_code, work_name, status, start_date, end_date, created_at, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi')
       .in('status', ['On Going', 'Selesai'])
-      .order('spk_number'),
+      .order('start_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false }),
     supabase.from('designs').select('id, spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
     supabase
       .from('design_revisions')
@@ -201,6 +203,22 @@ export default async function SpkProgressPage() {
     const bucket = bucketFor(spk)
     return { ...spk, progress: progressFor(spk, bucket) }
   })
+  const intakeMonths = new Map<string, SpkIntakeMonth>()
+  const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'short', year: '2-digit' })
+  for (let offset = 11; offset >= 0; offset -= 1) {
+    const month = new Date()
+    month.setDate(1)
+    month.setMonth(month.getMonth() - offset)
+    const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
+    intakeMonths.set(key, { label: monthFormatter.format(month), total: 0 })
+  }
+  for (const spk of spks ?? []) {
+    if (!spk.created_at) continue
+    const date = new Date(spk.created_at)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const month = intakeMonths.get(key)
+    if (month) month.total += 1
+  }
   const bySpk = progressRows.reduce<Record<Column, ProgressRow[]>>(
     (acc, s) => {
       acc[bucketFor(s)].push(s)
@@ -282,6 +300,18 @@ export default async function SpkProgressPage() {
               </div>
             )
           })}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-5 overflow-hidden">
+        <CardHeader>
+          <div>
+            <CardTitle>SPK Masuk per Bulan</CardTitle>
+            <CardDescription>Jumlah SPK baru yang dicatat dalam 12 bulan terakhir.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <SpkIntakeChart data={[...intakeMonths.values()]} />
         </CardContent>
       </Card>
 

@@ -21,6 +21,7 @@ export type ProgressRow = {
   site_code: string | null
   work_name: string
   status: SpkStatus
+  created_at: string
   start_date: string | null
   end_date: string | null
   contract_value: number | string | null
@@ -67,6 +68,11 @@ export function ProgressBoard({ columns }: { columns: ProgressColumn[] }) {
       selectedAssignee === null
         ? column.rows
         : column.rows.filter((row) => row.progress.assignee === selectedAssignee),
+  })).map((column) => ({
+    ...column,
+    rows: [...column.rows].sort((a, b) =>
+      (b.progress.startedAt ?? b.start_date ?? b.created_at).localeCompare(a.progress.startedAt ?? a.start_date ?? a.created_at),
+    ),
   }))
 
   function selectWorkloadArea(area: 'design' | 'routing') {
