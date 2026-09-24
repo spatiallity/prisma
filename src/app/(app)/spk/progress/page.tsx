@@ -96,11 +96,17 @@ export default async function SpkProgressPage() {
 
   const designsBySpk = new Map<
     string,
-    { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null }[]
+    { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null; started: boolean }[]
   >()
+  const startedDesignIds = new Set((designRevisions ?? []).map((revision) => revision.design_id))
   for (const d of activeDesigns ?? []) {
     const list = designsBySpk.get(d.spk_id) ?? []
-    list.push({ phase: d.phase, current_stage: d.current_stage, approved_at: d.approved_at })
+    list.push({
+      phase: d.phase,
+      current_stage: d.current_stage,
+      approved_at: d.approved_at,
+      started: startedDesignIds.has(d.id),
+    })
     designsBySpk.set(d.spk_id, list)
   }
   const routedSpkIds = new Set((routingDocs ?? []).map((r) => r.spk_id))
@@ -178,6 +184,11 @@ export default async function SpkProgressPage() {
     }
     if (bucket === 'finalisasi') {
       const source = (activeDesigns ?? []).find((item) => item.spk_id === spk.id && item.phase === 'finalisasi')
+      if (source && startedDesignIds.has(source.id)) return designProgress(source)
+      const waitingOpname = (activeDesigns ?? []).find((item) =>
+        item.spk_id === spk.id && item.phase === 'siteplan' && item.current_stage === 'Finish',
+      )
+      if (waitingOpname) return designProgress(waitingOpname)
       if (source) return designProgress(source)
     }
     if (bucket === 'invoicing') return routingProgress(spk.id)

@@ -66,7 +66,7 @@ export function DesignStageChart({
   data,
   linkBase,
 }: {
-  data: { label: string; count: number; hrefStage?: string }[]
+  data: { label: string; count: number; hrefStage?: string; href?: string }[]
   /** When set, each bar becomes a link to `${linkBase}?stage=<label>` (the
    *  Desain Siteplan/Finalisasi Desain list's own stage filter) — "Draft"
    *  goes to `?stage=Draft` too, which those pages read as "not started
@@ -121,7 +121,7 @@ export function DesignStageChart({
         )
 
         return linkBase ? (
-          <Link key={item.label} href={`${linkBase}?stage=${encodeURIComponent(item.hrefStage ?? item.label)}`}>
+          <Link key={item.label} href={item.href ?? `${linkBase}?stage=${encodeURIComponent(item.hrefStage ?? item.label)}`}>
             {row}
           </Link>
         ) : (

@@ -116,6 +116,18 @@ export async function loadStageBySpk(
       }
     }
 
+    const designRows = designsBySpk.get(spk.id) ?? []
+    const finalisasi = designRows.find((row) => row.phase === 'finalisasi')
+    const finalisasiDone = Boolean(finalisasi?.approved_at || finalisasi?.current_stage === 'Acc PIC Pertamina')
+    if (finalisasi && startedDesignIds.has(finalisasi.id) && !finalisasiDone) {
+      stageBySpk[spk.id] = { label: `Desain: ${stageDisplayLabel(finalisasi.current_stage)}`, date: null }
+      continue
+    }
+    if (!finalisasiDone && designRows.some((row) => row.phase === 'siteplan' && row.current_stage === 'Finish')) {
+      stageBySpk[spk.id] = { label: 'Desain: Menunggu Opname', date: null }
+      continue
+    }
+
     if (routingDoc) {
       if (routingDoc.status === 'Completed') {
         stageBySpk[spk.id] = { label: 'Routing selesai', date: routingDoc.completed_at }

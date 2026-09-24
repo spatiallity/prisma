@@ -17,6 +17,7 @@ export type ProgressDesign = {
   phase: 'siteplan' | 'finalisasi'
   current_stage: string
   approved_at?: string | null
+  started?: boolean
 }
 
 /**
@@ -65,9 +66,15 @@ export function classifySpkProgress(
     return fieldComplete && hasRoutingDocument ? 'invoicing' : 'terestris'
   }
 
-  if (hasRoutingDocument) return 'invoicing'
   const designWorkflow = resolveDesignWorkflow(designs)
   if (designWorkflow.finalisasiComplete) return 'invoicing'
+  // A Finalisasi record with an actual revision is active, even when an old
+  // Siteplan row lacks approved_at or an invoice route was opened early.
+  if (designWorkflow.finalisasi?.started) return 'finalisasi'
+  // Siteplan's "Finish" is displayed as Menunggu Opname. It has left Desain
+  // Awal, but is not invoicing yet; keep it with Finalisasi while it waits.
+  if (designWorkflow.siteplan?.current_stage === 'Finish') return 'finalisasi'
+  if (hasRoutingDocument) return 'invoicing'
   if (designWorkflow.finalisasi && (designWorkflow.siteplanComplete || !designWorkflow.siteplan)) {
     return 'finalisasi'
   }

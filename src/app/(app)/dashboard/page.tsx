@@ -33,7 +33,13 @@ export const metadata: Metadata = { title: 'Dashboard' }
 
 const TOP_SCR_CONTRACT_VALUE = 14_562_975_000
 
-type DesignSummary = { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; updated_at: string }
+type DesignSummary = {
+  phase: 'siteplan' | 'finalisasi'
+  current_stage: DesignStage
+  updated_at: string
+  approved_at: string | null
+  started: boolean
+}
 
 /**
  * Section 9's "reason" strings read fine in the full Bottleneck Monitoring
@@ -106,6 +112,7 @@ export default async function DashboardPage() {
     { data: spkFunnel },
     { data: monthTx },
     { data: activeDesigns },
+    { data: activeDesignRevisions },
     { data: leadTime },
     { data: templates },
     { data: invoicedInvoices },
@@ -133,13 +140,14 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] }),
     // On-going design stage breakdown, and the field/design funnel counts
     // below, both read off the same Active-design snapshot.
-    supabase.from('designs').select('spk_id, phase, current_stage, approved_at, updated_at').eq('status', 'Active'),
+    supabase.from('designs').select('id, spk_id, phase, current_stage, approved_at, updated_at').eq('status', 'Active'),
+    supabase.from('design_revisions').select('design_id').eq('status', 'Active'),
     supabase.from('v_routing_lead_time').select('*'),
     supabase.from('routing_templates').select('id').eq('status', 'Active').order('code'),
     seeFinance
       ? supabase.from('invoices').select('invoice_value').eq('status', 'Approved')
       : Promise.resolve({ data: [] }),
-    supabase.from('spk_routing').select('spk_id'),
+    supabase.from('spk_routing').select('id, spk_id'),
   ])
 
   const stageBySpk = await loadStageBySpk(supabase, onGoing ?? [])
@@ -189,15 +197,24 @@ export default async function DashboardPage() {
   // routing rows, letting one SPK inflate two tiles and making the screens
   // disagree.
   const designsBySpk = new Map<string, DesignSummary[]>()
+  const startedDesignIds = new Set((activeDesignRevisions ?? []).map((revision) => revision.design_id))
   for (const design of activeDesigns ?? []) {
     const list = designsBySpk.get(design.spk_id) ?? []
-    list.push({ phase: design.phase, current_stage: design.current_stage, updated_at: design.updated_at })
+    list.push({
+      phase: design.phase,
+      current_stage: design.current_stage,
+      updated_at: design.updated_at,
+      approved_at: design.approved_at,
+      started: startedDesignIds.has(design.id),
+    })
     designsBySpk.set(design.spk_id, list)
   }
   const routedSpkIds = new Set((routingDocuments ?? []).map((document) => document.spk_id))
+  const bucketBySpk = new Map<string, SpkProgressBucket>()
   const progressCounts = (onGoing ?? []).reduce<Record<SpkProgressBucket, number>>(
     (counts, spk) => {
       const bucket = classifySpkProgress(spk, designsBySpk.get(spk.id) ?? [], routedSpkIds.has(spk.id))
+      bucketBySpk.set(spk.id, bucket)
       counts[bucket] += 1
       return counts
     },
@@ -215,39 +232,57 @@ export default async function DashboardPage() {
     if (!held || row.sequence < held.sequence) currentByRoutingDoc.set(row.spk_routing_id, row)
   }
   const routingStepCounts = new Map<string, number>()
+  const routingSpkByDoc = new Map((routingDocuments ?? []).map((doc) => [doc.id, doc.spk_id]))
   for (const current of currentByRoutingDoc.values()) {
+    if (bucketBySpk.get(routingSpkByDoc.get(current.spk_routing_id) ?? '') !== 'invoicing') continue
     routingStepCounts.set(current.step_name, (routingStepCounts.get(current.step_name) ?? 0) + 1)
   }
   const routingStageChartData = (templateSteps ?? [])
     .map((step) => ({
-    label: step.name,
-    count: routingStepCounts.get(step.name) ?? 0,
+      label: step.name,
+      count: routingStepCounts.get(step.name) ?? 0,
     }))
-
-  // Section 8.4 — how many on-going designs sit at each stage, siteplan and
-  // finalisasi charted side by side (finalisasi only exists once siteplan is
-  // Finish, so its counts are naturally the smaller, later half).
-  const stageCounts = new Map<string, number>()
-  for (const d of activeDesigns ?? []) {
-    if (d.approved_at !== null) continue
-    stageCounts.set(d.current_stage, (stageCounts.get(d.current_stage) ?? 0) + 1)
+  const unassignedRouting = progressCounts.invoicing
+    - routingStageChartData.reduce((sum, step) => sum + step.count, 0)
+  if (unassignedRouting > 0) {
+    routingStageChartData.push({ label: 'Menunggu dokumen / routing selesai', count: unassignedRouting })
   }
-  const designStageChartData: Record<'siteplan' | 'finalisasi', { stage: DesignStage; label: string; count: number }[]> = {
-    // Opname dropped from this chart — it's Siteplan's own terminal stage,
-    // same reasoning as Acc PIC Pertamina below (approved_at excludes it
-    // above already; not worth charting as a near-permanent 0/1).
+
+  // Each bar counts SPKs in its pipeline bucket, not every design record;
+  // Siteplan and Finalisasi records can coexist for one SPK.
+  const siteplanStageCounts = new Map<string, number>()
+  const finalisasiStageCounts = new Map<string, number>()
+  let waitingOpnameCount = 0
+  for (const spk of onGoing ?? []) {
+    const bucket = bucketBySpk.get(spk.id)
+    const designs = designsBySpk.get(spk.id) ?? []
+    if (bucket === 'desain_awal') {
+      const stage = (designs.find((design) => design.phase === 'siteplan') ?? designs[0])?.current_stage
+      if (stage) siteplanStageCounts.set(stage, (siteplanStageCounts.get(stage) ?? 0) + 1)
+    }
+    if (bucket === 'finalisasi') {
+      const activeFinalisasi = designs.find((design) => design.phase === 'finalisasi' && design.started)
+      if (activeFinalisasi) {
+        const stage = activeFinalisasi.current_stage
+        finalisasiStageCounts.set(stage, (finalisasiStageCounts.get(stage) ?? 0) + 1)
+      } else {
+        waitingOpnameCount += 1
+      }
+    }
+  }
+  const designStageChartData: Record<'siteplan' | 'finalisasi', { stage: DesignStage; label: string; count: number; href?: string }[]> = {
     siteplan: PHASE_STAGES.siteplan
-      .filter((stage) => stage !== 'Opname')
       .map((stage) => ({
         stage,
         label: stageDisplayLabel(stage),
-        count: stageCounts.get(stage) ?? 0,
+        count: siteplanStageCounts.get(stage) ?? 0,
       })),
-    // Acc PIC Pertamina always sets approved_at the moment it's reached, so
-    // it never shows up here — dropped rather than charted as a dead 0.
-    finalisasi: PHASE_STAGES.finalisasi
-      .filter((stage) => stage !== 'Acc PIC Pertamina')
-      .map((stage) => ({ stage, label: stage, count: stageCounts.get(stage) ?? 0 })),
+    finalisasi: [
+      { stage: 'Finish', label: 'Menunggu Opname', count: waitingOpnameCount, href: '/design/siteplan?stage=Finish' },
+      ...PHASE_STAGES.finalisasi
+        .filter((stage) => stage !== 'Acc PIC Pertamina')
+        .map((stage) => ({ stage, label: stage, count: finalisasiStageCounts.get(stage) ?? 0 })),
+    ],
   }
 
   // This month's spend, broken down by account — same kode_akun → uraian
