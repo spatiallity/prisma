@@ -56,7 +56,9 @@ export function DesignTabCards({
           const designRevisions = revisionsByDesign[design.id] ?? []
           const isDraft = designRevisions.length === 0
           const isComplete = Boolean(design.approved_at)
-          const held = daysInStage(design.updated_at)
+          const currentEntry = designRevisions.find((revision) => revision.stage === design.current_stage)
+          const startedAt = currentEntry?.started_at ?? null
+          const held = !isDraft && !isComplete ? daysInStage(startedAt) : null
           const stages = PHASE_STAGES[design.phase]
           const currentIndex = stages.indexOf(design.current_stage)
 
@@ -120,6 +122,11 @@ export function DesignTabCards({
                         ? `Selesai · ${stageDisplayLabel(design.current_stage)}`
                       : `Sedang di ${stageDisplayLabel(design.current_stage)}`}
                   </CardDescription>
+                  {!isDraft && !isComplete && (
+                    <div className="tnum mt-1 text-xs text-muted-foreground">
+                      {startedAt ? `Mulai ${formatDate(startedAt)}` : 'Tanggal mulai belum tercatat'}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={isDraft ? 'neutral' : isComplete ? 'success' : 'primary'}>

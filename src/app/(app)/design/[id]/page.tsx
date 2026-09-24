@@ -94,14 +94,13 @@ export default async function DesignDetailPage({
   const picName = new Map((pics ?? []).map((p) => [p.id, p.full_name]))
   const reached = new Set((revisions ?? []).map((r) => r.stage))
   const currentOrder = STAGE_ORDER[design.current_stage]
-  const held = daysInStage(design.updated_at)
+  const currentEntry = [...(revisions ?? [])].reverse().find((revision) => revision.stage === design.current_stage) ?? null
+  const held = !isDraft && !design.approved_at ? daysInStage(currentEntry?.started_at ?? null) : null
   const roundCount = Math.max(0, ...(revisions ?? []).map((r) => r.revision_no))
   const latestRevisionId = revisions?.[revisions.length - 1]?.id
   const picOptions = (pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))
 
-  // The stage the design is sitting in — the entry that never closed. Its
-  // revision rounds are what "Revisi ke-N" counts, exactly as routing does.
-  const currentEntry = (revisions ?? []).find((r) => !r.completed_at) ?? null
+  // Revision rounds belong to the latest entry for the current stage.
   const currentRounds = currentEntry
     ? (roundsByEntry.get(currentEntry.id) ?? []).length
     : 0
@@ -352,6 +351,14 @@ export default async function DesignDetailPage({
                   {stageDisplayLabel(design.current_stage)}
                 </Badge>
               </div>
+              {!design.approved_at && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Mulai tahap ini</span>
+                  <span className="tnum font-bold text-slate-900">
+                    {currentEntry?.started_at ? formatDate(currentEntry.started_at) : 'Belum tercatat'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Di tahap ini</span>
                 <span

@@ -92,7 +92,16 @@ export function DesignTable({
       sortAccessor: (row) => (currentByDesign[row.id] ? row.current_stage : ''),
       render: (row) =>
         currentByDesign[row.id] ? (
-          <Badge tone={STAGE_TONE[row.current_stage]}>{stageDisplayLabel(row.current_stage)}</Badge>
+          <div>
+            <Badge tone={STAGE_TONE[row.current_stage]}>{stageDisplayLabel(row.current_stage)}</Badge>
+            {!row.approved_at && (
+              <div className="tnum mt-1 text-xs text-muted-foreground">
+                {currentByDesign[row.id].startedAt
+                  ? `Mulai ${formatDate(currentByDesign[row.id].startedAt)}`
+                  : 'Tanggal mulai belum tercatat'}
+              </div>
+            )}
+          </div>
         ) : (
           <Badge tone="neutral">Draft</Badge>
         ),
@@ -140,10 +149,10 @@ export function DesignTable({
       label: 'Durasi',
       align: 'right',
       className: 'w-24 whitespace-nowrap',
-      sortAccessor: (row) => (currentByDesign[row.id] ? daysInStage(row.updated_at) : null),
+      sortAccessor: (row) => (currentByDesign[row.id] && !row.approved_at ? daysInStage(currentByDesign[row.id].startedAt) : null),
       render: (row) => {
-        if (!currentByDesign[row.id]) return <span className="tnum">—</span>
-        const held = daysInStage(row.updated_at)
+        if (!currentByDesign[row.id] || row.approved_at) return <span className="tnum">—</span>
+        const held = daysInStage(currentByDesign[row.id].startedAt)
         const late = held !== null && held > 7 && row.current_stage !== 'Acc PIC Pertamina'
         return (
           <span className={cn('tnum', late && 'font-bold text-danger')}>
