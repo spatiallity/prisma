@@ -152,6 +152,8 @@ function RoutingDetailModal({
   const accordionSteps: AccordionStep[] = steps.map((step, index) => {
     const cell = history[step.sequence]
     const previousCell = index > 0 ? history[steps[index - 1]!.sequence] : undefined
+    const nextStep = steps[index + 1]
+    const nextCell = nextStep ? history[nextStep.sequence] : undefined
     const isCurrent = current?.id === step.id
     const finished = cell?.status === 'Completed'
     const rejected = cell?.status === 'Rejected'
@@ -207,6 +209,8 @@ function RoutingDetailModal({
             stepName={step.name}
             entry={cell}
             previousCompletedAt={previousCell?.completed_at}
+            nextStartedAt={nextCell?.started_at}
+            nextStepName={nextStep?.name}
             dendaValue={dendaValue}
             allowBlankDates={allowBlankDates}
             canRollback={index > 0 && step.id === rollbackStepId}

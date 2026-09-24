@@ -179,7 +179,7 @@ export function DesignTabCards({
         onOpenChange={(v) => !v && setOpenId(null)}
         design={openDesign}
         title={openDesign ? PHASE_LABEL[openDesign.phase] : ''}
-        revisions={openDesign ? (revisionsByDesign[openDesign.id] ?? []) : []}
+        revisions={openDesign ? [...(revisionsByDesign[openDesign.id] ?? [])].reverse() : []}
         picName={picName}
         pics={pics}
         mayEdit={mayEdit}

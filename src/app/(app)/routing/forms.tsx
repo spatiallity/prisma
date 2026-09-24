@@ -199,6 +199,8 @@ export function RoutingStepDateForm({
   stepName,
   entry,
   previousCompletedAt,
+  nextStartedAt,
+  nextStepName,
   dendaValue,
   canRollback = false,
   allowBlankDates = false,
@@ -213,6 +215,8 @@ export function RoutingStepDateForm({
   /** The step before this one's Tanggal selesai — Tanggal mulai defaults to
    *  it (not "today") so consecutive stages stay continuous. */
   previousCompletedAt?: string | null
+  nextStartedAt?: string | null
+  nextStepName?: string
   /** The SPK's current denda_value — only meaningful alongside the Invoiced
    *  fields, since that's the moment denda actually gets decided. */
   dendaValue?: number | null
@@ -226,6 +230,7 @@ export function RoutingStepDateForm({
   const isInvoiced = stepName === 'Invoiced'
   const isDone = entry.status === 'Completed'
   const [finishingInvoice, setFinishingInvoice] = useState(isDone)
+  const [handoffDate, setHandoffDate] = useState('')
 
   if (isInvoiced) {
     return (
@@ -344,9 +349,13 @@ export function RoutingStepDateForm({
 
       {isDone ? (
         <>
-          <Field label="Tanggal selesai" htmlFor="rd_completed">
-            <Input id="rd_completed" name="completed_at" type="date" defaultValue={entry.completed_at?.slice(0, 10) ?? ''} />
-          </Field>
+          <div className="grid gap-1">
+            <span className="text-sm font-semibold text-slate-700">Tanggal selesai</span>
+            <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {(nextStartedAt ?? entry.completed_at)?.slice(0, 10).split('-').reverse().join('/') ?? 'Belum tercatat'}
+              {nextStepName && <span className="ml-2 text-slate-500">= mulai {nextStepName}</span>}
+            </span>
+          </div>
           <div>
             <Submit label="Simpan" icon={<ArrowRight size={16} aria-hidden />} pending={pending} />
           </div>
@@ -355,7 +364,7 @@ export function RoutingStepDateForm({
         <>
           <div className="grid gap-3 border-t border-slate-200 pt-3">
             <Field
-              label="Tanggal mulai tahap berikutnya"
+              label={nextStepName ? `Tanggal mulai ${nextStepName}` : 'Tanggal mulai tahap berikutnya'}
               htmlFor="rd_next_started"
               required={!allowBlankDates}
             >
@@ -363,9 +372,14 @@ export function RoutingStepDateForm({
                 id="rd_next_started"
                 name="next_started_at"
                 type="date"
+                value={handoffDate}
+                onChange={(event) => setHandoffDate(event.target.value)}
                 required={!allowBlankDates}
               />
             </Field>
+            <p className="text-xs text-slate-500">
+              Tanggal selesai {stepName}: {handoffDate ? handoffDate.split('-').reverse().join('/') : 'belum dipilih'}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">

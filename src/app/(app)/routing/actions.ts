@@ -245,6 +245,22 @@ export async function updateRoutingStepDates(
   const startedAt = submittedStartedAt ?? step.started_at
   const startError = missingStartDate(user, startedAt)
   if (startError) return { error: startError }
+  const next = steps![index + 1]
+  if (startedAt && previous?.started_at && startedAt < previous.started_at) {
+    return { error: 'Tanggal mulai tidak boleh sebelum tanggal mulai tahap sebelumnya.' }
+  }
+  if (startedAt && next?.started_at && startedAt > next.started_at) {
+    return { error: 'Tanggal mulai tidak boleh setelah tanggal mulai tahap berikutnya.' }
+  }
+  if (startedAt && !next && step.completed_at && startedAt > step.completed_at) {
+    return { error: 'Tanggal mulai tidak boleh setelah tanggal selesai tahap ini.' }
+  }
+  const syncPreviousFinish = async () => {
+    if (!previous || startedAt === step.started_at) return null
+    const { error } = await supabase.from('routing_history')
+      .update({ completed_at: startedAt }).eq('id', previous.id)
+    return error?.message ?? null
+  }
 
   // Invoice remains one routing stage. It may be saved as In Progress with a
   // start date, then becomes Invoiced once its finish date and invoice value
@@ -265,6 +281,9 @@ export async function updateRoutingStepDates(
         .eq('id', stepId)
       if (error) return { error: error.message }
 
+      const syncError = await syncPreviousFinish()
+      if (syncError) return { error: syncError }
+
       revalidatePath('/routing')
       revalidatePath(`/routing/${routingId}`)
       return { error: null, success: 'Progres invoice disimpan.' }
@@ -273,7 +292,6 @@ export async function updateRoutingStepDates(
     const invoiceNumber = nullable(formData, 'invoice_number')
     const invoiceValueRaw = nullable(formData, 'invoice_value')
     const invoiceDate = nullable(formData, 'invoice_date')
-    const completedRaw = text(formData, 'completed_at')
     if (!invoiceValueRaw) {
       return { error: 'Nilai invoice wajib diisi.' }
     }
@@ -294,6 +312,9 @@ export async function updateRoutingStepDates(
       })
       .eq('id', stepId)
     if (error) return { error: error.message }
+
+    const syncError = await syncPreviousFinish()
+    if (syncError) return { error: syncError }
 
     const dendaRaw = nullable(formData, 'denda_value')
     const { data: routingDoc } = await supabase
@@ -370,6 +391,9 @@ export async function updateRoutingStepDates(
       .eq('id', stepId)
     if (error) return { error: error.message }
 
+    const syncError = await syncPreviousFinish()
+    if (syncError) return { error: syncError }
+
     revalidatePath('/routing')
     revalidatePath(`/routing/${routingId}`)
     return { error: null, success: 'Dicatat sebagai revisi.' }
@@ -390,6 +414,9 @@ export async function updateRoutingStepDates(
       })
       .eq('id', stepId)
     if (error) return { error: error.message }
+
+    const syncError = await syncPreviousFinish()
+    if (syncError) return { error: syncError }
 
     revalidatePath('/routing')
     revalidatePath(`/routing/${routingId}`)
@@ -416,7 +443,6 @@ export async function updateRoutingStepDates(
       .eq('id', stepId)
     if (completeError) return { error: completeError.message }
 
-    const next = steps?.[index + 1]
     if (next) {
       const { error: nextError } = await supabase
         .from('routing_history')
@@ -424,6 +450,9 @@ export async function updateRoutingStepDates(
         .eq('id', next.id)
       if (nextError) return { error: nextError.message }
     }
+
+    const syncError = await syncPreviousFinish()
+    if (syncError) return { error: syncError }
 
     revalidatePath('/routing')
     revalidatePath(`/routing/${routingId}`)
@@ -434,13 +463,16 @@ export async function updateRoutingStepDates(
     .from('routing_history')
     .update({
       started_at: startedAt,
-      completed_at: step.status === 'Completed' ? step.completed_at : null,
+      completed_at: step.status === 'Completed' ? (next?.started_at ?? step.completed_at) : null,
       status: step.status,
       pic_name: nullable(formData, 'pic_name') ?? undefined,
       note: nullable(formData, 'note') ?? undefined,
     })
     .eq('id', stepId)
   if (error) return { error: error.message }
+
+  const syncError = await syncPreviousFinish()
+  if (syncError) return { error: syncError }
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)

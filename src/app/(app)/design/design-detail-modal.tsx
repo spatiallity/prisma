@@ -75,11 +75,12 @@ export function DesignDetailModal({
   const stages = PHASE_STAGES[design.phase]
   const currentIndex = stages.indexOf(design.current_stage)
   const latestRevisionId = revisions.at(-1)?.id
+  const orderedRevisions = [...revisions].sort((a, b) => a.revision_no - b.revision_no)
 
   const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key))
 
   const accordionSteps: AccordionStep[] = stages.map((stage, index) => {
-    const stageRevisions = revisions.filter((r) => r.stage === stage)
+    const stageRevisions = orderedRevisions.filter((r) => r.stage === stage)
     const latestEntry = stageRevisions[stageRevisions.length - 1]
     // Bulk-imported legacy designs often retain only the current stage. The
     // workflow position is still reliable, so earlier stages are shown as
@@ -98,7 +99,7 @@ export function DesignDetailModal({
     // fills the gap: once this stage's own entry has a value (even one the
     // user deliberately cleared), that value wins.
     const previousStage = index > 0 ? stages[index - 1] : undefined
-    const previousRevisions = previousStage ? revisions.filter((r) => r.stage === previousStage) : []
+    const previousRevisions = previousStage ? orderedRevisions.filter((r) => r.stage === previousStage) : []
     const previousEntry = previousRevisions[previousRevisions.length - 1]
     const previousDrafterName = previousEntry?.pic_id ? (picName[previousEntry.pic_id] ?? undefined) : undefined
     const previousPicPertamina = previousEntry?.pic_pertamina ?? undefined
@@ -156,6 +157,7 @@ export function DesignDetailModal({
               pics={pics}
               previousDrafterName={previousDrafterName}
               previousPicPertamina={previousPicPertamina}
+              nextStageName={orderedRevisions[orderedRevisions.findIndex((r) => r.id === latestEntry.id) + 1]?.stage}
               canRollback={latestEntry.id === latestRevisionId && revisions.length > 1}
               canRewind={latestEntry.id !== latestRevisionId}
               allowBlankDates={allowBlankDates}

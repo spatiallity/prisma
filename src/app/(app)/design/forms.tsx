@@ -446,6 +446,7 @@ export function StageEntryForm({
   pics,
   previousDrafterName,
   previousPicPertamina,
+  nextStageName,
   canRollback = false,
   canRewind = false,
   allowBlankDates = false,
@@ -458,6 +459,7 @@ export function StageEntryForm({
   entry: {
     id: string
     started_at: string | null
+    completed_at: string | null
     pic_id: string | null
     pic_pertamina: string | null
     notes: string | null
@@ -468,6 +470,7 @@ export function StageEntryForm({
    *  when this stage's own entry doesn't have one yet. */
   previousDrafterName?: string
   previousPicPertamina?: string | null
+  nextStageName?: string
   /** Only the newest history entry can be undone without creating a gap. */
   canRollback?: boolean
   /** A previously reached stage can become the new workflow point; later
@@ -484,6 +487,7 @@ export function StageEntryForm({
     data.set('entry_id', entry.id)
     data.set('design_id', designId)
     data.set('started_at', entry.started_at ?? '')
+    data.set('completed_at', entry.completed_at ?? '')
     data.set('pic_id', entry.pic_id ?? '')
     data.set('pic_pertamina', entry.pic_pertamina ?? '')
     data.set('notes', entry.notes ?? '')
@@ -498,6 +502,7 @@ export function StageEntryForm({
   const previousOptions = isCurrent ? PHASE_STAGES[phase].slice(0, Math.max(0, stageIndex)) : []
   const isTerminal = isCurrent && nextOptions.length === 0
   const [target, setTarget] = useState<string>(nextOptions[0] ?? '')
+  const [handoffDate, setHandoffDate] = useState('')
   const [alternativeTarget, setAlternativeTarget] = useState('')
   const stageInputRef = useRef<HTMLInputElement>(null)
   const drafterName = entry.pic_id ? (picName[entry.pic_id] ?? '') : (previousDrafterName ?? '')
@@ -519,6 +524,16 @@ export function StageEntryForm({
           required={!allowBlankDates}
         />
       </Field>
+
+      {!isCurrent && entry.completed_at && (
+        <div className="grid gap-1">
+          <span className="text-sm font-semibold text-slate-700">Tanggal selesai</span>
+          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            {entry.completed_at.slice(0, 10).split('-').reverse().join('/')}
+            {nextStageName && <span className="ml-2 text-slate-500">= mulai {nextStageName}</span>}
+          </span>
+        </div>
+      )}
 
       <PicField label="Drafter" pics={pics} defaultValue={drafterName} placeholder="Nama Drafter" />
 
@@ -559,7 +574,7 @@ export function StageEntryForm({
       {isCurrent && nextOptions.length > 0 && (
         <div className="grid gap-3 border-t border-slate-200 pt-3">
           <Field
-            label="Tanggal mulai tahap berikutnya"
+            label={`Tanggal mulai ${stageDisplayLabel(target as DesignStage)}`}
             htmlFor={`se_${entry.id}_next_start`}
             required={!allowBlankDates}
           >
@@ -567,9 +582,14 @@ export function StageEntryForm({
               id={`se_${entry.id}_next_start`}
               name="next_started_at"
               type="date"
+              value={handoffDate}
+              onChange={(event) => setHandoffDate(event.target.value)}
               required={!allowBlankDates}
             />
           </Field>
+          <p className="text-xs text-slate-500">
+            Tanggal selesai {stageDisplayLabel(stage)}: {handoffDate ? handoffDate.split('-').reverse().join('/') : 'belum dipilih'}
+          </p>
 
           {nextOptions.length > 1 ? (
             <Field label="Hasil review" htmlFor={`se_${entry.id}_target`}>

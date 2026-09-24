@@ -389,7 +389,7 @@ export async function advanceStage(
 
   const { data: designRow } = await supabase
     .from('designs')
-    .select('spk_id, phase')
+    .select('spk_id, phase, current_stage')
     .eq('id', designId)
     .maybeSingle()
   if (!designRow) return { error: 'Desain tidak ditemukan.' }
@@ -410,8 +410,11 @@ export async function advanceStage(
 
   const current = entryId
     ? revisions?.find((revision) => revision.id === entryId)
-    : revisions?.find((revision) => !revision.completed_at) ?? revisions?.[0]
+    : revisions?.[0]
   if (entryId && !current) return { error: 'Tahap aktif tidak ditemukan.' }
+  if (current && (current.id !== revisions?.[0]?.id || current.stage !== designRow.current_stage)) {
+    return { error: 'Tahap sudah berubah. Muat ulang data desain sebelum melanjutkan.' }
+  }
   if (current?.stage === stage) {
     return { error: `Desain sudah berada di tahap ${stage}.` }
   }
@@ -438,6 +441,10 @@ export async function advanceStage(
   if (transitionAt && currentStartAt && new Date(transitionAt) < new Date(currentStartAt)) {
     return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
   }
+  const previous = revisions?.[1]
+  if (currentStartAt && previous?.started_at && currentStartAt < previous.started_at) {
+    return { error: 'Tanggal mulai tidak boleh sebelum tanggal mulai tahap sebelumnya.' }
+  }
   // Drafter is per-stage-entry, not carried forward — a blank field means no
   // drafter recorded for this entry, not "same as before".
   const typedPicName = text(formData, 'pic_name')
@@ -449,6 +456,11 @@ export async function advanceStage(
   // reads completed_at to show "Selesai", so leaving it null here is what
   // makes the departed stage read as not-done again.
   const isReturningToPreviousStage = allowedPreviousStages.includes(stage)
+  if (previous && submittedStartAt && submittedStartAt !== current?.started_at) {
+    const { error } = await supabase.from('design_revisions')
+      .update({ completed_at: submittedStartAt }).eq('id', previous.id)
+    if (error) return { error: error.message }
+  }
   if (current && !current.completed_at && !isReturningToPreviousStage) {
     const { error } = await supabase
       .from('design_revisions')
@@ -702,7 +714,7 @@ export async function updateRevisionEntry(
 
   const entryId = text(formData, 'entry_id')
   const designId = text(formData, 'design_id')
-  if (!entryId) return { error: 'Entri tidak dikenali.' }
+  if (!entryId || !designId) return { error: 'Entri tidak dikenali.' }
 
   const supabase = await createClient()
 
@@ -712,17 +724,43 @@ export async function updateRevisionEntry(
   const startError = missingStartDate(user, startedAt)
   if (startError) return { error: startError }
 
+  const { data: revisions, error: readError } = await supabase.from('design_revisions')
+    .select('id, started_at, completed_at')
+    .eq('design_id', designId).eq('status', 'Active')
+    .order('revision_no').order('created_at')
+  if (readError) return { error: readError.message }
+  const index = revisions?.findIndex((row) => row.id === entryId) ?? -1
+  if (index < 0) return { error: 'Entri desain tidak ditemukan.' }
+  const previous = index > 0 ? revisions![index - 1] : null
+  const next = revisions![index + 1]
+  if (startedAt && previous?.started_at && startedAt < previous.started_at) {
+    return { error: 'Tanggal mulai tidak boleh sebelum tanggal mulai tahap sebelumnya.' }
+  }
+  if (startedAt && next?.started_at && startedAt > next.started_at) {
+    return { error: 'Tanggal mulai tidak boleh setelah tanggal mulai tahap berikutnya.' }
+  }
+  if (startedAt && !next && revisions![index].completed_at && startedAt > revisions![index].completed_at!) {
+    return { error: 'Tanggal mulai tidak boleh setelah tanggal selesai tahap ini.' }
+  }
+
   const { error } = await supabase
     .from('design_revisions')
     .update({
       pic_id: picId,
       pic_pertamina: nullable(formData, 'pic_pertamina'),
       started_at: startedAt,
+      ...(next ? { completed_at: next.started_at } : {}),
       notes: nullable(formData, 'notes'),
     })
     .eq('id', entryId)
+    .eq('design_id', designId)
 
   if (error) return { error: error.message }
+  if (previous) {
+    const { error: previousError } = await supabase.from('design_revisions')
+      .update({ completed_at: startedAt }).eq('id', previous.id)
+    if (previousError) return { error: previousError.message }
+  }
 
   revalidatePath('/design')
   revalidatePath(`/design/${designId}`)
@@ -752,18 +790,44 @@ export async function restoreRevisionEntry(
   if (!design) return { error: 'Desain tidak ditemukan.' }
 
   const startedRaw = text(formData, 'started_at')
+  const restoredStart = startedRaw ? new Date(startedRaw).toISOString() : null
+  const { data: revisions, error: readError } = await supabase.from('design_revisions')
+    .select('id, started_at').eq('design_id', designId).eq('status', 'Active')
+    .order('revision_no').order('created_at')
+  if (readError) return { error: readError.message }
+  const index = revisions?.findIndex((row) => row.id === entryId) ?? -1
+  if (index < 0) return { error: 'Entri desain tidak ditemukan.' }
+  const previous = index > 0 ? revisions![index - 1] : null
+  const next = revisions![index + 1]
+  if (restoredStart && previous?.started_at && restoredStart < previous.started_at) {
+    return { error: 'Tanggal lama mendahului tahap sebelumnya; perubahan tidak dapat diurungkan.' }
+  }
+  if (restoredStart && next?.started_at && restoredStart > next.started_at) {
+    return { error: 'Tanggal lama melewati tahap berikutnya; perubahan tidak dapat diurungkan.' }
+  }
+  const restoredFinish = next ? next.started_at : nullable(formData, 'completed_at')
+  if (restoredStart && restoredFinish && restoredStart > restoredFinish) {
+    return { error: 'Tanggal lama melewati tanggal selesai; perubahan tidak dapat diurungkan.' }
+  }
   const { error } = await supabase
     .from('design_revisions')
     .update({
       pic_id: nullable(formData, 'pic_id'),
       pic_pertamina: nullable(formData, 'pic_pertamina'),
-      started_at: startedRaw ? new Date(startedRaw).toISOString() : null,
+      started_at: restoredStart,
+      completed_at: restoredFinish,
       notes: nullable(formData, 'notes'),
     })
     .eq('id', entryId)
     .eq('design_id', designId)
 
   if (error) return { error: error.message }
+  if (previous) {
+    const { error: previousError } = await supabase.from('design_revisions')
+      .update({ completed_at: restoredStart })
+      .eq('id', previous.id)
+    if (previousError) return { error: previousError.message }
+  }
 
   revalidatePath('/design')
   revalidatePath(`/design/${designId}`)
@@ -825,6 +889,9 @@ export async function deleteRevisionEntry(
   if (deleteError) return { error: deleteError.message }
 
   const previous = revisions[1]
+  const { error: reopenError } = await supabase.from('design_revisions')
+    .update({ completed_at: null }).eq('id', previous.id)
+  if (reopenError) return { error: reopenError.message }
   const today10 = new Date().toISOString().slice(0, 10)
 
   // Reverse of what advanceStage did on the way in: the stage being undone
