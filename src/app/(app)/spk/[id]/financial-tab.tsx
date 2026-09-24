@@ -11,7 +11,15 @@ import { EditRevenueButton } from '../../financial/revenue-form'
 /** The Financial tab of Detail SPK: Nilai SPK -> Opname -> PAD -> Invoice,
  *  shown as one chain — each editable in place, connected to the same data
  *  Client Payment shows. */
-export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
+export async function FinancialTab({
+  spkId,
+  mayEdit,
+  allowBlankDates = false,
+}: {
+  spkId: string
+  mayEdit: boolean
+  allowBlankDates?: boolean
+}) {
   const supabase = await createClient()
 
   const [{ data: spk }, { data: invoices }] = await Promise.all([
@@ -81,6 +89,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
           unmarkAction={unmarkOpname}
           valueLabel="Nilai Opname"
           value={spk?.opname_value ?? null}
+          allowBlankDates={allowBlankDates}
         />
       ) : undefined,
     },
@@ -116,6 +125,7 @@ export async function FinancialTab({ spkId, mayEdit }: { spkId: string; mayEdit:
           unmarkAction={unmarkPad}
           valueLabel="Nilai PAD"
           value={spk?.pad_value ?? null}
+          allowBlankDates={allowBlankDates}
         />
       ) : undefined,
     },

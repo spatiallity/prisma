@@ -268,7 +268,7 @@ export default async function SpkDetailPage({
         })}
       </div>
 
-      {activeTab === 'survey' && <SurveyTab spkId={spk.id} mayEdit={mayEdit} />}
+      {activeTab === 'survey' && <SurveyTab spkId={spk.id} mayEdit={mayEdit} allowBlankDates={user.role.code === 'super_admin'} />}
 
       {activeTab === 'design' && (
         <DesignTab
@@ -286,7 +286,7 @@ export default async function SpkDetailPage({
         />
       )}
 
-      {activeTab === 'financial' && <FinancialTab spkId={spk.id} mayEdit={mayEdit} />}
+      {activeTab === 'financial' && <FinancialTab spkId={spk.id} mayEdit={mayEdit} allowBlankDates={user.role.code === 'super_admin'} />}
 
       {activeTab === 'overview' && (
       <>

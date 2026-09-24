@@ -10,7 +10,15 @@ import { JointCheckDateRow } from './joint-check-date'
 
 /** Survei Lapangan — the field-survey stage before design/routing takes over:
  *  Survei Terestris (On Going/Selesai mark) and Pengecekan Bersama (date). */
-export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
+export async function SurveyTab({
+  spkId,
+  mayEdit,
+  allowBlankDates = false,
+}: {
+  spkId: string
+  mayEdit: boolean
+  allowBlankDates?: boolean
+}) {
   const supabase = await createClient()
 
   const [{ data: spk }, { data: design }, { data: routing }] = await Promise.all([
@@ -68,6 +76,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
           markedAt={spk?.terrain_survey_completed_at ?? null}
           markAction={markTerrainSurvey}
           unmarkAction={unmarkTerrainSurvey}
+          allowBlankDates={allowBlankDates}
         />
       ) : undefined,
     },

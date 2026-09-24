@@ -251,6 +251,7 @@ function RoutingDetailModal({
                 unmarkAction={unmarkOpname}
                 valueLabel="Nilai Opname"
                 value={opnameValue}
+                allowBlankDates={allowBlankDates}
               />
             )}
           </div>
@@ -271,6 +272,7 @@ function RoutingDetailModal({
                 unmarkAction={unmarkPad}
                 valueLabel="Nilai PAD"
                 value={padValue}
+                allowBlankDates={allowBlankDates}
               />
             )}
           </div>

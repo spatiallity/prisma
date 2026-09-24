@@ -36,9 +36,8 @@ function numeric(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-/** A picked date (YYYY-MM-DD) becomes noon that day — avoids the previous
- *  day showing up in a timezone west of UTC. Falls back to right now only
- *  when the form genuinely omitted it (the UI always sends one). */
+/** A picked date becomes noon that day. Super Admin may omit a mark date;
+ *  a completion mark still needs a timestamp, so use now in that case. */
 function pickedOrNow(formData: FormData, key: string) {
   const raw = text(formData, key)
   return raw ? new Date(`${raw}T12:00:00`).toISOString() : new Date().toISOString()
@@ -292,6 +291,9 @@ export async function markOpname(
 
   const id = text(formData, 'id')
   if (!id) return { error: 'SPK tidak dikenali.' }
+  if (!text(formData, 'tanggal') && user.role.code !== 'super_admin') {
+    return { error: 'Tanggal opname wajib diisi.' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -308,6 +310,7 @@ export async function markOpname(
   revalidatePath(`/spk/${id}`)
   revalidatePath('/design')
   revalidatePath('/spk/progress')
+  revalidatePath('/routing')
   revalidatePath('/dashboard')
   return { error: null, success: 'Opname disimpan.' }
 }
@@ -339,6 +342,7 @@ export async function unmarkOpname(
   revalidatePath(`/spk/${id}`)
   revalidatePath('/design')
   revalidatePath('/spk/progress')
+  revalidatePath('/routing')
   revalidatePath('/dashboard')
   return { error: null, success: 'Tanda opname dibatalkan.' }
 }
@@ -351,6 +355,9 @@ export async function markPad(
 
   const id = text(formData, 'id')
   if (!id) return { error: 'SPK tidak dikenali.' }
+  if (!text(formData, 'tanggal') && user.role.code !== 'super_admin') {
+    return { error: 'Tanggal PAD wajib diisi.' }
+  }
 
   const supabase = await createClient()
   const { data: spk } = await supabase
@@ -372,6 +379,7 @@ export async function markPad(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/routing')
   return { error: null, success: 'PAD disimpan.' }
 }
 
@@ -393,6 +401,7 @@ export async function unmarkPad(
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/routing')
   return { error: null, success: 'Tanda PAD dibatalkan.' }
 }
 
@@ -484,6 +493,9 @@ export async function markTerrainSurvey(
 
   const id = text(formData, 'id')
   if (!id) return { error: 'SPK tidak dikenali.' }
+  if (!text(formData, 'tanggal') && user.role.code !== 'super_admin') {
+    return { error: 'Tanggal survei wajib diisi.' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase

@@ -48,6 +48,7 @@ export function OpnamePadRow({
   unmarkAction,
   valueLabel,
   value,
+  allowBlankDates = false,
 }: {
   label: string
   spkId: string
@@ -60,6 +61,7 @@ export function OpnamePadRow({
   /** When set, shows a "Nilai" number input alongside marking, e.g. Nilai Opname. */
   valueLabel?: string
   value?: number | null
+  allowBlankDates?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [markState, markFormAction] = useActionState(markAction, initialState)
@@ -67,7 +69,9 @@ export function OpnamePadRow({
   useActionToast(markState, () => setOpen(false))
   useActionToast(unmarkState, () => setOpen(false))
 
-  const defaultDate = markedAt ? markedAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  const defaultDate = markedAt
+    ? markedAt.slice(0, 10)
+    : allowBlankDates ? '' : new Date().toISOString().slice(0, 10)
 
   if (disabled && !markedAt) {
     return disabledHint ? <span className="text-xs text-muted-foreground">{disabledHint}</span> : null
@@ -91,8 +95,20 @@ export function OpnamePadRow({
       <div className="grid gap-3">
         <form action={markFormAction} className="grid gap-4">
           <input type="hidden" name="id" value={spkId} />
-          <Field label="Tanggal" htmlFor={`${label}_tanggal`} required>
-            <Input id={`${label}_tanggal`} name="tanggal" type="date" defaultValue={defaultDate} required />
+          <Field
+            label="Tanggal"
+            htmlFor={`${label}_tanggal`}
+            required={!allowBlankDates}
+            hint={allowBlankDates ? 'Kosongkan untuk memakai tanggal hari ini.' : undefined}
+          >
+            <Input
+              id={`${label}_tanggal`}
+              key={markedAt ?? 'new'}
+              name="tanggal"
+              type="date"
+              defaultValue={defaultDate}
+              required={!allowBlankDates}
+            />
           </Field>
           {valueLabel && (
             <Field label={valueLabel} htmlFor={`${label}_value`}>
