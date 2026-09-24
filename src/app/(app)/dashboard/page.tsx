@@ -371,20 +371,20 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-5 xl:grid-cols-2">
-            <Card className="flex h-full flex-col overflow-hidden">
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            <Card className="overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>Ringkasan Kontrak</CardTitle>
                   <CardDescription>Progress Serapan Kontrak</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-1 flex-col p-4">
+              <CardContent className="p-4">
                 <ContractAbsorptionChart capacity={TOP_SCR_CONTRACT_VALUE} issued={nilaiSpkTotal} />
               </CardContent>
             </Card>
 
-            <Card className="flex h-full flex-col overflow-hidden">
+            <Card className="overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
@@ -392,7 +392,7 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               {seeRabBudget ? (
-                <CardContent className="grid flex-1 content-start gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start">
+                <CardContent className="grid content-start gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start">
                   <Link
                     href="/financial/rab"
                     className="flex justify-center border-b border-slate-100 pb-4 transition-opacity hover:opacity-80 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2"
@@ -424,7 +424,7 @@ export default async function DashboardPage() {
                   </div>
                 </CardContent>
               ) : (
-                <CardContent className="flex min-h-48 flex-1 flex-col items-center justify-center gap-2 text-center">
+                <CardContent className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500">
                     <LockKeyhole size={18} aria-hidden />
                   </span>

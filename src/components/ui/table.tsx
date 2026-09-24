@@ -6,9 +6,9 @@ export function Table({
   ...props
 }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="max-h-[70vh] w-full overflow-auto">
+    <div className="relative isolate max-h-[70vh] w-full overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-20">
       <table
-        className={cn('w-full border-collapse text-sm', className)}
+        className={cn('min-w-full border-separate border-spacing-0 text-sm', className)}
         {...props}
       />
     </div>
@@ -22,7 +22,7 @@ export function Th({
   return (
     <th
       className={cn(
-        'sticky top-0 z-10 border-b border-slate-200 bg-surface-muted px-4 py-2.5 text-left text-[11px] font-extrabold tracking-widest text-slate-500 uppercase',
+        'sticky top-0 z-20 border-b border-slate-200 bg-surface-muted px-4 py-2.5 text-left text-[11px] font-extrabold tracking-widest text-slate-500 uppercase',
         className,
       )}
       {...props}

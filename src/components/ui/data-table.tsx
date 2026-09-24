@@ -26,6 +26,33 @@ export type DataTableColumn<T> = {
   renderTotal?: (rows: T[]) => ReactNode
 }
 
+const MONTH_FILTER_PREFIX = 'month:'
+const MONTH_FILTER_FORMATTER = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' })
+
+/** Dates are deliberately filtered at month granularity. Raw ISO values stay
+ * available for sorting, while the filter menu remains short and meaningful. */
+function filterValue(value: string | number | null) {
+  if (value === null || value === '') return ''
+  const text = String(value)
+  const match = /^(\d{4})-(\d{2})(?:-\d{2})?(?:[T\s]|$)/.exec(text)
+  return match ? `${MONTH_FILTER_PREFIX}${match[1]}-${match[2]}` : text
+}
+
+function filterLabel(value: string) {
+  if (!value.startsWith(MONTH_FILTER_PREFIX)) return value || '(Kosong)'
+  const [year, month] = value.slice(MONTH_FILTER_PREFIX.length).split('-').map(Number)
+  return MONTH_FILTER_FORMATTER.format(new Date(year, month - 1, 1))
+}
+
+function compareFilterValue(a: string, b: string) {
+  const aMonth = a.startsWith(MONTH_FILTER_PREFIX)
+  const bMonth = b.startsWith(MONTH_FILTER_PREFIX)
+  if (aMonth && bMonth) return b.localeCompare(a)
+  if (aMonth) return -1
+  if (bMonth) return 1
+  return a.localeCompare(b, 'id', { numeric: true })
+}
+
 /**
  * Client-side sort + free-text filter over an already-fetched row set —
  * every list table in the app renders through this so both behaviors only
@@ -95,9 +122,7 @@ export function DataTable<T>({
       Object.fromEntries(
         filterableColumns.map((column) => {
           const accessor = column.filterAccessor ?? column.sortAccessor!
-          const values = [...new Set(rows.map((row) => String(accessor(row) ?? '')))].sort((a, b) =>
-            a.localeCompare(b, 'id', { numeric: true }),
-          )
+          const values = [...new Set(rows.map((row) => filterValue(accessor(row))))].sort(compareFilterValue)
           return [column.key, values]
         }),
       ) as Record<string, string[]>,
@@ -112,7 +137,7 @@ export function DataTable<T>({
         const selected = filters[column.key]
         if (!selected?.length) return true
         const accessor = column.filterAccessor ?? column.sortAccessor!
-        return selected.includes(String(accessor(row) ?? ''))
+        return selected.includes(filterValue(accessor(row)))
       })
     })
   }, [rows, query, searchAccessor, filterableColumns, filters])
@@ -244,7 +269,7 @@ export function DataTable<T>({
           <span className="text-xs font-bold text-muted-foreground">Filter aktif:</span>
           {activeFilters.map(({ column, value }) => (
             <button key={`${column.key}-${value}`} type="button" onClick={() => toggleFilter(column.key, value)} className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary-soft px-2 py-1 text-xs font-bold text-primary hover:bg-primary/15">
-              {column.label}: {value || '(Kosong)'} <X size={12} aria-hidden />
+              {column.label}: {filterLabel(value)} <X size={12} aria-hidden />
             </button>
           ))}
           <button type="button" onClick={() => { setFilters({}); setPage(0) }} className="ml-auto text-xs font-extrabold text-slate-600 hover:text-danger hover:underline">
@@ -337,11 +362,11 @@ export function DataTable<T>({
                       </div>
                       <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
                         {(filterOptions[col.key] ?? [])
-                          .filter((value) => (value || '(Kosong)').toLowerCase().includes(filterQuery.trim().toLowerCase()))
+                          .filter((value) => filterLabel(value).toLowerCase().includes(filterQuery.trim().toLowerCase()))
                           .map((value) => (
                             <label key={value || '__empty'} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs font-medium normal-case tracking-normal text-slate-700 hover:bg-slate-50">
                               <input type="checkbox" className="size-3.5 rounded border-slate-300 accent-primary" checked={filters[col.key]?.includes(value) ?? false} onChange={() => toggleFilter(col.key, value)} />
-                              <span className="truncate">{value || '(Kosong)'}</span>
+                              <span className="truncate">{filterLabel(value)}</span>
                             </label>
                           ))}
                       </div>
