@@ -16,6 +16,30 @@ export type ProgressSpk = {
 export type ProgressDesign = {
   phase: 'siteplan' | 'finalisasi'
   current_stage: string
+  approved_at?: string | null
+}
+
+/**
+ * A Finalisasi draft is created early for some older SPKs, but it must never
+ * overtake an unfinished Siteplan in the project-wide stage read. Keep the
+ * phase choice here so the SPK table, Dashboard and Progress board agree.
+ */
+export function resolveDesignWorkflow<T extends ProgressDesign>(designs: T[]) {
+  const siteplan = designs.find((design) => design.phase === 'siteplan')
+  const finalisasi = designs.find((design) => design.phase === 'finalisasi')
+  const siteplanComplete = Boolean(siteplan?.approved_at)
+  const finalisasiComplete = Boolean(
+    finalisasi?.approved_at || finalisasi?.current_stage === 'Acc PIC Pertamina',
+  )
+
+  return {
+    siteplan,
+    finalisasi,
+    siteplanComplete,
+    finalisasiComplete,
+    // Finalisasi becomes the current design only after Siteplan was approved.
+    current: siteplanComplete ? (finalisasi ?? siteplan) : (siteplan ?? finalisasi),
+  }
 }
 
 /**
@@ -42,10 +66,15 @@ export function classifySpkProgress(
   }
 
   if (hasRoutingDocument) return 'invoicing'
-  if (designs.some((design) => design.phase === 'finalisasi' && design.current_stage !== 'Acc PIC Pertamina')) {
+  const designWorkflow = resolveDesignWorkflow(designs)
+  if (designWorkflow.finalisasiComplete) return 'invoicing'
+  if (designWorkflow.finalisasi && (designWorkflow.siteplanComplete || !designWorkflow.siteplan)) {
     return 'finalisasi'
   }
-  if (designs.some((design) => design.phase === 'siteplan' && design.current_stage !== 'Opname')) {
+  // A non-survey-only SPK that has a design record has necessarily passed
+  // Survei Terestris. Old records may not have a field-survey date, but must
+  // still stay in their actual design phase rather than fall back to survey.
+  if (designWorkflow.current) {
     return 'desain_awal'
   }
   return 'terestris'

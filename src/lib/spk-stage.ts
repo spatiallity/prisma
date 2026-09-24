@@ -2,6 +2,7 @@ import type { createClient } from '@/lib/supabase/server'
 import type { DesignStage } from '@/lib/supabase/types'
 import { PHASE_LABEL, stageDisplayLabel } from '@/lib/design'
 import { isTerrestrialSurveyOnly } from '@/lib/spk'
+import { resolveDesignWorkflow } from '@/lib/spk-progress'
 
 export type SpkStage = { label: string; date: string | null }
 
@@ -61,14 +62,14 @@ export async function loadStageBySpk(
     : { data: [] }
   const startedDesignIds = new Set((startedDesignRevisions ?? []).map((r) => r.design_id))
 
-  const designBySpk = new Map<
+  const designsBySpk = new Map<
     string,
-    { id: string; phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null }
+    { id: string; phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null }[]
   >()
   for (const d of designs ?? []) {
-    const existing = designBySpk.get(d.spk_id)
-    // Prefer finalisasi over siteplan — it only exists once siteplan is done.
-    if (!existing || d.phase === 'finalisasi') designBySpk.set(d.spk_id, d)
+    const list = designsBySpk.get(d.spk_id) ?? []
+    list.push(d)
+    designsBySpk.set(d.spk_id, list)
   }
 
   const currentByRouting = new Map<string, { step_name: string; started_at: string | null; sequence: number }>()
@@ -87,7 +88,8 @@ export async function loadStageBySpk(
       continue
     }
 
-    const design = designBySpk.get(spk.id)
+    const designWorkflow = resolveDesignWorkflow(designsBySpk.get(spk.id) ?? [])
+    const design = designWorkflow.current
     const routingDoc = routingBySpk.get(spk.id)
     const terrestrialOnly = isTerrestrialSurveyOnly(spk.work_type)
 
@@ -138,6 +140,14 @@ export async function loadStageBySpk(
     }
     if (spk.opname_marked_at) {
       stageBySpk[spk.id] = { label: 'Sudah Opname', date: spk.opname_marked_at }
+      continue
+    }
+
+    if (designWorkflow.finalisasiComplete) {
+      stageBySpk[spk.id] = {
+        label: 'Menunggu dokumen invoice',
+        date: designWorkflow.finalisasi?.approved_at ?? null,
+      }
       continue
     }
 

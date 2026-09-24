@@ -81,7 +81,7 @@ export default async function SpkProgressPage() {
       .in('status', ['On Going', 'Selesai'])
       .order('start_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false }),
-    supabase.from('designs').select('id, spk_id, phase, current_stage, updated_at').eq('status', 'Active'),
+    supabase.from('designs').select('id, spk_id, phase, current_stage, approved_at, updated_at').eq('status', 'Active'),
     supabase
       .from('design_revisions')
       .select('design_id, stage, pic_id, pic_pertamina, started_at, completed_at, created_at')
@@ -94,10 +94,13 @@ export default async function SpkProgressPage() {
       .select('spk_routing_id, step_name, sequence, status, pic_name, started_at, completed_at, updated_at'),
   ])
 
-  const designsBySpk = new Map<string, { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage }[]>()
+  const designsBySpk = new Map<
+    string,
+    { phase: 'siteplan' | 'finalisasi'; current_stage: DesignStage; approved_at: string | null }[]
+  >()
   for (const d of activeDesigns ?? []) {
     const list = designsBySpk.get(d.spk_id) ?? []
-    list.push({ phase: d.phase, current_stage: d.current_stage })
+    list.push({ phase: d.phase, current_stage: d.current_stage, approved_at: d.approved_at })
     designsBySpk.set(d.spk_id, list)
   }
   const routedSpkIds = new Set((routingDocs ?? []).map((r) => r.spk_id))
