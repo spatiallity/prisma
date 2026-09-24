@@ -103,6 +103,10 @@ function describe(entry: AuditEntry): string | null {
       if (fields.includes('status')) return `statusnya berubah dari ${before.status ?? '—'} ke ${after.status}`
       if (fields.includes('terrain_survey_completed_at') && after.terrain_survey_completed_at && !before.terrain_survey_completed_at)
         return 'Survei Terestris selesai'
+      if (fields.includes('joint_check_completed_at') && after.joint_check_completed_at && !before.joint_check_completed_at)
+        return after.joint_check_date ? `Pengecekan Bersama selesai pada ${after.joint_check_date}` : 'Pengecekan Bersama selesai'
+      if (fields.includes('joint_check_completed_at') && !after.joint_check_completed_at)
+        return 'Pengecekan Bersama dikembalikan ke Sedang Berjalan'
       if (fields.includes('joint_check_date')) return `tanggal Pengecekan Bersama diisi ${after.joint_check_date ?? '—'}`
       if (fields.includes('opname_marked_at') && after.opname_marked_at && !before.opname_marked_at)
         return 'sudah opname'

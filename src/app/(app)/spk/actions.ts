@@ -535,14 +535,40 @@ export async function setJointCheckDate(
   const date = nullable(formData, 'joint_check_date')
 
   const supabase = await createClient()
-  const { error } = await supabase.from('spks').update({ joint_check_date: date }).eq('id', id)
+  const { error } = await supabase
+    .from('spks')
+    .update({ joint_check_date: date, joint_check_completed_at: new Date().toISOString() })
+    .eq('id', id)
 
   if (error) return { error: error.message }
 
   revalidatePath(`/spk/${id}`)
   revalidatePath('/spk')
   revalidatePath('/dashboard')
-  return { error: null, success: date ? 'Tanggal Pengecekan Bersama disimpan.' : 'Tanggal Pengecekan Bersama dihapus.' }
+  return { error: null, success: date ? 'Pengecekan Bersama selesai dan tanggal disimpan.' : 'Pengecekan Bersama selesai.' }
+}
+
+export async function unmarkJointCheck(
+  _prev: SpkFormState,
+  formData: FormData,
+): Promise<SpkFormState> {
+  await requirePermission('spk', 'edit')
+
+  const id = text(formData, 'id')
+  if (!id) return { error: 'SPK tidak dikenali.' }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spks')
+    .update({ joint_check_date: null, joint_check_completed_at: null })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk')
+  revalidatePath('/dashboard')
+  return { error: null, success: 'Pengecekan Bersama dikembalikan ke Sedang Berjalan.' }
 }
 
 /**

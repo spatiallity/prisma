@@ -16,7 +16,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
   const [{ data: spk }, { data: design }, { data: routing }] = await Promise.all([
     supabase
       .from('spks')
-      .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date, work_type')
+      .select('terrain_survey_completed_at, terrain_survey_marked_by, joint_check_date, joint_check_completed_at, work_type')
       .eq('id', spkId)
       .maybeSingle(),
     supabase.from('designs').select('id').eq('spk_id', spkId).eq('status', 'Active').limit(1).maybeSingle(),
@@ -33,7 +33,7 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
     && !spk?.terrain_survey_completed_at
     && Boolean(design || routing)
   const surveyDone = !!spk?.terrain_survey_completed_at || inferredSurveyDone
-  const jointCheckDone = !!spk?.joint_check_date
+  const jointCheckDone = Boolean(spk?.joint_check_completed_at ?? spk?.joint_check_date)
   const surveyComplete = surveyDone && jointCheckDone
   const currentLabel = surveyComplete
     ? 'Pengecekan Bersama'
@@ -74,18 +74,24 @@ export async function SurveyTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
     {
       key: 'joint_check',
       label: 'Pengecekan Bersama',
-      state: spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
+      state: jointCheckDone ? 'done' : surveyDone ? 'current' : 'pending',
       badge: chainBadge(
-        spk?.joint_check_date ? 'done' : surveyDone ? 'current' : 'pending',
+        jointCheckDone ? 'done' : surveyDone ? 'current' : 'pending',
       ),
-      sub: spk?.joint_check_date ? (
+      sub: jointCheckDone ? (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           <span className="rounded-md bg-success/10 px-2 py-0.5 font-bold text-success">
-            Selesai {formatDate(spk.joint_check_date)}
+            {spk?.joint_check_date ? `Selesai ${formatDate(spk.joint_check_date)}` : 'Selesai · tanggal belum tercatat'}
           </span>
         </div>
       ) : surveyDone ? 'Siap dijadwalkan.' : 'Menunggu survei terestris selesai.',
-      action: mayEdit ? <JointCheckDateRow spkId={spkId} date={spk?.joint_check_date ?? null} /> : undefined,
+      action: mayEdit ? (
+        <JointCheckDateRow
+          spkId={spkId}
+          date={spk?.joint_check_date ?? null}
+          completedAt={spk?.joint_check_completed_at ?? null}
+        />
+      ) : undefined,
     },
   ]
 

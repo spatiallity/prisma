@@ -248,6 +248,8 @@ export type SpkRow = Timestamps & {
   terrain_survey_marked_by: string | null
   /** Pengecekan Bersama execution date — the stage kept from the old field-survey checklist. */
   joint_check_date: string | null
+  /** Completion marker kept separately so a joint check can finish without a recorded date. */
+  joint_check_completed_at: string | null
   /** Jumlah patok, only meaningful when work_type is 'Stake Out'. */
   stake_out_patok: number | null
   /** 'Lokasi Bor' or 'Fasilitas Produksi'. */
@@ -853,6 +855,7 @@ export type Database = {
         | 'terrain_survey_completed_at'
         | 'terrain_survey_marked_by'
         | 'joint_check_date'
+        | 'joint_check_completed_at'
         | 'stake_out_patok'
         | 'location_type'
         | 'denda_value'

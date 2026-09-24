@@ -22,6 +22,7 @@ export async function loadStageBySpk(
     start_date: string | null
     terrain_survey_completed_at: string | null
     joint_check_date: string | null
+    joint_check_completed_at?: string | null
     work_name?: string | null
     work_type?: string | null
     location_type?: string | null
@@ -98,12 +99,13 @@ export async function loadStageBySpk(
         stageBySpk[spk.id] = { label: 'Survei Terestris: Sedang Berjalan', date: spk.start_date }
         continue
       }
-      if (!spk.joint_check_date) {
+      const jointCheckCompletedAt = spk.joint_check_completed_at ?? spk.joint_check_date
+      if (!jointCheckCompletedAt) {
         stageBySpk[spk.id] = { label: 'Pengecekan Bersama', date: spk.terrain_survey_completed_at }
         continue
       }
       if (!spk.opname_marked_at) {
-        stageBySpk[spk.id] = { label: 'Opname', date: spk.joint_check_date }
+        stageBySpk[spk.id] = { label: 'Opname', date: spk.joint_check_date ?? jointCheckCompletedAt }
         continue
       }
       if (!spk.pad_marked_at) {
@@ -147,8 +149,8 @@ export async function loadStageBySpk(
       continue
     }
 
-    if (spk.joint_check_date) {
-      stageBySpk[spk.id] = { label: 'Pengecekan Bersama', date: spk.joint_check_date }
+    if (spk.joint_check_completed_at ?? spk.joint_check_date) {
+      stageBySpk[spk.id] = { label: 'Pengecekan Bersama', date: spk.joint_check_date ?? spk.joint_check_completed_at ?? null }
       continue
     }
     if (spk.terrain_survey_completed_at) {

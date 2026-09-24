@@ -8,6 +8,7 @@ export type ProgressSpk = {
   work_type: string | null
   terrain_survey_completed_at: string | null
   joint_check_date: string | null
+  joint_check_completed_at?: string | null
   opname_marked_at: string | null
   pad_marked_at: string | null
 }
@@ -33,7 +34,7 @@ export function classifySpkProgress(
   if (isTerrestrialSurveyOnly(spk.work_type)) {
     const fieldComplete = Boolean(
       spk.terrain_survey_completed_at
-      && spk.joint_check_date
+      && (spk.joint_check_completed_at ?? spk.joint_check_date)
       && spk.opname_marked_at
       && spk.pad_marked_at,
     )
@@ -54,11 +55,12 @@ export function terrestrialSurveyOnlyStage(spk: ProgressSpk) {
   if (!spk.terrain_survey_completed_at) {
     return { stage: 'Survei Terestris', startedAt: null }
   }
-  if (!spk.joint_check_date) {
+  const jointCheckCompletedAt = spk.joint_check_completed_at ?? spk.joint_check_date
+  if (!jointCheckCompletedAt) {
     return { stage: 'Pengecekan Bersama', startedAt: spk.terrain_survey_completed_at }
   }
   if (!spk.opname_marked_at) {
-    return { stage: 'Opname', startedAt: spk.joint_check_date }
+    return { stage: 'Opname', startedAt: spk.joint_check_date ?? jointCheckCompletedAt }
   }
   if (!spk.pad_marked_at) {
     return { stage: 'PAD', startedAt: spk.opname_marked_at }

@@ -77,7 +77,7 @@ export default async function SpkProgressPage() {
   ] = await Promise.all([
     supabase
       .from('spks')
-      .select('id, spk_number, site_code, work_name, status, start_date, end_date, created_at, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi, terrain_survey_completed_at, joint_check_date, opname_marked_at, pad_marked_at')
+      .select('id, spk_number, site_code, work_name, status, start_date, end_date, created_at, contract_value, area_ha, work_type, location, location_type, kabupaten, provinsi, terrain_survey_completed_at, joint_check_date, joint_check_completed_at, opname_marked_at, pad_marked_at')
       .in('status', ['On Going', 'Selesai'])
       .order('start_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false }),
@@ -123,6 +123,7 @@ export default async function SpkProgressPage() {
     work_type: string | null
     terrain_survey_completed_at: string | null
     joint_check_date: string | null
+    joint_check_completed_at?: string | null
     opname_marked_at: string | null
     pad_marked_at: string | null
   }): Column {

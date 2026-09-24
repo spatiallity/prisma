@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Check, Pencil } from 'lucide-react'
+import { Check, Pencil, Undo2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Field, Input } from '@/components/ui/field'
 import { Button } from '@/components/ui/button'
 import { useActionToast } from '@/components/ui/toast'
-import { setJointCheckDate, type SpkFormState } from '../actions'
+import { setJointCheckDate, unmarkJointCheck, type SpkFormState } from '../actions'
 
 const initialState: SpkFormState = { error: null }
 
@@ -21,12 +21,36 @@ function Submit({ completed }: { completed: boolean }) {
   )
 }
 
+function UnmarkButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+    >
+      <Undo2 size={14} aria-hidden />
+      {pending ? '…' : 'Batalkan selesai'}
+    </button>
+  )
+}
+
 /** Edit icon → an explicit completion action for Pengecekan Bersama. */
-export function JointCheckDateRow({ spkId, date }: { spkId: string; date: string | null }) {
+export function JointCheckDateRow({
+  spkId,
+  date,
+  completedAt,
+}: {
+  spkId: string
+  date: string | null
+  completedAt: string | null
+}) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(setJointCheckDate, initialState)
+  const [unmarkState, unmarkFormAction] = useActionState(unmarkJointCheck, initialState)
   useActionToast(state, () => setOpen(false))
-  const defaultDate = date ? date.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  useActionToast(unmarkState, () => setOpen(false))
+  const defaultDate = date?.slice(0, 10) ?? ''
 
   return (
     <Modal
@@ -45,11 +69,17 @@ export function JointCheckDateRow({ spkId, date }: { spkId: string; date: string
     >
       <form action={formAction} className="grid gap-4">
         <input type="hidden" name="id" value={spkId} />
-        <Field label="Tanggal pelaksanaan" htmlFor="joint_check_date" required>
-          <Input id="joint_check_date" name="joint_check_date" type="date" defaultValue={defaultDate} required />
+        <Field label="Tanggal pelaksanaan" htmlFor="joint_check_date" hint="Opsional">
+          <Input id="joint_check_date" name="joint_check_date" type="date" defaultValue={defaultDate} />
         </Field>
-        <Submit completed={Boolean(date)} />
+        <Submit completed={Boolean(completedAt)} />
       </form>
+      {completedAt ? (
+        <form action={unmarkFormAction}>
+          <input type="hidden" name="id" value={spkId} />
+          <UnmarkButton />
+        </form>
+      ) : null}
     </Modal>
   )
 }

@@ -33,6 +33,7 @@ export type ProgressRow = {
   provinsi: string | null
   terrain_survey_completed_at: string | null
   joint_check_date: string | null
+  joint_check_completed_at?: string | null
   opname_marked_at: string | null
   pad_marked_at: string | null
   progress: ProgressStatus
