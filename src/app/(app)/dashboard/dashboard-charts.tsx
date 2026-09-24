@@ -140,7 +140,8 @@ export function ContractAbsorptionChart({ capacity, issued }: { capacity: number
   const overCapacity = issued > capacity
 
   return (
-    <div className="grid gap-2.5">
+    <div className="flex h-full flex-col justify-between gap-4">
+      <div className="grid gap-2.5">
       <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
         <span>SPK terbit</span>
         <span>{overCapacity ? 'Melebihi kontrak' : 'Sisa kontrak'}</span>
@@ -162,6 +163,19 @@ export function ContractAbsorptionChart({ capacity, issued }: { capacity: number
         ) : null}
       </div>
       <div className="tnum text-center text-sm font-black text-slate-900">{formatRupiah(capacity)}</div>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-3">
+        {[
+          { label: 'SPK terbit', value: formatRupiahCompact(issued), tone: 'text-primary' },
+          { label: 'Sisa kontrak', value: formatRupiahCompact(remaining), tone: 'text-slate-700' },
+          { label: 'Serapan', value: `${issuedPercent.toFixed(1)}%`, tone: 'text-primary' },
+        ].map((item, index) => (
+          <div key={item.label} className={cn('min-w-0 px-3 first:pl-0 last:pr-0', index === 1 && 'text-center', index === 2 && 'text-right')}>
+            <div className="text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">{item.label}</div>
+            <div className={cn('tnum mt-1 text-sm font-black whitespace-nowrap', item.tone)}>{item.value}</div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

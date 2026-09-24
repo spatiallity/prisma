@@ -314,10 +314,20 @@ export default async function DashboardPage() {
                   at full width a lone figure on its own row left most of the
                   card empty. */}
               <div className="grid xl:grid-cols-[minmax(0,0.85fr)_minmax(0,2.15fr)]">
-                <div className="border-b border-slate-100 px-5 py-3 xl:border-r xl:border-b-0">
+                <div className="flex flex-col border-b border-slate-100 px-5 py-4 xl:border-r xl:border-b-0">
                   <div className="text-[11px] font-extrabold tracking-wider text-slate-500 uppercase">Total Nilai SPK</div>
                   <div className="tnum mt-1 text-3xl font-black text-slate-900">
                     {formatRupiah(nilaiSpkTotal)}
+                  </div>
+                  <div className="mt-auto grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+                    <div>
+                      <div className="text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">SPK Berjalan</div>
+                      <div className="tnum mt-1 text-lg font-black text-warning">{kpi?.spk_on_going ?? 0}</div>
+                    </div>
+                    <div className="border-l border-slate-100 pl-3">
+                      <div className="text-[10px] font-extrabold tracking-wide text-slate-500 uppercase">SPK Selesai</div>
+                      <div className="tnum mt-1 text-lg font-black text-success">{kpi?.spk_selesai ?? 0}</div>
+                    </div>
                   </div>
                 </div>
 
@@ -371,20 +381,20 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="grid items-start gap-5 xl:grid-cols-2">
-            <Card className="overflow-hidden">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>Ringkasan Kontrak</CardTitle>
                   <CardDescription>Progress Serapan Kontrak</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent className="flex flex-1 flex-col p-4">
                 <ContractAbsorptionChart capacity={TOP_SCR_CONTRACT_VALUE} issued={nilaiSpkTotal} />
               </CardContent>
             </Card>
 
-            <Card className="overflow-hidden">
+            <Card className="flex h-full flex-col overflow-hidden">
               <CardHeader>
                 <div>
                   <CardTitle>RAB — Anggaran vs Realisasi</CardTitle>
@@ -392,7 +402,7 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               {seeRabBudget ? (
-                <CardContent className="grid content-start gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start">
+                <CardContent className="grid flex-1 content-start gap-4 p-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start">
                   <Link
                     href="/financial/rab"
                     className="flex justify-center border-b border-slate-100 pb-4 transition-opacity hover:opacity-80 sm:border-r sm:border-b-0 sm:py-2 sm:pr-5 sm:pb-2"

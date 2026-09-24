@@ -75,7 +75,12 @@ export function bottleneckSinceDate(
   }
   if (item.reason === 'Design tidak berubah status') {
     return (
-      designs.find((d) => d.current_stage !== 'Finish' && d.current_stage !== 'Review PIC Pertamina')
+      designs.find(
+        (d) =>
+          d.current_stage !== 'Finish' &&
+          d.current_stage !== 'Review PIC Pertamina' &&
+          d.current_stage !== 'Acc PIC Pertamina',
+      )
         ?.updated_at ?? null
     )
   }
