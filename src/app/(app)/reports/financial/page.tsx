@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import { AlertTriangle, FileCheck2, ReceiptText, WalletCards } from 'lucide-react'
+import { AlertTriangle, Download, FileCheck2, ReceiptText, WalletCards } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/session'
@@ -91,6 +91,15 @@ export default async function FinancialReportPage() {
       <PageHeader
         title="Laporan Keuangan SPK"
         description="Ringkasan nilai kontrak, opname, PAD, denda, dan invoiced dari data SPK yang sedang dipantau."
+        actions={
+          <a
+            href="/api/reports/financial/export"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <Download size={16} aria-hidden />
+            Download laporan
+          </a>
+        }
       />
 
       <div className="mb-5 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">

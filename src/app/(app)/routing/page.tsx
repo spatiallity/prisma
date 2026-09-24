@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Download } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/ui/page-header'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, Td, Th, Tr } from '@/components/ui/table'
@@ -151,17 +152,25 @@ export async function RoutingMonitor({
         title={title}
         description={description}
         actions={
-          mode === 'open' &&
-          mayEdit && (
-            <AddRoutingButton
-              spks={(spks ?? [])
-                .filter((s) => s.status === 'Draft' || s.status === 'On Going')
-                .filter((s) => !routedSpkIds.has(s.id))
-                .filter((s) => canStartRouting(s))
-                .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
-              templateId={defaultTemplateId}
-            />
-          )
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/routing/export"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-surface px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <Download size={16} aria-hidden />
+              Download data
+            </a>
+            {mode === 'open' && mayEdit && (
+              <AddRoutingButton
+                spks={(spks ?? [])
+                  .filter((s) => s.status === 'Draft' || s.status === 'On Going')
+                  .filter((s) => !routedSpkIds.has(s.id))
+                  .filter((s) => canStartRouting(s))
+                  .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
+                templateId={defaultTemplateId}
+              />
+            )}
+          </div>
         }
       />
 
