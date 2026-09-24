@@ -37,12 +37,14 @@ export function DesignTabCards({
   picName,
   pics,
   mayEdit,
+  allowBlankDates = false,
 }: {
   designs: DesignRow[]
   revisionsByDesign: Record<string, Revision[]>
   picName: Record<string, string>
   pics: PicOption[]
   mayEdit: boolean
+  allowBlankDates?: boolean
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const openDesign = designs.find((d) => d.id === openId) ?? null
@@ -174,6 +176,7 @@ export function DesignTabCards({
         picName={picName}
         pics={pics}
         mayEdit={mayEdit}
+        allowBlankDates={allowBlankDates}
       />
     </>
   )

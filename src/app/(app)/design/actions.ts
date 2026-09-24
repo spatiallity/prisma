@@ -38,16 +38,12 @@ function todayMulti(formData: FormData, keys: string[]) {
   return new Date().toISOString().slice(0, 10)
 }
 
-/** Same as pickedOrNull, but tries each key in order — the merged stage-entry
- *  form submits the closing date as `completed_at` (distinct from the Mulai
- *  field, also present in that same form as `tanggal`), while the older
- *  standalone review form still only ever sends `tanggal`. */
-function pickedOrNullMulti(formData: FormData, keys: string[]) {
-  for (const key of keys) {
-    const raw = text(formData, key)
-    if (raw) return new Date(`${raw}T12:00:00`).toISOString()
-  }
-  return null
+function mayLeaveStartDateBlank(user: { role: { code: string } }) {
+  return user.role.code === 'super_admin'
+}
+
+function missingStartDate(user: { role: { code: string } }, value: string | null, label = 'Tanggal mulai') {
+  return !mayLeaveStartDateBlank(user) && !value ? `${label} wajib diisi.` : null
 }
 
 /**
@@ -239,6 +235,10 @@ export async function createDesign(
     return { error: 'SPK Hanya Survei Terestris tidak memiliki proses desain.' }
   }
 
+  const startedAt = pickedOrNull(formData, 'tanggal')
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
+
   const picId = await resolvePicId(supabase, text(formData, 'pic_name'), user.id)
 
   const { data: existing } = await supabase
@@ -267,8 +267,6 @@ export async function createDesign(
     .single()
 
   if (error) return { error: error.message }
-
-  const startedAt = pickedOrNull(formData, 'tanggal')
 
   const { error: revisionError } = await supabase.from('design_revisions').insert({
     design_id: design.id,
@@ -328,6 +326,8 @@ export async function startDesign(
 
   const picId = await resolvePicId(supabase, text(formData, 'pic_name'), user.id)
   const startedAt = pickedOrNull(formData, 'tanggal')
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
 
   const { error } = await supabase.from('design_revisions').insert({
     design_id: designId,
@@ -426,11 +426,15 @@ export async function advanceStage(
     return { error: 'Pilih tahap berikutnya atau kembalikan ke tahap sebelumnya dalam fase yang sama.' }
   }
 
-  const transitionAt = pickedOrNullMulti(formData, ['completed_at', 'tanggal'])
-  // The accordion form can correct the start date while advancing. Validate
-  // against that submitted value instead of the pre-edit value in the row.
-  const submittedStartAt = text(formData, 'completed_at') ? pickedOrNull(formData, 'tanggal') : null
-  const currentStartAt = submittedStartAt ?? current?.started_at
+  // The selected handoff date is both the finish of this stage and the start
+  // of the stage being opened, so a workflow has no gaps between stages.
+  const transitionAt = pickedOrNull(formData, 'next_started_at')
+  const submittedStartAt = pickedOrNull(formData, 'tanggal')
+  const currentStartAt = submittedStartAt ?? current?.started_at ?? null
+  const currentStartError = missingStartDate(user, currentStartAt)
+  if (currentStartError) return { error: currentStartError }
+  const nextStartError = missingStartDate(user, transitionAt, 'Tanggal mulai tahap berikutnya')
+  if (nextStartError) return { error: nextStartError }
   if (transitionAt && currentStartAt && new Date(transitionAt) < new Date(currentStartAt)) {
     return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
   }
@@ -531,7 +535,7 @@ export async function advanceStage(
     }
   }
 
-  const progressDate = todayMulti(formData, ['completed_at', 'tanggal'])
+  const progressDate = todayMulti(formData, ['next_started_at', 'tanggal'])
   if (current) {
     await syncSpkActivityStage(
       supabase,
@@ -599,14 +603,18 @@ export async function completeStage(
     .maybeSingle()
   if (!entry) return { error: 'Entri tidak ditemukan.' }
 
-  const completedAt = pickedOrNullMulti(formData, ['completed_at', 'tanggal'])
-  if (completedAt && entry.started_at && new Date(completedAt) < new Date(entry.started_at)) {
+  const submittedStartAt = pickedOrNull(formData, 'tanggal')
+  const startedAt = submittedStartAt ?? entry.started_at
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
+  const completedAt = pickedOrNull(formData, 'completed_at')
+  if (completedAt && startedAt && new Date(completedAt) < new Date(startedAt)) {
     return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
   }
 
   const { error } = await supabase
     .from('design_revisions')
-    .update({ completed_at: completedAt })
+    .update({ started_at: startedAt, completed_at: completedAt })
     .eq('id', entryId)
   if (error) return { error: error.message }
 
@@ -700,13 +708,16 @@ export async function updateRevisionEntry(
 
   const typedPicName = text(formData, 'pic_name')
   const picId = typedPicName ? await resolvePicId(supabase, typedPicName, user.id) : null
+  const startedAt = pickedOrNull(formData, 'tanggal')
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
 
   const { error } = await supabase
     .from('design_revisions')
     .update({
       pic_id: picId,
       pic_pertamina: nullable(formData, 'pic_pertamina'),
-      started_at: pickedOrNull(formData, 'tanggal'),
+      started_at: startedAt,
       notes: nullable(formData, 'notes'),
     })
     .eq('id', entryId)

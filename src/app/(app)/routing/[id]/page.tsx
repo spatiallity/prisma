@@ -269,6 +269,7 @@ export default async function RoutingDetailPage({
                   entry={current}
                   previousCompletedAt={previousCompletedAt}
                   dendaValue={spk?.denda_value}
+                  allowBlankDates={user.role.code === 'super_admin'}
                   canRollback
                 />
               </CardContent>

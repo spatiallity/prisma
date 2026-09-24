@@ -12,11 +12,13 @@ export function RoutingStepEdit({
   stepId,
   stepName,
   defaultPic,
+  allowBlankDates = false,
 }: {
   routingId: string
   stepId: string
   stepName: string
   defaultPic: string | null
+  allowBlankDates?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -34,7 +36,13 @@ export function RoutingStepEdit({
         </button>
       }
     >
-      <StepReviewForm routingId={routingId} stepId={stepId} defaultPic={defaultPic} onSaved={() => setOpen(false)} />
+      <StepReviewForm
+        routingId={routingId}
+        stepId={stepId}
+        defaultPic={defaultPic}
+        allowBlankDates={allowBlankDates}
+        onSaved={() => setOpen(false)}
+      />
     </Modal>
   )
 }

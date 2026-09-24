@@ -42,6 +42,7 @@ export function DesignDetailModal({
   picName,
   pics,
   mayEdit,
+  allowBlankDates = false,
   spkId,
 }: {
   open: boolean
@@ -52,6 +53,7 @@ export function DesignDetailModal({
   picName: Record<string, string>
   pics: PicOption[]
   mayEdit: boolean
+  allowBlankDates?: boolean
   /** Shows a "Buka Detail SPK" link when set — omitted where the modal is
    *  already opened from inside that SPK's own page. */
   spkId?: string
@@ -141,6 +143,7 @@ export function DesignDetailModal({
               phase={design.phase}
               currentStage={design.current_stage}
               pics={pics}
+              allowBlankDates={allowBlankDates}
             />
           ) : latestEntry ? (
             <StageEntryForm
@@ -155,6 +158,7 @@ export function DesignDetailModal({
               previousPicPertamina={previousPicPertamina}
               canRollback={latestEntry.id === latestRevisionId && revisions.length > 1}
               canRewind={latestEntry.id !== latestRevisionId}
+              allowBlankDates={allowBlankDates}
               onSaved={() => setOpenKey(null)}
             />
           ) : undefined

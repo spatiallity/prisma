@@ -42,6 +42,7 @@ export function DesignTable({
   siteplanApprovedBySpk,
   pics = [],
   mayEdit = false,
+  allowBlankDates = false,
 }: {
   phase: DesignPhase
   designs: DesignRow[]
@@ -53,6 +54,7 @@ export function DesignTable({
   siteplanApprovedBySpk?: Record<string, string | null>
   pics?: PicOption[]
   mayEdit?: boolean
+  allowBlankDates?: boolean
   /** The `?stage=` filter chip currently active — clicking a different chip
    *  re-renders this same table instance with a new `designs` set, so any
    *  popup left open must close instead of possibly matching a same-id row
@@ -209,6 +211,7 @@ export function DesignTable({
         picName={picName}
         pics={pics}
         mayEdit={mayEdit}
+        allowBlankDates={allowBlankDates}
         spkId={openDesign?.spk_id}
       />
     </>

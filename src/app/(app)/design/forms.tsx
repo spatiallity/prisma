@@ -42,6 +42,7 @@ function Submit({
   formAction,
   pending = false,
   disabled = false,
+  formNoValidate = false,
   onClick,
 }: {
   label: string
@@ -49,6 +50,7 @@ function Submit({
   variant?: 'primary' | 'secondary'
   pending?: boolean
   disabled?: boolean
+  formNoValidate?: boolean
   /** Routes this button's submit to a different action than the form's own
    *  — used when one form offers two outcomes (Simpan vs Lanjutkan). */
   formAction?: (formData: FormData) => void
@@ -64,6 +66,7 @@ function Submit({
       type="submit"
       variant={variant}
       disabled={disabled || pending}
+      formNoValidate={formNoValidate}
       formAction={formAction}
       onClick={onClick}
     >
@@ -208,11 +211,13 @@ export function NewDesignForm({
   spks,
   pics,
   lockedSpkId,
+  allowBlankDates = false,
   onSaved,
 }: {
   spks: SpkOption[]
   pics: PicOption[]
   lockedSpkId?: string
+  allowBlankDates?: boolean
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(createDesign, initialState)
@@ -248,8 +253,8 @@ export function NewDesignForm({
 
         <PicPertaminaField label="PIC Pertamina" placeholder="Reviewer Pertamina" />
 
-        <Field label="Tanggal mulai" htmlFor="d_start">
-          <Input id="d_start" name="tanggal" type="date" />
+        <Field label="Tanggal mulai" htmlFor="d_start" required={!allowBlankDates}>
+          <Input id="d_start" name="tanggal" type="date" required={!allowBlankDates} />
         </Field>
 
         <Field
@@ -277,11 +282,13 @@ export function AddDesignButton({
   pics,
   lockedSpkId,
   label = 'Add Data',
+  allowBlankDates = false,
 }: {
   spks: SpkOption[]
   pics: PicOption[]
   lockedSpkId?: string
   label?: string
+  allowBlankDates?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -297,7 +304,13 @@ export function AddDesignButton({
         </Button>
       }
     >
-      <NewDesignForm spks={spks} pics={pics} lockedSpkId={lockedSpkId} onSaved={() => setOpen(false)} />
+      <NewDesignForm
+        spks={spks}
+        pics={pics}
+        lockedSpkId={lockedSpkId}
+        allowBlankDates={allowBlankDates}
+        onSaved={() => setOpen(false)}
+      />
     </Modal>
   )
 }
@@ -315,6 +328,7 @@ export function StageReviewForm({
   currentStage,
   pics,
   defaultPicPertamina,
+  allowBlankDates = false,
 }: {
   designId: string
   /** The open design_revisions row — what a Revisi round attaches to. */
@@ -324,6 +338,7 @@ export function StageReviewForm({
   currentStage: DesignStage
   pics: PicOption[]
   defaultPicPertamina: string | null
+  allowBlankDates?: boolean
 }) {
   const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
   const [advanceState, advanceAction, advancePending] = useActionState(advanceStage, initialState)
@@ -368,8 +383,8 @@ export function StageReviewForm({
             </Select>
           </Field>
 
-          <Field label="Tanggal" htmlFor="a_date">
-            <Input id="a_date" name="tanggal" type="date" />
+          <Field label="Tanggal mulai tahap berikutnya" htmlFor="a_date" required={!allowBlankDates}>
+            <Input id="a_date" name="next_started_at" type="date" required={!allowBlankDates} />
           </Field>
 
           <PicField label="Drafter" pics={pics} placeholder="Sama seperti sebelumnya" />
@@ -433,6 +448,7 @@ export function StageEntryForm({
   previousPicPertamina,
   canRollback = false,
   canRewind = false,
+  allowBlankDates = false,
   onSaved,
 }: {
   designId: string
@@ -457,6 +473,7 @@ export function StageEntryForm({
   /** A previously reached stage can become the new workflow point; later
    * history is removed, while this stage and all earlier work stay intact. */
   canRewind?: boolean
+  allowBlankDates?: boolean
   onSaved?: () => void
 }) {
   const [saveState, saveAction, savePending] = useActionState(updateRevisionEntry, initialState)
@@ -493,12 +510,13 @@ export function StageEntryForm({
       <input type="hidden" name="entry_id" value={entry.id} />
       <input type="hidden" name="stage" ref={stageInputRef} defaultValue={target} />
 
-      <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`}>
+      <Field label="Tanggal mulai" htmlFor={`se_${entry.id}_start`} required={!allowBlankDates}>
         <Input
           id={`se_${entry.id}_start`}
           name="tanggal"
           type="date"
           defaultValue={entry.started_at?.slice(0, 10) ?? ''}
+          required={!allowBlankDates}
         />
       </Field>
 
@@ -540,8 +558,17 @@ export function StageEntryForm({
 
       {isCurrent && nextOptions.length > 0 && (
         <div className="grid gap-3 border-t border-slate-200 pt-3">
-          <Field label="Tanggal selesai" htmlFor={`se_${entry.id}_done`}>
-            <Input id={`se_${entry.id}_done`} name="completed_at" type="date" />
+          <Field
+            label="Tanggal mulai tahap berikutnya"
+            htmlFor={`se_${entry.id}_next_start`}
+            required={!allowBlankDates}
+          >
+            <Input
+              id={`se_${entry.id}_next_start`}
+              name="next_started_at"
+              type="date"
+              required={!allowBlankDates}
+            />
           </Field>
 
           {nextOptions.length > 1 ? (
@@ -568,7 +595,14 @@ export function StageEntryForm({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Submit label="Simpan" variant="secondary" formAction={saveAction} pending={savePending} disabled={anyPending} />
+        <Submit
+          label="Simpan"
+          variant="secondary"
+          formAction={saveAction}
+          pending={savePending}
+          disabled={anyPending}
+          formNoValidate
+        />
         {isCurrent && nextOptions.length > 0 && (
           <Submit
             label="Lanjutkan ke Tahap Selanjutnya"
@@ -645,11 +679,13 @@ export function StartDesignForm({
   phase,
   currentStage,
   pics,
+  allowBlankDates = false,
 }: {
   designId: string
   phase: DesignPhase
   currentStage: DesignStage
   pics: PicOption[]
+  allowBlankDates?: boolean
 }) {
   const [state, formAction, pending] = useActionState(startDesign, initialState)
   useActionToast(state)
@@ -664,8 +700,8 @@ export function StartDesignForm({
         <div className="mt-1 text-sm font-bold text-slate-900">{currentStage}</div>
       </div>
 
-      <Field label="Tanggal" htmlFor="s_date">
-        <Input id="s_date" name="tanggal" type="date" />
+      <Field label="Tanggal mulai" htmlFor="s_date" required={!allowBlankDates}>
+        <Input id="s_date" name="tanggal" type="date" required={!allowBlankDates} />
       </Field>
 
       {phase === 'siteplan' && (
@@ -697,6 +733,7 @@ export function EditRevisionEntryButton({
   designId,
   pics,
   entry,
+  allowBlankDates = false,
 }: {
   designId: string
   pics: PicOption[]
@@ -706,6 +743,7 @@ export function EditRevisionEntryButton({
     notes: string | null
     pic_pertamina: string | null
   }
+  allowBlankDates?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [state, formAction, pending] = useActionState(updateRevisionEntry, initialState)
@@ -732,12 +770,13 @@ export function EditRevisionEntryButton({
         <input type="hidden" name="entry_id" value={entry.id} />
         <input type="hidden" name="design_id" value={designId} />
 
-        <Field label="Tanggal" htmlFor="e_tanggal">
+        <Field label="Tanggal mulai" htmlFor="e_tanggal" required={!allowBlankDates}>
           <Input
             id="e_tanggal"
             name="tanggal"
             type="date"
             defaultValue={entry.started_at?.slice(0, 10)}
+            required={!allowBlankDates}
           />
         </Field>
 

@@ -24,6 +24,14 @@ function pickedOrNull(formData: FormData, key: string) {
   return raw ? new Date(`${raw}T12:00:00`).toISOString() : null
 }
 
+function mayLeaveStartDateBlank(user: { role: { code: string } }) {
+  return user.role.code === 'super_admin'
+}
+
+function missingStartDate(user: { role: { code: string } }, value: string | null, label = 'Tanggal mulai') {
+  return !mayLeaveStartDateBlank(user) && !value ? `${label} wajib diisi.` : null
+}
+
 /**
  * Section 23 — puts a document into the routing chain. Every stage of the
  * template is written up front so the whole path is visible from day one, not
@@ -42,6 +50,10 @@ export async function createRouting(
   if (!spkId || !templateId || !documentType) {
     return { error: 'SPK, template, dan jenis dokumen wajib diisi.' }
   }
+
+  const startedAt = pickedOrNull(formData, 'tanggal')
+  const startError = missingStartDate(user, startedAt, 'Tanggal masuk')
+  if (startError) return { error: startError }
 
   const supabase = await createClient()
 
@@ -91,7 +103,6 @@ export async function createRouting(
 
   if (error) return { error: error.message }
 
-  const startedAt = pickedOrNull(formData, 'tanggal')
   const rows = steps.map((step, index) => ({
     spk_routing_id: routing.id,
     template_step_id: step.id,
@@ -125,7 +136,7 @@ export async function advanceStep(
   _prev: RoutingState,
   formData: FormData,
 ): Promise<RoutingState> {
-  await requirePermission('routing', 'edit')
+  const user = await requirePermission('routing', 'edit')
 
   const stepId = text(formData, 'step_id')
   const routingId = text(formData, 'routing_id')
@@ -147,15 +158,23 @@ export async function advanceStep(
     return { error: 'Tahap ini sudah selesai.' }
   }
 
-  const completedAt = pickedOrNull(formData, 'tanggal')
+  const nextStartedAt = pickedOrNull(formData, 'next_started_at')
+  const startedAt = current.started_at ?? nextStartedAt
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
+  const nextStartError = missingStartDate(user, nextStartedAt, 'Tanggal mulai tahap berikutnya')
+  if (nextStartError) return { error: nextStartError }
+  if (nextStartedAt && startedAt && nextStartedAt < startedAt) {
+    return { error: 'Tanggal mulai tahap berikutnya tidak boleh sebelum tanggal mulai.' }
+  }
 
   const { error: completeError } = await supabase
     .from('routing_history')
     .update({
       status: 'Completed',
       // A stage returned and resumed may never have been started.
-      started_at: current.started_at ?? completedAt,
-      completed_at: completedAt,
+      started_at: startedAt,
+      completed_at: nextStartedAt,
       pic_name: nullable(formData, 'pic_name') ?? undefined,
       note: nullable(formData, 'note') ?? undefined,
     })
@@ -167,7 +186,7 @@ export async function advanceStep(
   if (next) {
     const { error: nextError } = await supabase
       .from('routing_history')
-      .update({ status: 'In Progress', started_at: completedAt })
+      .update({ status: 'In Progress', started_at: nextStartedAt })
       .eq('id', next.id)
     if (nextError) return { error: nextError.message }
   }
@@ -207,7 +226,7 @@ export async function updateRoutingStepDates(
 
   const { data: steps, error: readError } = await supabase
     .from('routing_history')
-    .select('id, sequence, status, step_name')
+    .select('id, sequence, status, step_name, started_at, completed_at')
     .eq('spk_routing_id', routingId)
     .order('sequence')
   if (readError) return { error: readError.message }
@@ -222,11 +241,15 @@ export async function updateRoutingStepDates(
     return { error: 'Selesaikan tahap sebelumnya dulu.' }
   }
 
+  const submittedStartedAt = pickedOrNull(formData, 'started_at')
+  const startedAt = submittedStartedAt ?? step.started_at
+  const startError = missingStartDate(user, startedAt)
+  if (startError) return { error: startError }
+
   // Invoice remains one routing stage. It may be saved as In Progress with a
   // start date, then becomes Invoiced once its finish date and invoice value
   // are recorded.
   if (step.step_name === 'Invoiced') {
-    const startedAt = pickedOrNull(formData, 'started_at')
     const completeInvoice = text(formData, 'invoice_complete') === '1'
 
     if (!completeInvoice) {
@@ -329,8 +352,6 @@ export async function updateRoutingStepDates(
     return { error: null, success: 'Invoice disimpan.' }
   }
 
-  const startedAt = pickedOrNull(formData, 'started_at')
-
   const decision = text(formData, 'decision')
 
   if (decision === 'revisi') {
@@ -375,19 +396,46 @@ export async function updateRoutingStepDates(
     return { error: null, success: 'Perubahan tahap disimpan.' }
   }
 
-  const completedRaw = text(formData, 'completed_at')
-  const completedAt = completedRaw ? new Date(`${completedRaw}T12:00:00`).toISOString() : null
-  if (completedAt && startedAt && completedAt < startedAt) {
-    return { error: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' }
+  if (decision === 'lanjut') {
+    const nextStartedAt = pickedOrNull(formData, 'next_started_at')
+    const nextStartError = missingStartDate(user, nextStartedAt, 'Tanggal mulai tahap berikutnya')
+    if (nextStartError) return { error: nextStartError }
+    if (nextStartedAt && startedAt && nextStartedAt < startedAt) {
+      return { error: 'Tanggal mulai tahap berikutnya tidak boleh sebelum tanggal mulai.' }
+    }
+
+    const { error: completeError } = await supabase
+      .from('routing_history')
+      .update({
+        started_at: startedAt,
+        completed_at: nextStartedAt,
+        status: 'Completed' satisfies RoutingStatus,
+        pic_name: nullable(formData, 'pic_name') ?? undefined,
+        note: nullable(formData, 'note') ?? undefined,
+      })
+      .eq('id', stepId)
+    if (completeError) return { error: completeError.message }
+
+    const next = steps?.[index + 1]
+    if (next) {
+      const { error: nextError } = await supabase
+        .from('routing_history')
+        .update({ status: 'In Progress' satisfies RoutingStatus, started_at: nextStartedAt, completed_at: null })
+        .eq('id', next.id)
+      if (nextError) return { error: nextError.message }
+    }
+
+    revalidatePath('/routing')
+    revalidatePath(`/routing/${routingId}`)
+    return { error: null, success: next ? 'Tahap selesai, lanjut ke tahap berikutnya.' : 'Routing selesai.' }
   }
-  const status: RoutingStatus = decision === 'lanjut' ? 'Completed' : 'In Progress'
 
   const { error } = await supabase
     .from('routing_history')
     .update({
       started_at: startedAt,
-      completed_at: completedAt,
-      status,
+      completed_at: step.status === 'Completed' ? step.completed_at : null,
+      status: step.status,
       pic_name: nullable(formData, 'pic_name') ?? undefined,
       note: nullable(formData, 'note') ?? undefined,
     })
@@ -396,7 +444,7 @@ export async function updateRoutingStepDates(
 
   revalidatePath('/routing')
   revalidatePath(`/routing/${routingId}`)
-  return { error: null, success: decision === 'lanjut' ? 'Tahap selesai, lanjut ke tahap berikutnya.' : 'Tahap diperbarui.' }
+  return { error: null, success: 'Tahap diperbarui.' }
 }
 
 /**

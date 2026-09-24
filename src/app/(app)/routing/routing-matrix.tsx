@@ -113,6 +113,7 @@ function RoutingDetailModal({
   padMarkedAt,
   padValue,
   dendaValue,
+  allowBlankDates = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -127,6 +128,7 @@ function RoutingDetailModal({
   padMarkedAt: string | null
   padValue: number | null
   dendaValue: number | null
+  allowBlankDates?: boolean
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null)
   const lastDocId = useRef<string | null>(null)
@@ -206,6 +208,7 @@ function RoutingDetailModal({
             entry={cell}
             previousCompletedAt={previousCell?.completed_at}
             dendaValue={dendaValue}
+            allowBlankDates={allowBlankDates}
             canRollback={index > 0 && step.id === rollbackStepId}
             onSaved={() => setOpenKey(null)}
           />
@@ -295,6 +298,7 @@ export function RoutingMatrix({
   overdueByDoc,
   revisionsByStep,
   mayEdit,
+  allowBlankDates = false,
   opnameBySpk,
   opnameValueBySpk,
   padBySpk,
@@ -314,6 +318,7 @@ export function RoutingMatrix({
   overdueByDoc: Record<string, boolean>
   revisionsByStep: Record<string, Revision[]>
   mayEdit: boolean
+  allowBlankDates?: boolean
   opnameBySpk: Record<string, string | null>
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
@@ -482,6 +487,7 @@ export function RoutingMatrix({
         padMarkedAt={openSpkId ? (padBySpk[openSpkId] ?? null) : null}
         padValue={openSpkId ? (padValueBySpk[openSpkId] ?? null) : null}
         dendaValue={openSpkId ? (dendaValueBySpk[openSpkId] ?? null) : null}
+        allowBlankDates={allowBlankDates}
       />
     </>
   )

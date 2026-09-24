@@ -12,7 +12,15 @@ import { RoutingStepEdit } from '../../routing/routing-step-edit'
 /** The Routing tab of Detail SPK: every document this SPK has in flight,
  *  shown as its own chain — the same view as clicking it from Routing
  *  Monitor, without leaving the SPK. */
-export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
+export async function RoutingTab({
+  spkId,
+  mayEdit,
+  allowBlankDates = false,
+}: {
+  spkId: string
+  mayEdit: boolean
+  allowBlankDates?: boolean
+}) {
   const supabase = await createClient()
 
   const { data: documents } = await supabase
@@ -57,6 +65,7 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
                   lockedSpkId={spkId}
                   returnToSpk
                   label="Buat dokumen invoice"
+                  allowBlankDates={allowBlankDates}
                 />
               ) : undefined
             }
@@ -159,7 +168,13 @@ export async function RoutingTab({ spkId, mayEdit }: { spkId: string; mayEdit: b
             ),
             action:
               mayEdit && isCurrent && cell ? (
-                <RoutingStepEdit routingId={doc.id} stepId={cell.id} stepName={step.name} defaultPic={cell.pic_name} />
+                <RoutingStepEdit
+                  routingId={doc.id}
+                  stepId={cell.id}
+                  stepName={step.name}
+                  defaultPic={cell.pic_name}
+                  allowBlankDates={allowBlankDates}
+                />
               ) : undefined,
           }
         })

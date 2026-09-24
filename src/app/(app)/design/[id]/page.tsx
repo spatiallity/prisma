@@ -176,6 +176,7 @@ export default async function DesignDetailPage({
                 phase={design.phase}
                 currentStage={design.current_stage}
                 pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
+                allowBlankDates={user.role.code === 'super_admin'}
               />
             ) : (
               <EmptyState title="Belum ada yang mengerjakan" />
@@ -291,6 +292,7 @@ export default async function DesignDetailPage({
                                 designId={design.id}
                                 pics={picOptions}
                                 entry={revision}
+                                allowBlankDates={user.role.code === 'super_admin'}
                               />
                               {revision.id === latestRevisionId && (
                                 <DeleteRevisionEntryButton
@@ -410,6 +412,7 @@ export default async function DesignDetailPage({
                   currentStage={design.current_stage}
                   pics={picOptions}
                   defaultPicPertamina={picPertamina}
+                  allowBlankDates={user.role.code === 'super_admin'}
                 />
               </CardContent>
             </Card>

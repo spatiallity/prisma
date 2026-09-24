@@ -13,7 +13,15 @@ import { DesignTabCards } from './design-tab-cards'
  * each opening itself in turn — so this renders one card per record that
  * exists rather than assuming one.
  */
-export async function DesignTab({ spkId, mayEdit }: { spkId: string; mayEdit: boolean }) {
+export async function DesignTab({
+  spkId,
+  mayEdit,
+  allowBlankDates = false,
+}: {
+  spkId: string
+  mayEdit: boolean
+  allowBlankDates?: boolean
+}) {
   const supabase = await createClient()
 
   const { data: designs } = await supabase
@@ -49,6 +57,7 @@ export async function DesignTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
                   pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
                   lockedSpkId={spkId}
                   label="Buka record desain"
+                  allowBlankDates={allowBlankDates}
                 />
               ) : undefined
             }
@@ -83,6 +92,7 @@ export async function DesignTab({ spkId, mayEdit }: { spkId: string; mayEdit: bo
       picName={picName}
       pics={(pics ?? []).map((p) => ({ id: p.id, label: p.full_name }))}
       mayEdit={mayEdit}
+      allowBlankDates={allowBlankDates}
     />
   )
 }

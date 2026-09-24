@@ -39,6 +39,7 @@ export default async function DesignSiteplanPage({
             <AddDesignButton
               spks={openSpks.map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
               pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
+              allowBlankDates={user.role.code === 'super_admin'}
             />
           )
         }
@@ -77,6 +78,7 @@ export default async function DesignSiteplanPage({
             revisionsByDesign={revisionsByDesign}
             pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
             mayEdit={mayEdit}
+            allowBlankDates={user.role.code === 'super_admin'}
             stageFilter={stage}
           />
         ) : (

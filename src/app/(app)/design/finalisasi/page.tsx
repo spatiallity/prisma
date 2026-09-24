@@ -71,6 +71,7 @@ export default async function DesignFinalisasiPage({
             siteplanApprovedBySpk={siteplanApprovedBySpk}
             pics={pics.map((p) => ({ id: p.id, label: p.full_name }))}
             mayEdit={mayEdit}
+            allowBlankDates={user.role.code === 'super_admin'}
             stageFilter={stage}
           />
         ) : (

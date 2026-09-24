@@ -67,6 +67,7 @@ export function NewRoutingForm({
   templateId,
   lockedSpkId,
   returnToSpk = false,
+  allowBlankDates = false,
   onSaved,
 }: {
   spks: Option[]
@@ -75,6 +76,7 @@ export function NewRoutingForm({
   templateId: string | null
   lockedSpkId?: string
   returnToSpk?: boolean
+  allowBlankDates?: boolean
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(createRouting, initialState)
@@ -114,8 +116,8 @@ export function NewRoutingForm({
           <Input id="r_number" name="document_number" placeholder="INV-2026-014" />
         </Field>
 
-        <Field label="Tanggal masuk" htmlFor="r_date">
-          <Input id="r_date" name="tanggal" type="date" />
+        <Field label="Tanggal masuk" htmlFor="r_date" required={!allowBlankDates}>
+          <Input id="r_date" name="tanggal" type="date" required={!allowBlankDates} />
         </Field>
 
         <Field label="Catatan" htmlFor="r_notes" className="sm:col-span-2">
@@ -136,12 +138,14 @@ export function AddRoutingButton({
   lockedSpkId,
   returnToSpk = false,
   label = 'Add Data',
+  allowBlankDates = false,
 }: {
   spks: Option[]
   templateId: string | null
   lockedSpkId?: string
   returnToSpk?: boolean
   label?: string
+  allowBlankDates?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -161,6 +165,7 @@ export function AddRoutingButton({
         templateId={templateId}
         lockedSpkId={lockedSpkId}
         returnToSpk={returnToSpk}
+        allowBlankDates={allowBlankDates}
         onSaved={() => setOpen(false)}
       />
     </Modal>
@@ -196,6 +201,7 @@ export function RoutingStepDateForm({
   previousCompletedAt,
   dendaValue,
   canRollback = false,
+  allowBlankDates = false,
   onSaved,
 }: {
   routingId: string
@@ -211,6 +217,7 @@ export function RoutingStepDateForm({
    *  fields, since that's the moment denda actually gets decided. */
   dendaValue?: number | null
   canRollback?: boolean
+  allowBlankDates?: boolean
   onSaved?: () => void
 }) {
   const [state, formAction, pending] = useActionState(updateRoutingStepDates, initialState)
@@ -233,12 +240,13 @@ export function RoutingStepDateForm({
             {isDone ? 'Invoiced' : 'Sedang Berjalan'}
           </span>
         </div>
-        <Field label="Tanggal mulai" htmlFor="rd_inv_started">
+        <Field label="Tanggal mulai" htmlFor="rd_inv_started" required={!allowBlankDates}>
           <Input
             id="rd_inv_started"
             name="started_at"
             type="date"
-            defaultValue={entry.started_at?.slice(0, 10) ?? ''}
+            defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? ''}
+            required={!allowBlankDates}
           />
         </Field>
         <Field label="PIC Pertamina" htmlFor="rd_inv_pic">
@@ -301,12 +309,13 @@ export function RoutingStepDateForm({
       <input type="hidden" name="routing_id" value={routingId} />
       <input type="hidden" name="step_id" value={stepId} />
 
-      <Field label="Tanggal mulai" htmlFor="rd_started">
+      <Field label="Tanggal mulai" htmlFor="rd_started" required={!allowBlankDates}>
         <Input
           id="rd_started"
           name="started_at"
           type="date"
-          defaultValue={entry.started_at?.slice(0, 10) ?? ''}
+          defaultValue={entry.started_at?.slice(0, 10) ?? previousCompletedAt?.slice(0, 10) ?? ''}
+          required={!allowBlankDates}
         />
       </Field>
 
@@ -345,8 +354,17 @@ export function RoutingStepDateForm({
       ) : (
         <>
           <div className="grid gap-3 border-t border-slate-200 pt-3">
-            <Field label="Tanggal selesai" htmlFor="rd_completed">
-              <Input id="rd_completed" name="completed_at" type="date" />
+            <Field
+              label="Tanggal mulai tahap berikutnya"
+              htmlFor="rd_next_started"
+              required={!allowBlankDates}
+            >
+              <Input
+                id="rd_next_started"
+                name="next_started_at"
+                type="date"
+                required={!allowBlankDates}
+              />
             </Field>
           </div>
 
@@ -373,6 +391,7 @@ export function RoutingStepDateForm({
               icon={<Undo2 size={16} aria-hidden />}
               name="decision"
               value="revisi"
+              formNoValidate
               pending={pending}
             />
             {canRollback && (
@@ -401,11 +420,13 @@ export function StepReviewForm({
   routingId,
   stepId,
   defaultPic,
+  allowBlankDates = false,
   onSaved,
 }: {
   routingId: string
   stepId: string
   defaultPic: string | null
+  allowBlankDates?: boolean
   onSaved?: () => void
 }) {
   const [mode, setMode] = useState<'lanjut' | 'revisi'>('lanjut')
@@ -435,8 +456,8 @@ export function StepReviewForm({
         <form action={advanceAction} className="grid gap-3">
           <input type="hidden" name="routing_id" value={routingId} />
           <input type="hidden" name="step_id" value={stepId} />
-          <Field label="Tanggal" htmlFor="adv_date">
-            <Input id="adv_date" name="tanggal" type="date" />
+          <Field label="Tanggal mulai tahap berikutnya" htmlFor="adv_date" required={!allowBlankDates}>
+            <Input id="adv_date" name="next_started_at" type="date" required={!allowBlankDates} />
           </Field>
           <Field label="PIC Pertamina" htmlFor="adv_pic">
             <Input id="adv_pic" name="pic_name" list={picListId} defaultValue={defaultPic ?? ''} autoComplete="off" />

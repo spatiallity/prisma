@@ -168,6 +168,7 @@ export async function RoutingMonitor({
                   .filter((s) => canStartRouting(s))
                   .map((s) => ({ id: s.id, label: `${s.spk_number} — ${s.work_name}` }))}
                 templateId={defaultTemplateId}
+                allowBlankDates={user.role.code === 'super_admin'}
               />
             )}
           </div>
@@ -230,6 +231,7 @@ export async function RoutingMonitor({
             currentByDoc={currentByDocPlain}
             overdueByDoc={Object.fromEntries(overdueByDoc)}
             mayEdit={mayEdit}
+            allowBlankDates={user.role.code === 'super_admin'}
             opnameBySpk={opnameBySpk}
             opnameValueBySpk={opnameValueBySpk}
             padBySpk={padBySpk}
@@ -406,6 +408,7 @@ async function RoutingMatrixSection({
   currentByDoc,
   overdueByDoc,
   mayEdit,
+  allowBlankDates = false,
   opnameBySpk,
   opnameValueBySpk,
   padBySpk,
@@ -421,6 +424,7 @@ async function RoutingMatrixSection({
   currentByDoc: Record<string, RoutingLeadTimeView>
   overdueByDoc: Record<string, boolean>
   mayEdit: boolean
+  allowBlankDates?: boolean
   opnameBySpk: Record<string, string | null>
   opnameValueBySpk: Record<string, number | null>
   padBySpk: Record<string, string | null>
@@ -491,6 +495,7 @@ async function RoutingMatrixSection({
       currentSequenceByDoc={currentSequenceByDoc}
       overdueByDoc={overdueByDoc}
       mayEdit={mayEdit}
+      allowBlankDates={allowBlankDates}
       opnameBySpk={opnameBySpk}
       opnameValueBySpk={opnameValueBySpk}
       padBySpk={padBySpk}

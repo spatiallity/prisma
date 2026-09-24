@@ -270,9 +270,21 @@ export default async function SpkDetailPage({
 
       {activeTab === 'survey' && <SurveyTab spkId={spk.id} mayEdit={mayEdit} />}
 
-      {activeTab === 'design' && <DesignTab spkId={spk.id} mayEdit={mayEdit} />}
+      {activeTab === 'design' && (
+        <DesignTab
+          spkId={spk.id}
+          mayEdit={mayEdit}
+          allowBlankDates={user.role.code === 'super_admin'}
+        />
+      )}
 
-      {activeTab === 'routing' && <RoutingTab spkId={spk.id} mayEdit={mayEdit} />}
+      {activeTab === 'routing' && (
+        <RoutingTab
+          spkId={spk.id}
+          mayEdit={mayEdit}
+          allowBlankDates={user.role.code === 'super_admin'}
+        />
+      )}
 
       {activeTab === 'financial' && <FinancialTab spkId={spk.id} mayEdit={mayEdit} />}
 
