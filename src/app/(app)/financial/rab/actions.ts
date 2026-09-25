@@ -40,11 +40,15 @@ const GAJI_AKUN: Record<'Upah' | 'Tunjangan', string> = {
 function parseTransactionFields(formData: FormData) {
   const kategori = text(formData, 'kategori') as FinanceCategory
   const tanggal = text(formData, 'tanggal')
+  const tanggalPerjab = nullable(formData, 'tanggal_perjab')
   const jumlah = money(formData, 'jumlah')
   const jenisDetail = nullable(formData, 'jenis_detail')
 
   if (!kategori) return { error: 'Kategori wajib dipilih.' } as const
-  if (!tanggal) return { error: 'Tanggal wajib diisi.' } as const
+  if (!tanggal) return { error: 'Tanggal Pengeluaran wajib diisi.' } as const
+  if (tanggalPerjab && tanggalPerjab < tanggal) {
+    return { error: 'Tanggal Perjab tidak boleh sebelum Tanggal Pengeluaran.' } as const
+  }
   if (jumlah === null || jumlah <= 0) return { error: 'Jumlah harus lebih dari nol.' } as const
 
   let kodeAkun = FIXED_AKUN[kategori] ?? null
@@ -64,6 +68,7 @@ function parseTransactionFields(formData: FormData) {
     kategori,
     kodeAkun,
     tanggal,
+    tanggalPerjab,
     jumlah,
     jenisDetail,
   } as const
@@ -81,7 +86,7 @@ export async function saveFinanceTransaction(
 
   const parsed = parseTransactionFields(formData)
   if (parsed.error) return { error: parsed.error }
-  const { kategori, kodeAkun, tanggal, jumlah, jenisDetail } = parsed
+  const { kategori, kodeAkun, tanggal, tanggalPerjab, jumlah, jenisDetail } = parsed
 
   const supabase = await createClient()
 
@@ -97,6 +102,7 @@ export async function saveFinanceTransaction(
     kategori,
     kode_akun: kodeAkun,
     tanggal,
+    tanggal_perjab: tanggalPerjab,
     // Kept only because v_finance_realisasi_bulanan groups by it — always
     // derived from tanggal now, never typed by the user (Excel's month
     // column was a lookup convenience, not a separate fact).
@@ -130,7 +136,7 @@ export async function updateFinanceTransaction(
 
   const parsed = parseTransactionFields(formData)
   if (parsed.error) return { error: parsed.error }
-  const { kategori, kodeAkun, tanggal, jumlah, jenisDetail } = parsed
+  const { kategori, kodeAkun, tanggal, tanggalPerjab, jumlah, jenisDetail } = parsed
 
   const supabase = await createClient()
 
@@ -147,6 +153,7 @@ export async function updateFinanceTransaction(
       kategori,
       kode_akun: kodeAkun,
       tanggal,
+      tanggal_perjab: tanggalPerjab,
       bulan: `${tanggal.slice(0, 7)}-01`,
       jumlah,
       deskripsi: nullable(formData, 'deskripsi'),
@@ -305,6 +312,7 @@ export async function importFinanceTransactions(
       kategori,
       kode_akun: row.kodeAkun,
       tanggal: row.tanggal,
+      tanggal_perjab: row.tanggalPerjab,
       bulan: `${row.tanggal.slice(0, 7)}-01`,
       jumlah: row.jumlah,
       deskripsi: row.deskripsi,

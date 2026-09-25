@@ -591,6 +591,7 @@ export type FinanceTransactionRow = Timestamps & {
   kategori: FinanceCategory
   kode_akun: string
   tanggal: string | null
+  tanggal_perjab: string | null
   /** First-of-month bucket, e.g. '2025-08-01' for Agustus 2025. */
   bulan: string
   jumlah: number

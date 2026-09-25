@@ -207,7 +207,7 @@ export function FinanceTransactionForm({
         </p>
       )}
 
-      <Field label="Tanggal" htmlFor="ft_tanggal" required>
+      <Field label="Tanggal Pengeluaran" htmlFor="ft_tanggal" required>
         <Input
           id="ft_tanggal"
           name="tanggal"
@@ -273,6 +273,15 @@ export function FinanceTransactionForm({
           </Select>
         </Field>
       )}
+
+      <Field label="Tanggal Perjab" htmlFor="ft_tanggal_perjab" hint="Kosongkan jika belum tercatat.">
+        <Input
+          id="ft_tanggal_perjab"
+          name="tanggal_perjab"
+          type="date"
+          defaultValue={transaction?.tanggal_perjab ?? undefined}
+        />
+      </Field>
 
       <div>
         <Submit editing={editing} />

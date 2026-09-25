@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
 import { filterLeafAccounts } from '@/lib/financial'
-import { buildRabSerapanWorkbook, type AkunSummaryForExport } from '@/lib/finance-export'
+import { appendAllExpensesSheet, buildRabSerapanWorkbook, type AkunSummaryForExport } from '@/lib/finance-export'
+import type { FinanceTransactionRow } from '@/lib/supabase/types'
 
 /** Monitoring RAB's own numbers (v_finance_akun_summary /
  *  v_finance_realisasi_bulanan), laid out as one row per account, one
@@ -32,6 +33,24 @@ export async function GET() {
   const months = [...monthSet].sort()
 
   const workbook = buildRabSerapanWorkbook(leafSummary, monthlyByAkun, months)
+  const expenses: FinanceTransactionRow[] = []
+  const pageSize = 1000
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('finance_transactions')
+      .select('*')
+      .eq('status', 'Active')
+      .order('id')
+      .range(offset, offset + pageSize - 1)
+    if (error) return new Response('Gagal mengambil seluruh data pengeluaran.', { status: 500 })
+    expenses.push(...(data ?? []))
+    if (!data || data.length < pageSize) break
+  }
+  appendAllExpensesSheet(
+    workbook,
+    expenses,
+    new Map(leafSummary.map((akun) => [akun.kode_akun, akun.uraian])),
+  )
   const buffer = await workbook.xlsx.writeBuffer()
 
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15)

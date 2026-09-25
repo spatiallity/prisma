@@ -28,7 +28,7 @@ export async function FinanceCategoryList({ kategori }: { kategori: FinanceCateg
   const [{ data: rows }, { data: coa }] = await Promise.all([
     supabase
       .from('finance_transactions')
-      .select('id, kategori, kode_akun, tanggal, bulan, jumlah, deskripsi, no_bukti, personil_nama, jenis_detail, pj_nama, perjab, created_at, updated_at, created_by')
+      .select('id, kategori, kode_akun, tanggal, tanggal_perjab, bulan, jumlah, deskripsi, no_bukti, personil_nama, jenis_detail, pj_nama, perjab, created_at, updated_at, created_by')
       .eq('kategori', kategori)
       .eq('status', 'Active')
       .order('tanggal', { ascending: false, nullsFirst: false }),

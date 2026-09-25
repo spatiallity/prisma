@@ -25,6 +25,7 @@ export type FinanceTransactionListRow = Pick<
   | 'kategori'
   | 'kode_akun'
   | 'tanggal'
+  | 'tanggal_perjab'
   | 'bulan'
   | 'jumlah'
   | 'deskripsi'
@@ -128,7 +129,6 @@ export function FinanceTransactionsTable({
 }) {
   const akunByKode = useMemo(() => new Map(coa.map((a) => [a.kode_akun, a])), [coa])
   const showJenis = rows.some((r) => r.jenis_detail)
-  const showPerjab = rows.some((r) => r.perjab)
   const [detail, setDetail] = useState<FinanceTransactionListRow | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -177,7 +177,7 @@ export function FinanceTransactionsTable({
       : []),
     {
       key: 'tanggal',
-      label: 'Tanggal',
+      label: 'Tanggal Pengeluaran',
       className: 'whitespace-nowrap tnum text-muted-foreground',
       // Both parts are ISO strings, so string comparison already sorts them
       // correctly — tanggal first, created_at as the tiebreak. That tiebreak
@@ -185,7 +185,7 @@ export function FinanceTransactionsTable({
       // tanggal land together, newest-created first, instead of scattered
       // in whatever order they happened to be inserted.
       sortAccessor: (row) => `${row.tanggal ?? row.bulan}T${row.created_at}`,
-      render: (row) => formatDate(row.tanggal ?? row.bulan),
+      render: (row) => row.tanggal ? formatDate(row.tanggal) : '—',
     },
     {
       key: 'deskripsi',
@@ -200,21 +200,21 @@ export function FinanceTransactionsTable({
       sortAccessor: (row) => row.personil_nama,
       render: (row) => row.personil_nama ?? '—',
     },
-    ...(showPerjab
-      ? [
-          {
-            key: 'perjab',
-            label: 'Perjab',
-            sortAccessor: (row: FinanceTransactionListRow) => row.perjab,
-            render: (row: FinanceTransactionListRow) =>
-              row.perjab ? (
-                <Badge tone={row.perjab === 'Sudah' ? 'success' : 'warning'}>{row.perjab}</Badge>
-              ) : (
-                '—'
-              ),
-          } satisfies DataTableColumn<FinanceTransactionListRow>,
-        ]
-      : []),
+    {
+      key: 'perjab',
+      label: 'Perjab',
+      sortAccessor: (row) => row.perjab,
+      render: (row) => row.perjab ? (
+        <Badge tone={row.perjab === 'Sudah' ? 'success' : 'warning'}>{row.perjab}</Badge>
+      ) : '—',
+    },
+    {
+      key: 'tanggal_perjab',
+      label: 'Tanggal Perjab',
+      className: 'whitespace-nowrap tnum text-muted-foreground',
+      sortAccessor: (row) => row.tanggal_perjab,
+      render: (row) => row.tanggal_perjab ? formatDate(row.tanggal_perjab) : '—',
+    },
     ...(!showKategori
       ? [
           {
@@ -302,7 +302,7 @@ export function FinanceTransactionsTable({
               </Field>
             )}
             {detail.jenis_detail && <Field label="Jenis">{detail.jenis_detail}</Field>}
-            <Field label="Tanggal">{formatDate(detail.tanggal ?? detail.bulan)}</Field>
+            <Field label="Tanggal Pengeluaran">{detail.tanggal ? formatDate(detail.tanggal) : '—'}</Field>
             <Field label="Jumlah">
               <span className="font-bold">{formatRupiah(detail.jumlah)}</span>
             </Field>
@@ -315,6 +315,7 @@ export function FinanceTransactionsTable({
                 </Badge>
               </Field>
             )}
+            <Field label="Tanggal Perjab">{detail.tanggal_perjab ? formatDate(detail.tanggal_perjab) : '—'}</Field>
             <Field label="No. bukti">{detail.no_bukti ?? '—'}</Field>
             <Field label="Deskripsi" full>
               <span className="whitespace-pre-wrap break-words">{detail.deskripsi ?? '—'}</span>

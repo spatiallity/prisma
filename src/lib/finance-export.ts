@@ -37,11 +37,13 @@ export function buildTransactionsExportWorkbook(
 
   const sheet = wb.addWorksheet('Data')
   const headers = [
-    { header: 'Tanggal', width: 14 },
+    { header: 'Tanggal Pengeluaran', width: 20 },
     { header: 'Kode Akun', width: 12 },
     { header: 'Uraian', width: 32 },
     ...(isGaji ? [{ header: 'Jenis', width: 14 }] : []),
-    ...(isUmk ? [{ header: 'PJ UMK', width: 20 }, { header: 'Perjab', width: 10 }] : []),
+    ...(isUmk ? [{ header: 'PJ UMK', width: 20 }] : []),
+    { header: 'Perjab', width: 10 },
+    { header: 'Tanggal Perjab', width: 18 },
     { header: 'Jumlah (Rp)', width: 16 },
     { header: 'Deskripsi', width: 32 },
     { header: 'No. Bukti', width: 18 },
@@ -68,8 +70,11 @@ export function buildTransactionsExportWorkbook(
     if (isGaji) r.getCell(col++).value = row.jenis_detail ?? ''
     if (isUmk) {
       r.getCell(col++).value = row.pj_nama ?? ''
-      r.getCell(col++).value = row.perjab ?? ''
     }
+    r.getCell(col++).value = row.perjab ?? ''
+    const perjabDateCell = r.getCell(col++)
+    perjabDateCell.value = row.tanggal_perjab ? new Date(`${row.tanggal_perjab}T00:00:00Z`) : null
+    perjabDateCell.numFmt = 'yyyy-mm-dd'
     const jumlahCell = r.getCell(col++)
     jumlahCell.value = Number(row.jumlah)
     jumlahCell.numFmt = '#,##0'
@@ -96,6 +101,55 @@ export function buildTransactionsExportWorkbook(
   })
 
   return wb
+}
+
+/** Full active expense ledger behind the Monitoring RAB summary. */
+export function appendAllExpensesSheet(
+  workbook: ExcelJS.Workbook,
+  rows: FinanceTransactionRow[],
+  akunUraian: Map<string, string>,
+): void {
+  const sheet = workbook.addWorksheet('Semua Pengeluaran')
+  const headers = [
+    ['Kategori', 21], ['Tanggal Pengeluaran', 21], ['Kode Akun', 14],
+    ['Uraian Akun', 38], ['Jenis', 17], ['PJ UMK', 24], ['Perjab', 14],
+    ['Tanggal Perjab', 19], ['Jumlah (Rp)', 20], ['Deskripsi', 42],
+    ['No. Bukti', 22], ['Nama Personel', 26],
+  ] as const
+  sheet.columns = headers.map(([, width]) => ({ width }))
+  headers.forEach(([header], index) => { sheet.getRow(1).getCell(index + 1).value = header })
+  styleHeaderRow(sheet.getRow(1))
+
+  let total = 0
+  rows.forEach((item, index) => {
+    const row = sheet.getRow(index + 2)
+    row.values = [
+      FINANCE_CATEGORY_META[item.kategori].label,
+      item.tanggal ? new Date(`${item.tanggal}T00:00:00Z`) : null,
+      item.kode_akun,
+      akunUraian.get(item.kode_akun) ?? '',
+      item.jenis_detail ?? '',
+      item.pj_nama ?? '',
+      item.perjab ?? '',
+      item.tanggal_perjab ? new Date(`${item.tanggal_perjab}T00:00:00Z`) : null,
+      Number(item.jumlah),
+      item.deskripsi ?? '',
+      item.no_bukti ?? '',
+      item.personil_nama ?? '',
+    ]
+    row.getCell(2).numFmt = 'yyyy-mm-dd'
+    row.getCell(8).numFmt = 'yyyy-mm-dd'
+    row.getCell(9).numFmt = '#,##0'
+    total += Number(item.jumlah)
+  })
+  const totalRow = sheet.getRow(rows.length + 2)
+  totalRow.getCell(1).value = `TOTAL (${rows.length} transaksi)`
+  totalRow.getCell(9).value = total
+  totalRow.getCell(9).numFmt = '#,##0'
+  totalRow.font = { bold: true }
+  totalRow.eachCell((cell) => { cell.border = { top: { style: 'double' } } })
+  sheet.views = [{ state: 'frozen', ySplit: 1 }]
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: rows.length + 1, column: headers.length } }
 }
 
 export type AkunSummaryForExport = {

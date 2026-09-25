@@ -17,6 +17,7 @@ const AKUN_LABEL_SEP = ' — '
 
 export type ImportColumnKey =
   | 'tanggal'
+  | 'tanggal_perjab'
   | 'kode_akun'
   | 'jenis_detail'
   | 'pj_nama'
@@ -41,7 +42,7 @@ export function importColumnsFor(kategori: FinanceCategory): ImportColumn[] {
   const isUmk = kategori === 'umk'
 
   const columns: ImportColumn[] = [
-    { key: 'tanggal', header: 'Tanggal', required: true, width: 14 },
+    { key: 'tanggal', header: 'Tanggal Pengeluaran', required: true, width: 20 },
   ]
   if (needsAkun) {
     columns.push({ key: 'kode_akun', header: 'Kode Akun', required: true, width: 45 })
@@ -55,6 +56,7 @@ export function importColumnsFor(kategori: FinanceCategory): ImportColumn[] {
     columns.push({ key: 'pj_nama', header: 'PJ UMK', required: false, width: 20 })
     columns.push({ key: 'perjab', header: 'Perjab (Belum/Sudah)', required: false, width: 18 })
   }
+  columns.push({ key: 'tanggal_perjab', header: 'Tanggal Perjab', required: false, width: 18 })
   columns.push(
     { key: 'jumlah', header: 'Jumlah (Rp)', required: true, width: 16 },
     { key: 'deskripsi', header: 'Deskripsi', required: false, width: 32 },
@@ -96,7 +98,7 @@ export function buildFinanceTemplateWorkbook(
   const steps = [
     'Isi data pada sheet "Data", mulai baris ke-2 (baris 1 adalah judul kolom, jangan diubah/dihapus).',
     'Satu baris = satu transaksi.',
-    'Tanggal wajib diisi (format tanggal Excel, atau ketik YYYY-MM-DD).',
+    'Tanggal Pengeluaran wajib diisi (format tanggal Excel, atau ketik YYYY-MM-DD). Tanggal Perjab opsional.',
     'Jumlah wajib diisi, angka saja tanpa "Rp" atau titik pemisah ribuan.',
     needsAkun
       ? 'Kode Akun wajib diisi — klik cell-nya, muncul panah dropdown berisi kode + nama akun, tinggal pilih (tidak perlu buka sheet lain).'
@@ -138,6 +140,7 @@ export function buildFinanceTemplateWorkbook(
 
   // 200 blank rows pre-formatted so pasted/typed data keeps the right types.
   const tanggalCol = columns.findIndex((c) => c.key === 'tanggal') + 1
+  const tanggalPerjabCol = columns.findIndex((c) => c.key === 'tanggal_perjab') + 1
   const jumlahCol = columns.findIndex((c) => c.key === 'jumlah') + 1
   const jenisCol = columns.findIndex((c) => c.key === 'jenis_detail') + 1
   const akunCol = columns.findIndex((c) => c.key === 'kode_akun') + 1
@@ -145,6 +148,7 @@ export function buildFinanceTemplateWorkbook(
   const perjabCol = columns.findIndex((c) => c.key === 'perjab') + 1
   for (let r = 2; r <= 201; r++) {
     if (tanggalCol) sheet.getCell(r, tanggalCol).numFmt = 'yyyy-mm-dd'
+    if (tanggalPerjabCol) sheet.getCell(r, tanggalPerjabCol).numFmt = 'yyyy-mm-dd'
     if (jumlahCol) sheet.getCell(r, jumlahCol).numFmt = '#,##0'
     if (jenisCol) {
       sheet.getCell(r, jenisCol).dataValidation = {
@@ -219,6 +223,7 @@ export async function loadFinanceWorkbook(buffer: ArrayBuffer): Promise<ExcelJS.
 
 export type ParsedFinanceRow = {
   tanggal: string
+  tanggalPerjab: string | null
   jumlah: number
   kodeAkun: string
   jenisDetail: 'Upah' | 'Tunjangan' | null
@@ -301,15 +306,23 @@ export function parseFinanceWorkbook(
   kategori: FinanceCategory,
   validAkunCodes: Set<string>,
 ): { rows: ParsedFinanceRow[]; errors: string[] } {
-  const columns = importColumnsFor(kategori)
+  const currentColumns = importColumnsFor(kategori)
+  const sheet = workbook.getWorksheet('Data')
+  if (!sheet) return { rows: [], errors: ['Sheet "Data" tidak ditemukan di file ini.'] }
+
+  // Existing downloaded templates lack Tanggal Perjab. Keep their positional
+  // mapping so importing a saved workbook never shifts amount/description.
+  const hasTanggalPerjab = Array.from({ length: sheet.getRow(1).cellCount }, (_, i) =>
+    String(sheet.getRow(1).getCell(i + 1).value ?? '').trim().replace(/ \*$/, ''),
+  ).includes('Tanggal Perjab')
+  const columns = hasTanggalPerjab
+    ? currentColumns
+    : currentColumns.filter((column) => column.key !== 'tanggal_perjab')
   const colIndex = Object.fromEntries(columns.map((c, i) => [c.key, i + 1])) as Record<
     ImportColumnKey,
     number
   >
   const fixedAkun = FIXED_AKUN[kategori] ?? null
-
-  const sheet = workbook.getWorksheet('Data')
-  if (!sheet) return { rows: [], errors: ['Sheet "Data" tidak ditemukan di file ini.'] }
 
   const rows: ParsedFinanceRow[] = []
   const errors: string[] = []
@@ -328,7 +341,19 @@ export function parseFinanceWorkbook(
 
     const tanggal = cellToDateString(row.getCell(colIndex.tanggal).value)
     if (!tanggal) {
-      errors.push(`Baris ${r}: Tanggal tidak valid atau kosong.`)
+      errors.push(`Baris ${r}: Tanggal Pengeluaran tidak valid atau kosong.`)
+      continue
+    }
+    const perjabDateCell = colIndex.tanggal_perjab
+      ? row.getCell(colIndex.tanggal_perjab).value
+      : null
+    const tanggalPerjab = perjabDateCell ? cellToDateString(perjabDateCell) : null
+    if (perjabDateCell && !tanggalPerjab) {
+      errors.push(`Baris ${r}: Tanggal Perjab tidak valid.`)
+      continue
+    }
+    if (tanggalPerjab && tanggalPerjab < tanggal) {
+      errors.push(`Baris ${r}: Tanggal Perjab sebelum Tanggal Pengeluaran.`)
       continue
     }
 
@@ -376,6 +401,7 @@ export function parseFinanceWorkbook(
 
     rows.push({
       tanggal,
+      tanggalPerjab,
       jumlah,
       kodeAkun,
       jenisDetail,
