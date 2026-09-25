@@ -20,7 +20,7 @@ export function Sidebar({ permissions }: { permissions: PermissionMap }) {
   const groups = NAV.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
-      can(permissions, item.module, item.action ?? 'view'),
+      !item.module || can(permissions, item.module, item.action ?? 'view'),
     ),
   })).filter((group) => group.items.length > 0)
 

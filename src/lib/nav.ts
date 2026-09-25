@@ -3,9 +3,11 @@ import {
   Activity,
   AlertTriangle,
   Banknote,
+  BookOpen,
   Briefcase,
   Calculator,
   ClipboardCheck,
+  CircleHelp,
   Database,
   FileStack,
   FolderKanban,
@@ -35,7 +37,7 @@ export type NavItem = {
   label: string
   href: string
   icon: LucideIcon
-  module: AppModule
+  module?: AppModule
   action?: AppAction
   /** false → rendered greyed out with its phase, so the shell reflects Section 7. */
   ready?: boolean
@@ -140,6 +142,13 @@ export const NAV: NavGroup[] = [
       { label: 'Activity Template', href: '/admin/activity-templates', icon: Database, module: 'master_data', ready: true, phase: 3 },
       { label: 'Routing Template', href: '/admin/routing-templates', icon: Workflow, module: 'master_data', ready: true, phase: 6 },
       { label: 'Audit Log', href: '/admin/audit-log', icon: ScrollText, module: 'audit_log', ready: true, phase: 1 },
+    ],
+  },
+  {
+    label: 'Bantuan',
+    icon: CircleHelp,
+    items: [
+      { label: 'Panduan', href: '/panduan', icon: BookOpen, ready: true, phase: 1 },
     ],
   },
 ]
