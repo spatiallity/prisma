@@ -11,16 +11,21 @@ import {
 export async function GET() {
   await requirePermission('routing', 'view')
   const supabase = await createClient()
-  const [{ data: documents, error: documentError }, { data: spks, error: spkError }, { data: history, error: historyError }] = await Promise.all([
+  const [{ data: documents, error: documentError }, { data: spks, error: spkError }, { data: history, error: historyError }, { data: invoices, error: invoiceError }] = await Promise.all([
     supabase.from('spk_routing').select('id, spk_id, status, created_at, updated_at').order('created_at', { ascending: false }),
     supabase.from('spks').select('id, spk_number, site_code, work_name, status, opname_marked_at, opname_value, pad_marked_at, pad_value').order('spk_number'),
     supabase.from('routing_history').select('spk_routing_id, sequence, step_name, status, pic_name, started_at, completed_at, note').order('sequence'),
+    supabase.from('invoices').select('spk_id, status, invoice_number, invoice_date, invoice_value').eq('status', 'Approved').order('invoice_date', { ascending: false, nullsFirst: false }),
   ])
-  if (documentError || spkError || historyError) {
-    return new Response(documentError?.message ?? spkError?.message ?? historyError?.message ?? 'Gagal menyiapkan Routing Monitor.', { status: 500 })
+  if (documentError || spkError || historyError || invoiceError) {
+    return new Response(documentError?.message ?? spkError?.message ?? historyError?.message ?? invoiceError?.message ?? 'Gagal menyiapkan Routing Monitor.', { status: 500 })
   }
 
   const spkById = new Map((spks ?? []).map((spk) => [spk.id, spk]))
+  const invoiceBySpk = new Map<string, NonNullable<typeof invoices>[number]>()
+  for (const invoice of invoices ?? []) {
+    if (!invoiceBySpk.has(invoice.spk_id)) invoiceBySpk.set(invoice.spk_id, invoice)
+  }
   const historyByDocument = new Map<string, NonNullable<typeof history>>()
   for (const step of history ?? []) {
     const list = historyByDocument.get(step.spk_routing_id) ?? []
@@ -34,6 +39,7 @@ export async function GET() {
     if (!spk) continue
     const stages = [...(historyByDocument.get(document.id) ?? [])].sort((a, b) => a.sequence - b.sequence)
     const current = stages.find((stage) => stage.status !== 'Completed') ?? stages.at(-1)
+    const invoice = invoiceBySpk.get(spk.id)
     rows.push({
       spkNumber: spk.spk_number,
       siteCode: spk.site_code,
@@ -49,6 +55,9 @@ export async function GET() {
       opnameValue: spk.opname_value === null ? null : Number(spk.opname_value),
       padDate: spk.pad_marked_at,
       padValue: spk.pad_value === null ? null : Number(spk.pad_value),
+      invoiceNumber: invoice?.invoice_number ?? null,
+      invoiceDate: invoice?.invoice_date ?? null,
+      invoiceValue: invoice?.invoice_value == null ? null : Number(invoice.invoice_value),
       updatedAt: document.updated_at,
     })
     stages.forEach((stage) => {
@@ -63,6 +72,9 @@ export async function GET() {
         pic: stage.pic_name,
         startedAt: stage.started_at,
         completedAt: stage.completed_at,
+        invoiceNumber: stage.step_name === 'Invoiced' && stage.status === 'Completed' ? invoice?.invoice_number ?? null : null,
+        invoiceDate: stage.step_name === 'Invoiced' && stage.status === 'Completed' ? invoice?.invoice_date ?? null : null,
+        invoiceValue: stage.step_name === 'Invoiced' && stage.status === 'Completed' && invoice?.invoice_value != null ? Number(invoice.invoice_value) : null,
         note: stage.note,
       })
     })

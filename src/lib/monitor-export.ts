@@ -112,6 +112,9 @@ export type RoutingMonitorExportRow = {
   opnameValue: number | null
   padDate: string | null
   padValue: number | null
+  invoiceNumber: string | null
+  invoiceDate: string | null
+  invoiceValue: number | null
   updatedAt: string | null
 }
 
@@ -126,6 +129,9 @@ export type RoutingHistoryExportRow = {
   pic: string | null
   startedAt: string | null
   completedAt: string | null
+  invoiceNumber: string | null
+  invoiceDate: string | null
+  invoiceValue: number | null
   note: string | null
 }
 
@@ -145,7 +151,8 @@ export function buildRoutingMonitorWorkbook(
     ['No.', 7], ['No. SPK', 24], ['Kode Lokasi', 20], ['Pekerjaan', 36], ['Status SPK', 15],
     ['Status Routing', 16], ['Tahap Saat Ini', 26], ['Status Tahap', 16], ['PIC', 22],
     ['Mulai Tahap', 16], ['Selesai Tahap', 16], ['Tanggal Opname', 16], ['Nilai Opname (Rp)', 18],
-    ['Tanggal PAD', 15], ['Nilai PAD (Rp)', 17], ['Diperbarui', 16],
+    ['Tanggal PAD', 15], ['Nilai PAD (Rp)', 17], ['No. Invoice', 22],
+    ['Tanggal Invoiced', 18], ['Nilai Invoiced (Rp)', 20], ['Diperbarui', 16],
   ] as const
   monitor.columns = monitorColumns.map(([, width]) => ({ width }))
   const monitorHeader = monitor.getRow(1)
@@ -168,7 +175,10 @@ export function buildRoutingMonitorWorkbook(
     setMoney(target.getCell(13), row.opnameValue)
     setDate(target.getCell(14), row.padDate)
     setMoney(target.getCell(15), row.padValue)
-    setDate(target.getCell(16), row.updatedAt)
+    target.getCell(16).value = row.invoiceNumber ?? ''
+    setDate(target.getCell(17), row.invoiceDate)
+    setMoney(target.getCell(18), row.invoiceValue)
+    setDate(target.getCell(19), row.updatedAt)
   })
   monitor.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]
 
@@ -176,7 +186,8 @@ export function buildRoutingMonitorWorkbook(
   const historyColumns = [
     ['No.', 7], ['No. SPK', 24], ['Kode Lokasi', 20], ['Pekerjaan', 36], ['Status Routing', 16],
     ['Urutan', 10], ['Tahap', 28], ['Status Tahap', 16], ['PIC', 22], ['Tanggal Mulai', 16],
-    ['Tanggal Selesai', 16], ['Catatan', 44],
+    ['Tanggal Selesai', 16], ['No. Invoice', 22], ['Tanggal Invoiced', 18],
+    ['Nilai Invoiced (Rp)', 20], ['Catatan', 44],
   ] as const
   history.columns = historyColumns.map(([, width]) => ({ width }))
   const historyHeader = history.getRow(1)
@@ -195,8 +206,11 @@ export function buildRoutingMonitorWorkbook(
     target.getCell(9).value = row.pic ?? ''
     setDate(target.getCell(10), row.startedAt)
     setDate(target.getCell(11), row.completedAt)
-    target.getCell(12).value = row.note ?? ''
-    target.getCell(12).alignment = { vertical: 'top', wrapText: true }
+    target.getCell(12).value = row.invoiceNumber ?? ''
+    setDate(target.getCell(13), row.invoiceDate)
+    setMoney(target.getCell(14), row.invoiceValue)
+    target.getCell(15).value = row.note ?? ''
+    target.getCell(15).alignment = { vertical: 'top', wrapText: true }
   })
   history.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }]
 
