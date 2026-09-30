@@ -125,6 +125,7 @@ export async function saveFinanceTransaction(
 
   revalidatePath('/financial/rab')
   revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: 'Transaksi tersimpan.' }
 }
 
@@ -173,6 +174,7 @@ export async function updateFinanceTransaction(
 
   revalidatePath('/financial/rab')
   revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: 'Perubahan tersimpan.' }
 }
 
@@ -226,6 +228,7 @@ export async function deleteFinanceTransaction(
 
   revalidatePath('/financial/rab')
   revalidatePath('/financial/umk')
+  revalidatePath('/spk/keuangan-bulanan')
   revalidatePath('/financial/sppd')
   revalidatePath('/financial/ppbj-barang')
   revalidatePath('/financial/ppbj-jasa')
@@ -252,6 +255,7 @@ export async function deleteFinanceTransactions(
 
   revalidatePath('/financial/rab')
   revalidatePath('/financial/umk')
+  revalidatePath('/spk/keuangan-bulanan')
   revalidatePath('/financial/sppd')
   revalidatePath('/financial/ppbj-barang')
   revalidatePath('/financial/ppbj-jasa')
@@ -333,5 +337,6 @@ export async function importFinanceTransactions(
 
   revalidatePath('/financial/rab')
   revalidatePath(`/financial/${kategori.replace(/_/g, '-')}`)
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: `${rows.length} transaksi berhasil diimpor.` }
 }

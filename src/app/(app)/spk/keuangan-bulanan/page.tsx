@@ -7,6 +7,7 @@ import { formatMonthLabel, formatMonthLabelShort } from '@/lib/financial'
 import { createClient } from '@/lib/supabase/server'
 import { formatRupiah } from '@/lib/utils'
 import { MonthlyFinanceChart, type MonthlyFinancePoint } from './monthly-finance-chart'
+import { MonthlyFinanceRefresh } from './monthly-finance-refresh'
 
 export const metadata: Metadata = { title: 'Pendapatan & Pengeluaran Bulanan' }
 
@@ -75,16 +76,19 @@ export default async function MonthlyFinancePage({
         title="Pendapatan & Pengeluaran Bulanan"
         description="Opname, SPK terbit, dan seluruh pengeluaran berdasarkan bulan pencatatannya."
         actions={
-          <form action="/spk/keuangan-bulanan" className="flex items-center gap-2">
-            <label htmlFor="tahun" className="text-sm font-semibold text-slate-600">Tahun</label>
-            <Select id="tahun" name="tahun" defaultValue={year ?? ''} className="w-36" aria-label="Pilih tahun">
-              <option value="">Semua tahun</option>
-              {years.map((option) => <option key={option} value={option}>{option}</option>)}
-            </Select>
-            <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-bold text-white hover:bg-primary-hover">
-              Tampilkan
-            </button>
-          </form>
+          <div className="flex flex-wrap items-center gap-2">
+            <form action="/spk/keuangan-bulanan" className="flex items-center gap-2">
+              <label htmlFor="tahun" className="text-sm font-semibold text-slate-600">Tahun</label>
+              <Select id="tahun" name="tahun" defaultValue={year ?? ''} className="w-36" aria-label="Pilih tahun">
+                <option value="">Semua tahun</option>
+                {years.map((option) => <option key={option} value={option}>{option}</option>)}
+              </Select>
+              <button type="submit" className="h-10 rounded-md bg-primary px-4 text-sm font-bold text-white hover:bg-primary-hover">
+                Tampilkan
+              </button>
+            </form>
+            <MonthlyFinanceRefresh />
+          </div>
         }
       />
 
@@ -145,7 +149,10 @@ export default async function MonthlyFinancePage({
               {months.map((month) => (
                 <tr key={month.month} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <th scope="row" className="px-5 py-3 text-left font-semibold text-slate-900">{month.label}</th>
-                  <td className="tnum px-5 py-3 text-right">{formatRupiah(month.nilaiSpk)}</td>
+                  <td className="tnum px-5 py-3 text-right">
+                    <div>{formatRupiah(month.nilaiSpk)}</div>
+                    <div className="mt-0.5 text-xs font-medium text-slate-500">{month.jumlahSpk} SPK</div>
+                  </td>
                   <td className="tnum px-5 py-3 text-right">{formatRupiah(month.pendapatan)}</td>
                   <td className="tnum px-5 py-3 text-right">{formatRupiah(month.pengeluaran)}</td>
                   <td className={`tnum px-5 py-3 text-right font-semibold ${month.pendapatan - month.pengeluaran < 0 ? 'text-danger' : 'text-success'}`}>{formatRupiah(month.pendapatan - month.pengeluaran)}</td>

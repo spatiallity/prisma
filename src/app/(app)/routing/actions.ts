@@ -369,6 +369,7 @@ export async function updateRoutingStepDates(
     revalidatePath('/reports/financial')
     revalidatePath('/spk')
     revalidatePath('/spk/progress')
+    revalidatePath('/spk/keuangan-bulanan')
     if (routingDoc) revalidatePath(`/spk/${routingDoc.spk_id}`)
     return { error: null, success: 'Invoice disimpan.' }
   }
@@ -633,6 +634,7 @@ export async function rollbackRoutingStep(
   revalidatePath('/reports/financial')
   revalidatePath('/spk')
   revalidatePath('/spk/progress')
+  revalidatePath('/spk/keuangan-bulanan')
   revalidatePath(`/spk/${routing.spk_id}`)
   return { error: null, success: `Tahap dibatalkan. Kembali ke ${previous.step_name}.` }
 }

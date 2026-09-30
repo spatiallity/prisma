@@ -34,6 +34,7 @@ function revalidateInvoiceWorkflow(spkId?: string) {
   revalidatePath('/spk/progress')
   revalidatePath('/dashboard')
   revalidatePath('/reports/financial')
+  revalidatePath('/spk/keuangan-bulanan')
   if (spkId) revalidatePath(`/spk/${spkId}`)
 }
 

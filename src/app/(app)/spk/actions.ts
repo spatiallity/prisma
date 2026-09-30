@@ -190,6 +190,7 @@ export async function createSpk(
   }
 
   revalidatePath('/spk')
+  revalidatePath('/spk/keuangan-bulanan')
   // A browser-selected File cannot be forwarded through this Server Action to
   // R2. Return the new id so the client can upload it through the existing,
   // permission-checked document endpoint before taking the user to the SPK.
@@ -251,6 +252,7 @@ export async function updateSpk(
 
   revalidatePath('/spk')
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: 'Perubahan tersimpan.' }
 }
 
@@ -275,6 +277,7 @@ export async function setSpkStatus(
 
   revalidatePath('/spk')
   revalidatePath(`/spk/${id}`)
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: `Status SPK diubah menjadi ${spkStatusLabel(status)}.` }
 }
 
@@ -312,6 +315,7 @@ export async function markOpname(
   revalidatePath('/spk/progress')
   revalidatePath('/routing')
   revalidatePath('/dashboard')
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: 'Opname disimpan.' }
 }
 
@@ -344,6 +348,7 @@ export async function unmarkOpname(
   revalidatePath('/spk/progress')
   revalidatePath('/routing')
   revalidatePath('/dashboard')
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: 'Tanda opname dibatalkan.' }
 }
 
@@ -477,6 +482,7 @@ export async function updateFinancialReportRow(
   revalidatePath('/reports/financial')
   revalidatePath(`/spk/${id}`)
   revalidatePath('/routing')
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: `Perubahan disimpan.${invoiceWarning}` }
 }
 
@@ -603,5 +609,6 @@ export async function deleteSpk(
   if (error) return { error: error.message }
 
   revalidatePath('/spk')
+  revalidatePath('/spk/keuangan-bulanan')
   return { error: null }
 }

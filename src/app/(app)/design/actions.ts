@@ -661,6 +661,7 @@ export async function completeStage(
   revalidatePath('/routing')
   revalidatePath(`/design/${designId}`)
   revalidatePath(`/spk/${designRow.spk_id}`)
+  if (entry.stage === 'Opname' && completedAt) revalidatePath('/spk/keuangan-bulanan')
   return { error: null, success: `${entry.stage} selesai.` }
 }
 
