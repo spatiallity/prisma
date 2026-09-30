@@ -135,8 +135,8 @@ export default async function MonthlyFinancePage({
             <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
               <tr className="border-b border-slate-200">
                 <th scope="col" className="px-5 py-3 text-left">Bulan</th>
-                <th scope="col" className="px-5 py-3 text-right">Pendapatan (Opname)</th>
                 <th scope="col" className="px-5 py-3 text-right">Nilai SPK Terbit</th>
+                <th scope="col" className="px-5 py-3 text-right">Nilai SPK Teropname</th>
                 <th scope="col" className="px-5 py-3 text-right">Pengeluaran</th>
                 <th scope="col" className="px-5 py-3 text-right">Selisih Opname - Pengeluaran</th>
               </tr>
@@ -145,8 +145,8 @@ export default async function MonthlyFinancePage({
               {months.map((month) => (
                 <tr key={month.month} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <th scope="row" className="px-5 py-3 text-left font-semibold text-slate-900">{month.label}</th>
-                  <td className="tnum px-5 py-3 text-right">{formatRupiah(month.pendapatan)}</td>
                   <td className="tnum px-5 py-3 text-right">{formatRupiah(month.nilaiSpk)}</td>
+                  <td className="tnum px-5 py-3 text-right">{formatRupiah(month.pendapatan)}</td>
                   <td className="tnum px-5 py-3 text-right">{formatRupiah(month.pengeluaran)}</td>
                   <td className={`tnum px-5 py-3 text-right font-semibold ${month.pendapatan - month.pengeluaran < 0 ? 'text-danger' : 'text-success'}`}>{formatRupiah(month.pendapatan - month.pengeluaran)}</td>
                 </tr>
@@ -155,8 +155,8 @@ export default async function MonthlyFinancePage({
             <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-bold text-slate-900">
               <tr>
                 <th scope="row" className="px-5 py-3 text-left">Total {year ?? 'Seluruh Tahun'}</th>
-                <td className="tnum px-5 py-3 text-right">{formatRupiah(totals.pendapatan)}</td>
                 <td className="tnum px-5 py-3 text-right">{formatRupiah(totals.nilaiSpk)}</td>
+                <td className="tnum px-5 py-3 text-right">{formatRupiah(totals.pendapatan)}</td>
                 <td className="tnum px-5 py-3 text-right">{formatRupiah(totals.pengeluaran)}</td>
                 <td className={`tnum px-5 py-3 text-right ${difference < 0 ? 'text-danger' : 'text-success'}`}>{formatRupiah(difference)}</td>
               </tr>
