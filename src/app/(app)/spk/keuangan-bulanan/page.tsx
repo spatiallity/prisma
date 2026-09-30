@@ -34,15 +34,14 @@ export default async function MonthlyFinancePage({
   const byMonth = new Map((data ?? []).map((row) => [row.bulan.slice(0, 7), row]))
 
   const sortedMonths = [...byMonth.keys()].sort()
-  const firstMonth = year ? year * 12 : sortedMonths.length
-    ? Number(sortedMonths[0].slice(0, 4)) * 12 + Number(sortedMonths[0].slice(5, 7)) - 1
-    : currentYear * 12
-  const lastMonth = year ? year * 12 + 11 : sortedMonths.length
-    ? Number(sortedMonths[sortedMonths.length - 1].slice(0, 4)) * 12 + Number(sortedMonths[sortedMonths.length - 1].slice(5, 7)) - 1
-    : currentYear * 12 + 11
-  const months: MonthlyFinancePoint[] = Array.from({ length: lastMonth - firstMonth + 1 }, (_, index) => {
-    const monthIndex = firstMonth + index
-    const key = `${Math.floor(monthIndex / 12)}-${String(monthIndex % 12 + 1).padStart(2, '0')}`
+  const monthKeys = year || !sortedMonths.length
+    ? Array.from({ length: 12 }, (_, index) => `${String(year ?? currentYear).padStart(4, '0')}-${String(index + 1).padStart(2, '0')}`)
+    : sortedMonths
+  const unusualMonths = sortedMonths.filter((month) => {
+    const monthYear = Number(month.slice(0, 4))
+    return monthYear < 2000 && (!year || year === monthYear)
+  })
+  const months: MonthlyFinancePoint[] = monthKeys.map((key) => {
     const row = byMonth.get(key)
     return {
       month: key,
@@ -89,6 +88,12 @@ export default async function MonthlyFinancePage({
         }
       />
 
+      {unusualMonths.length > 0 && (
+        <div role="alert" className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Ada {unusualMonths.length} bulan data sebelum tahun 2000. Periksa tanggal transaksinya; nilainya tetap dihitung dalam ringkasan.
+        </div>
+      )}
+
       <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: 'Pendapatan (Teropname)', value: totals.pendapatan, count: `${totals.jumlahOpname} SPK opname`, border: 'border-l-primary', color: 'text-slate-900' },
@@ -110,7 +115,7 @@ export default async function MonthlyFinancePage({
         <CardHeader>
           <div>
             <CardTitle>Perbandingan Bulanan {year ?? 'Semua Tahun'}</CardTitle>
-            <CardDescription>Nilai rupiah per bulan untuk tiga kelompok data.</CardDescription>
+            <CardDescription>Nilai rupiah per bulan untuk tiga kelompok data{year ? '.' : ' yang tercatat.'}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto px-2 pb-3 sm:px-5">
