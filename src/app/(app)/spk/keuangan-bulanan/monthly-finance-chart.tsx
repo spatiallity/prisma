@@ -1,6 +1,6 @@
 'use client'
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatRupiah, formatRupiahCompact } from '@/lib/utils'
 
 export type MonthlyFinancePoint = {
@@ -18,7 +18,7 @@ export function MonthlyFinanceChart({ data }: { data: MonthlyFinancePoint[] }) {
   return (
     <div className="h-80 pt-4" style={{ minWidth: Math.max(720, data.length * 76) }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }} barGap={2}>
+        <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }} barGap={2}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-100)" />
           <XAxis dataKey="shortLabel" tick={{ fontSize: 11, fill: 'var(--color-slate-500)' }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 11, fill: 'var(--color-slate-500)' }} tickFormatter={formatRupiahCompact} tickLine={false} axisLine={false} width={74} />
@@ -30,9 +30,9 @@ export function MonthlyFinanceChart({ data }: { data: MonthlyFinancePoint[] }) {
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Bar dataKey="pendapatan" name="Pendapatan (Opname)" fill="var(--color-primary)" radius={[3, 3, 0, 0]} maxBarSize={24} />
-          <Bar dataKey="nilaiSpk" name="Nilai SPK Terbit" fill="var(--color-info)" radius={[3, 3, 0, 0]} maxBarSize={24} />
           <Bar dataKey="pengeluaran" name="Pengeluaran" fill="var(--color-brand-orange)" radius={[3, 3, 0, 0]} maxBarSize={24} />
-        </BarChart>
+          <Line type="monotone" dataKey="nilaiSpk" name="Nilai SPK Terbit" stroke="var(--color-info)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--color-info)' }} activeDot={{ r: 5 }} />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   )
