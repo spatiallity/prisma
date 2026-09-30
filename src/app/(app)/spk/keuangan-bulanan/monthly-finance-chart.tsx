@@ -16,7 +16,7 @@ export type MonthlyFinancePoint = {
 
 export function MonthlyFinanceChart({ data }: { data: MonthlyFinancePoint[] }) {
   return (
-    <div className="h-80 min-w-[720px] pt-4">
+    <div className="h-80 pt-4" style={{ minWidth: Math.max(720, data.length * 76) }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }} barGap={2}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-slate-100)" />
@@ -29,7 +29,7 @@ export function MonthlyFinanceChart({ data }: { data: MonthlyFinancePoint[] }) {
             cursor={{ fill: 'var(--color-slate-50)' }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="pendapatan" name="Pendapatan (Opname)" fill="var(--color-success)" radius={[3, 3, 0, 0]} maxBarSize={24} />
+          <Bar dataKey="pendapatan" name="Pendapatan (Opname)" fill="var(--color-primary)" radius={[3, 3, 0, 0]} maxBarSize={24} />
           <Bar dataKey="nilaiSpk" name="Nilai SPK Terbit" fill="var(--color-info)" radius={[3, 3, 0, 0]} maxBarSize={24} />
           <Bar dataKey="pengeluaran" name="Pengeluaran" fill="var(--color-brand-orange)" radius={[3, 3, 0, 0]} maxBarSize={24} />
         </BarChart>
