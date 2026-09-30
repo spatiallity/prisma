@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requirePermission } from '@/lib/auth/session'
-import { FINANCE_CATEGORY_META } from '@/lib/financial'
+import { FINANCE_CATEGORY_META, isValidFinanceDate } from '@/lib/financial'
 import { loadFinanceWorkbook, parseFinanceWorkbook } from '@/lib/finance-import'
 import type { FinanceCategory, FinanceTransactionRow, PerjabStatus } from '@/lib/supabase/types'
 
@@ -46,6 +46,10 @@ function parseTransactionFields(formData: FormData) {
 
   if (!kategori) return { error: 'Kategori wajib dipilih.' } as const
   if (!tanggal) return { error: 'Tanggal Pengeluaran wajib diisi.' } as const
+  if (!isValidFinanceDate(tanggal)) return { error: 'Tanggal Pengeluaran tidak valid. Gunakan tahun 2000 sampai tahun depan.' } as const
+  if (tanggalPerjab && !isValidFinanceDate(tanggalPerjab)) {
+    return { error: 'Tanggal Perjab tidak valid. Gunakan tahun 2000 sampai tahun depan.' } as const
+  }
   if (tanggalPerjab && tanggalPerjab < tanggal) {
     return { error: 'Tanggal Perjab tidak boleh sebelum Tanggal Pengeluaran.' } as const
   }

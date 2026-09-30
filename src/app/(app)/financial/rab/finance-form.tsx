@@ -153,6 +153,7 @@ export function FinanceTransactionForm({
   const needsAkun = meta.fixedAkun === null && !isGaji
   const isUmk = kategori === 'umk'
   const pjListId = useId()
+  const maxDate = `${new Date().getFullYear() + 1}-12-31`
   useActionToast(state, onSaved)
 
   return (
@@ -213,6 +214,8 @@ export function FinanceTransactionForm({
           name="tanggal"
           type="date"
           required
+          min="2000-01-01"
+          max={maxDate}
           defaultValue={transaction?.tanggal ?? undefined}
         />
       </Field>
@@ -279,6 +282,8 @@ export function FinanceTransactionForm({
           id="ft_tanggal_perjab"
           name="tanggal_perjab"
           type="date"
+          min="2000-01-01"
+          max={maxDate}
           defaultValue={transaction?.tanggal_perjab ?? undefined}
         />
       </Field>

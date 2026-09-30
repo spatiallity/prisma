@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { FINANCE_CATEGORY_META } from '@/lib/financial'
+import { FINANCE_CATEGORY_META, isValidFinanceDate } from '@/lib/financial'
 import type { FinanceCategory } from '@/lib/supabase/types'
 
 /** Same three kategori that never let the user pick a kode_akun — mirrors
@@ -340,16 +340,16 @@ export function parseFinanceWorkbook(
     if (isBlank) continue
 
     const tanggal = cellToDateString(row.getCell(colIndex.tanggal).value)
-    if (!tanggal) {
-      errors.push(`Baris ${r}: Tanggal Pengeluaran tidak valid atau kosong.`)
+    if (!tanggal || !isValidFinanceDate(tanggal)) {
+      errors.push(`Baris ${r}: Tanggal Pengeluaran tidak valid. Gunakan tahun 2000 sampai tahun depan.`)
       continue
     }
     const perjabDateCell = colIndex.tanggal_perjab
       ? row.getCell(colIndex.tanggal_perjab).value
       : null
     const tanggalPerjab = perjabDateCell ? cellToDateString(perjabDateCell) : null
-    if (perjabDateCell && !tanggalPerjab) {
-      errors.push(`Baris ${r}: Tanggal Perjab tidak valid.`)
+    if (perjabDateCell && (!tanggalPerjab || !isValidFinanceDate(tanggalPerjab))) {
+      errors.push(`Baris ${r}: Tanggal Perjab tidak valid. Gunakan tahun 2000 sampai tahun depan.`)
       continue
     }
     if (tanggalPerjab && tanggalPerjab < tanggal) {
