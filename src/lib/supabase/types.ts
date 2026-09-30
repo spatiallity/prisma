@@ -738,6 +738,15 @@ export type FinanceRealisasiBulananTotalView = {
   realisasi: number
 }
 
+export type SpkMonthlyFinanceView = {
+  bulan: string
+  pendapatan: number
+  nilai_spk: number
+  pengeluaran: number
+  jumlah_opname: number
+  jumlah_spk: number
+}
+
 /** migrations/20260830000100 — Anggaran vs Realisasi vs Selisih per kode_akun, all-time. */
 export type FinanceAkunSummaryView = {
   kode_akun: string
@@ -1088,6 +1097,7 @@ export type Database = {
       v_spk_financial: { Row: SpkFinancialView; Relationships: [] }
       v_finance_realisasi_bulanan: { Row: FinanceRealisasiBulananView; Relationships: [] }
       v_finance_realisasi_bulanan_total: { Row: FinanceRealisasiBulananTotalView; Relationships: [] }
+      v_spk_monthly_finance: { Row: SpkMonthlyFinanceView; Relationships: [] }
       v_finance_akun_summary: { Row: FinanceAkunSummaryView; Relationships: [] }
       v_routing_stage_average: { Row: RoutingStageAverageView; Relationships: [] }
       v_plan_vs_actual: { Row: PlanVsActualView; Relationships: [] }

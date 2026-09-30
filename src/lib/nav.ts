@@ -6,6 +6,7 @@ import {
   BookOpen,
   Briefcase,
   Calculator,
+  ChartNoAxesCombined,
   ClipboardCheck,
   CircleHelp,
   Database,
@@ -77,6 +78,7 @@ export const NAV: NavGroup[] = [
         phase: 2,
       },
       { label: 'Progress SPK', href: '/spk/progress', icon: Kanban, module: 'progress', ready: true, phase: 2 },
+      { label: 'Pendapatan & Pengeluaran', href: '/spk/keuangan-bulanan', icon: ChartNoAxesCombined, module: 'spending', ready: true, phase: 8 },
     ],
   },
   // Schedule and Vendor Jasa Survey are hidden from the menu for now (asked
