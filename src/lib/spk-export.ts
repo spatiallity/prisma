@@ -40,6 +40,8 @@ export function buildSpkExportWorkbook(spks: SpkRow[], invoices: InvoiceExportRo
     { header: 'Kode SPK', width: 18 },
     { header: 'Nomor SPK', width: 26 },
     { header: 'Nama Pekerjaan', width: 42 },
+    { header: 'Tanggal Mulai Pekerjaan', width: 25 },
+    { header: 'Tanggal Selesai Pekerjaan', width: 27 },
     { header: 'Nilai SPK (Rp)', width: 18 },
     { header: 'Tanggal Opname', width: 16 },
     { header: 'Nilai Opname (Rp)', width: 20 },
@@ -67,6 +69,8 @@ export function buildSpkExportWorkbook(spks: SpkRow[], invoices: InvoiceExportRo
       spk.site_code ?? '',
       spk.spk_number,
       spk.work_name,
+      asExcelDate(spk.start_date),
+      asExcelDate(spk.end_date),
       Number(spk.contract_value ?? 0),
       asExcelDate(spk.opname_marked_at),
       spk.opname_value === null ? null : Number(spk.opname_value),
@@ -75,15 +79,15 @@ export function buildSpkExportWorkbook(spks: SpkRow[], invoices: InvoiceExportRo
       asExcelDate(invoice?.latestDate ?? null),
       invoice ? invoice.total : null,
     ]
-    ;[5, 7, 9, 11].forEach((column) => {
+    ;[7, 9, 11, 13].forEach((column) => {
       row.getCell(column).numFmt = '#,##0'
     })
-    ;[6, 8, 10].forEach((column) => {
+    ;[5, 6, 8, 10, 12].forEach((column) => {
       row.getCell(column).numFmt = 'yyyy-mm-dd'
     })
   })
 
   sheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 4 }]
-  sheet.autoFilter = `A1:K${Math.max(1, spks.length + 1)}`
+  sheet.autoFilter = `A1:M${Math.max(1, spks.length + 1)}`
   return workbook
 }
